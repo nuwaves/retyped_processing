@@ -7,7 +7,7 @@ on:
 
 env:
   AWS_REGION: us-east-1
-  ECR_REPOSITORY: audio-processing
+  ECR_REPOSITORY: django-app-repo
   ECS_SERVICE: audio-processing-service
   ECS_CLUSTER: audio-processing-cluster
   ECS_TASK_DEFINITION: audio-processing-task-def
