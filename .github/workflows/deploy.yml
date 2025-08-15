@@ -5,7 +5,7 @@ on:
     branches:
       - main
 
-env-
+env:
   AWS_REGION: us-east-1
   ECR_REPOSITORY: django-app-repo
   ECS_SERVICE: django-app-service
