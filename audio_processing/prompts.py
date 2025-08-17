@@ -65,23 +65,6 @@ def get_episode_summary_prompt(transcript):
     Returns:
         str: Formatted prompt for episode summary generation
     """
-    return f"""You are an AI assistant that creates concise, informative summaries of podcast episodes.
+    return f"""Summarize this podcast episode in 200-400 words. Include the main topic, key points, participants, and takeaways:
 
-Podcast transcript:
-{transcript}
-
-Please create a comprehensive summary of this podcast episode. Your summary should include:
-
-1. **Main Topic/Theme**: What is the primary subject or focus of the episode?
-
-2. **Key Points Discussed**: What are the most important ideas, arguments, or insights presented?
-
-3. **Notable Quotes or Highlights**: Any particularly memorable or impactful statements
-
-4. **Guests/Participants**: Who are the speakers and what are their roles or expertise?
-
-5. **Conclusions/Takeaways**: What are the main conclusions or actionable insights for listeners?
-
-Format your response as a well-structured summary that would help someone decide if they want to listen to the full episode. Be concise but comprehensive, aiming for 200-400 words.
-
-Do not include any meta-commentary about the task or introductory phrases like "This podcast discusses..." - just provide the summary content directly."""
+{transcript}"""

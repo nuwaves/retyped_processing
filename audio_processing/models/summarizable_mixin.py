@@ -1,4 +1,9 @@
 import logging
+from django.conf import settings
+import requests
+import re
+from ..prompts import get_episode_summary_prompt
+
 
 logger = logging.getLogger(__name__)
 
@@ -13,8 +18,6 @@ class SummarizableMixin:
         Generate a summary of the content using Groq LLM based on the transcript.
         Returns the summary text or None if failed.
         
-        Note: This method requires the model to have a 'transcript' field and 'summary' field,
-        and access to Groq API (usually from GroqMixin).
         """
         # Validate transcript
         if not hasattr(self, 'transcript') or not self.transcript or not self.transcript.strip():
@@ -24,9 +27,6 @@ class SummarizableMixin:
         logger.info(f"Generating summary for {self.__class__.__name__}: {getattr(self, 'raw_audio_url', str(self))}")
         
         try:
-            from django.conf import settings
-            import requests
-            
             url = "https://api.groq.com/openai/v1/chat/completions"
             api_key = getattr(settings, 'GROQ_API_KEY', '')
             
@@ -34,9 +34,15 @@ class SummarizableMixin:
                 logger.error("GROQ_API_KEY not configured")
                 return None
             
+            # Limit transcript to first 130,000 tokens (roughly 100,000 words)
+            # Approximating 1.3 characters per token for English text
+            max_chars = 120000 * 1.3 # ~169,000 characters
+            limited_transcript = self.transcript[:int(max_chars)]
+            if len(self.transcript) > len(limited_transcript):
+                logger.info(f"Transcript truncated from {len(self.transcript)} to {len(limited_transcript)} characters for summary generation")
+            
             # Get the prompt from prompts file
-            from ..prompts import get_episode_summary_prompt
-            prompt = get_episode_summary_prompt(self.transcript)
+            prompt = get_episode_summary_prompt(limited_transcript)
             
             headers = {
                 "Authorization": f"Bearer {api_key}",
@@ -44,7 +50,7 @@ class SummarizableMixin:
             }
             
             data = {
-                "model": "llama3-70b-8192",
+            "model": "llama-3.1-8b-instant",
                 "messages": [
                     {
                         "role": "user",
@@ -52,7 +58,7 @@ class SummarizableMixin:
                     }
                 ],
                 "temperature": 0.3,
-                "max_tokens": 1000
+                "max_tokens": 8192
             }
             
             response = requests.post(url, headers=headers, json=data)
@@ -62,7 +68,6 @@ class SummarizableMixin:
             summary_content = result['choices'][0]['message']['content'].strip()
             
             # Remove <think></think> blocks that some models include
-            import re
             summary_content = re.sub(r'<think>.*?</think>', '', summary_content, flags=re.DOTALL).strip()
             
             if summary_content:
@@ -78,7 +83,7 @@ class SummarizableMixin:
                 return None
                 
         except requests.exceptions.RequestException as e:
-            logger.error(f"API request failed for summary generation: {str(e)}")
+            logger.error(f"API request failed for summary generation: {str(e)} and response was: {response.json() if 'response' in locals() else 'N/A'}")
             return None
         except Exception as e:
             logger.error(f"Failed to generate summary for {self.__class__.__name__}: {str(e)}")

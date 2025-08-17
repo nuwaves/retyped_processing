@@ -2,6 +2,8 @@ import logging
 from django.conf import settings
 import requests
 import re
+from ..prompts import get_tag_suggestion_prompt
+
 
 logger = logging.getLogger(__name__)
 
@@ -9,8 +11,6 @@ class GroqMixin():
 
     def _call_groq_for_tag_suggestions(self, tag_list):
         """Call Groq API to get tag suggestions based on transcript."""
-        from django.conf import settings
-        import requests
         
         url = "https://api.groq.com/openai/v1/chat/completions"
         api_key = getattr(settings, 'GROQ_API_KEY', '')
@@ -20,7 +20,6 @@ class GroqMixin():
             return None
         
         # Get the prompt from prompts file
-        from ..prompts import get_tag_suggestion_prompt
         prompt = get_tag_suggestion_prompt(tag_list, self.transcript[:2000])
         
         headers = {
