@@ -9,7 +9,7 @@ env:
   AWS_REGION: us-east-1
   ECR_REPOSITORY: django-app-repo
   ECS_SERVICE: django-app-service
-  CELERY_SERVICE: celery-worker=service
+  CELERY_SERVICE: celery-worker-service
   ECS_CLUSTER: django-app-cluster
   ECS_TASK_DEFINITION: audio-processing-task-def
   CONTAINER_NAME: audio-processing
