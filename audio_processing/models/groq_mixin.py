@@ -3,6 +3,7 @@ from django.conf import settings
 import requests
 import re
 from ..prompts import get_tag_suggestion_prompt
+from constance import config
 
 
 logger = logging.getLogger(__name__)
@@ -28,7 +29,7 @@ class GroqMixin():
         }
         
         data = {
-            "model": "llama3-8b-8192",
+            "model": config.TAG_MODEL,
             "messages": [
                 {
                     "role": "user",
@@ -124,7 +125,7 @@ class GroqMixin():
             }
             
             data = {
-                "model": "deepseek-r1-distill-llama-70b",
+                "model": config.SPEAKER_MODEL,
                 "messages": [
                     {
                         "role": "user",

@@ -3,6 +3,7 @@ from django.conf import settings
 import requests
 import re
 from ..prompts import get_episode_summary_prompt
+from constance import config
 
 
 logger = logging.getLogger(__name__)
@@ -50,7 +51,7 @@ class SummarizableMixin:
             }
             
             data = {
-            "model": "llama-3.1-8b-instant",
+            "model": config.SUMMARY_MODEL,
                 "messages": [
                     {
                         "role": "user",
