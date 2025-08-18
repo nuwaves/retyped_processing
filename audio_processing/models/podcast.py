@@ -27,6 +27,7 @@ class Podcast(models.Model, GroqMixin, AwsMixin, TaggableMixin, SummarizableMixi
     title = models.CharField(max_length=512, blank=True, null=True, help_text="Title of the podcast episode")
     tags = models.ManyToManyField('Tag', blank=True, related_name='podcasts', help_text="Tags associated with this podcast")
     release_date = models.DateTimeField(blank=True, null=True, help_text="Original release date of the podcast episode")
+    error = models.TextField(blank=True, null=True, help_text="Error message if processing failed")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

@@ -87,10 +87,10 @@ class GroqMixin():
                 return None
          
         except requests.exceptions.RequestException as e:
-            logger.error(f"API request failed for {self.raw_audio_url}: {str(e)}")
+            logger.error(f"API request failed for {self.raw_audio_url}: {str(e)} and response was: {response.json() if 'response' in locals() else 'N/A'}")
             return None
         except Exception as e:
-            logger.error(f"Failed to process transcript for {self.raw_audio_url}: {str(e)}")
+            logger.error(f"Failed to process transcript for {self.raw_audio_url}: {str(e)} and response was: {response.json() if 'response' in locals() else 'N/A'}")
             return None
     
     def generate_speaker_script(self):
