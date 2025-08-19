@@ -14,7 +14,6 @@ from .summarizable_mixin import SummarizableMixin
 import boto3
 import time
 import uuid
-
 logger = logging.getLogger(__name__)
 transcribe_client = boto3.client('transcribe', region_name='us-east-1')
 
@@ -259,4 +258,60 @@ class Podcast(models.Model, GroqMixin, AwsMixin, TaggableMixin, SummarizableMixi
             logger.error(f"Error in complete workflow for {self.raw_audio_url}: {str(e)}")
             results['errors'].append(f"Workflow error: {str(e)}")
             return results
+    
+    def index_to_search(self, index_uid='podcasts'):
+        """
+        Index this podcast's transcript and metadata to Meilisearch for search functionality.
+        
+        Args:
+            index_uid (str): The Meilisearch index to post to
+            
+        Returns:
+            dict: Response from Meilisearch API or None if failed
+        """
+        try:
+            # Check if we have the required data
+            if not self.transcript or not self.transcript.strip():
+                logger.warning(f"No transcript available for Meilisearch indexing: {self.raw_audio_url}")
+                return None
+            
+            # Construct the endpoint URL
+            endpoint_url = f"{settings.MEILISEARCH_URL.rstrip('/')}/indexes/{index_uid}/documents"
+
+            # Prepare headers
+            headers = {
+                "Content-Type": "application/json"
+            }
+
+            headers["Authorization"] = 'Bearer ' + settings.MEILISEARCH_API_KEY
+
+            # Prepare document data
+            document = {
+                "id": self.id,
+                "title": self.title or "Untitled Podcast",
+                "transcript": self.transcript,
+                "summary": self.summary or "",
+                "raw_audio_url": self.raw_audio_url,
+                "release_date": self.release_date.isoformat() if self.release_date else None,
+                "created_at": self.created_at.isoformat(),
+                "updated_at": self.updated_at.isoformat(),
+                "rss_feed_name": self.rss_feed.name if self.rss_feed else None,
+                "tags": [tag.name for tag in self.tags.all()]
+            }
+            
+            # Make the API request
+            logger.info(f"Indexing podcast to Meilisearch: {self.title or self.raw_audio_url[:50]}...")
+            response = requests.post(endpoint_url, headers=headers, json=[document], timeout=30)
+            response.raise_for_status()
+            
+            result = response.json()
+            logger.info(f"Successfully indexed podcast to Meilisearch: {result}")
+            return result
+            
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Failed to index podcast to Meilisearch (HTTP error): {str(e)}")
+            return None
+        except Exception as e:
+            logger.error(f"Failed to index podcast to Meilisearch: {str(e)}")
+            return None
     

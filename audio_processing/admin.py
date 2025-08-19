@@ -90,7 +90,18 @@ class PodcastAdmin(admin.ModelAdmin):
     )
 
     actions = ['clear_transcript', 'export_transcripts', 'fetch_transcript',
-               'suggest_tags', 'generate_speaker_scripts', 'run_complete_workflow', 'add_summary']
+               'suggest_tags', 'generate_speaker_scripts', 'run_complete_workflow', 'add_summary',
+               'index_to_search']
+    
+    def index_to_search(self, request, queryset):
+        """Index selected podcasts to Meilisearch."""
+        for podcast in queryset:
+            try:
+                podcast.index_to_search()
+                self.message_user(request, f"Podcast {podcast.raw_audio_url[:50]}... indexed successfully.")
+            except Exception as e:
+                self.message_user(request, f"Error indexing {podcast.raw_audio_url[:50]}...: {str(e)}", level='ERROR')
+        self.message_user(request, f"Indexing initiated for {queryset.count()} podcasts.")
 
     def clear_transcript(self, request, queryset):
         queryset.update(transcript='')

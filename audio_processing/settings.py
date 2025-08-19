@@ -158,7 +158,6 @@ CELERY_BROKER_URL = "sqs://{aws_access_key}:{aws_secret_key}@".format(
     aws_access_key=AWS_ACCESS_KEY_ID, aws_secret_key=AWS_SECRET_ACCESS_KEY,
 )
 
-
 CONSTANCE_CONFIG = {
     'SUMMARY_MODEL': ("llama-3.1-8b-instant", "Model to use for generating summaries"),
     "TAG_MODEL": ("llama-3.1-8b-instant", "Model to use for generating tags"),
@@ -212,3 +211,6 @@ LOGGING = {
         },
     },
 }
+
+MEILISEARCH_API_KEY = os.environ.get("MEILISEARCH_API_KEY")
+MEILISEARCH_URL = 'https://edge.meilisearch.com'
