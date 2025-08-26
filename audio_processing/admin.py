@@ -1,21 +1,21 @@
 from django.contrib import admin
-from .models import RSSFeed, Podcast, Tag
-from audio_processing.tasks.podcast_tasks import add_transcript, suggest_and_apply_tags, process_complete_workflow
+from .models import Episode, Podcast, Tag
+from audio_processing.tasks.episode_tasks import add_transcript, suggest_and_apply_tags, process_complete_workflow
 from import_export.admin import ImportExportModelAdmin
-from audio_processing.tasks.rss_tasks import process_rss_feed_by_id
+from audio_processing.tasks.podcast_tasks import process_podcast_by_id, process_all_active_podcasts
 
-@admin.register(RSSFeed)
-class RSSFeedAdmin(ImportExportModelAdmin):
-    list_display = ('name', 'url', 'is_active', 'last_processed', 'podcast_count')
+@admin.register(Podcast)
+class PodcastAdmin(ImportExportModelAdmin):
+    list_display = ('name', 'url', 'is_active', 'last_processed', 'episode_count')
     list_filter = ('is_active', 'created_at', 'last_processed', 'tags')
     search_fields = ('name', 'url', 'description')
     readonly_fields = ('created_at', 'updated_at', 'last_processed')
     list_editable = ('is_active',)
     
-    def podcast_count(self, obj):
-        return obj.podcasts.count()
-    podcast_count.short_description = 'Podcast Count'
-    
+    def episode_count(self, obj):
+        return obj.episodes.count()
+    episode_count.short_description = 'Episode Count'
+
     fieldsets = (
         ('Basic Information', {
             'fields': ('name', 'url', 'description', 'is_active', 'tags')
@@ -40,20 +40,20 @@ class RSSFeedAdmin(ImportExportModelAdmin):
     
     def process_feed(self, request, queryset):
         """Process selected RSS feeds."""
-        for rss_feed in queryset:
-            process_rss_feed_by_id.delay(rss_feed.id)
-        self.message_user(request, f"Processing initiated for {queryset.count()} RSS feeds.")
-    process_feed.short_description = "Process selected RSS feeds"
+        for podcast in queryset:
+            process_podcast_by_id.delay(podcast.id)
+        self.message_user(request, f"Processing initiated for {queryset.count()} Podcasts.")
+    process_feed.short_description = "Process selected Podcasts"
 
 
-@admin.register(Podcast)
-class PodcastAdmin(admin.ModelAdmin):
-    list_display = ('title', 'truncated_url', 'rss_feed', 'has_transcript', 'has_script', 'has_summary', 'created_at', 'updated_at', 'release_date')
-    list_filter = ('rss_feed', 'created_at', 'updated_at', 'tags', 'release_date')
-    search_fields = ('raw_audio_url', 'transcript', 'script_transcript', 'rss_feed__name')
+@admin.register(Episode)
+class EpisodeAdmin(admin.ModelAdmin):
+    list_display = ('title', 'truncated_url', 'podcast', 'has_transcript', 'has_script', 'has_summary', 'created_at', 'updated_at', 'release_date')
+    list_filter = ('podcast', 'created_at', 'updated_at', 'tags', 'release_date')
+    search_fields = ('raw_audio_url', 'transcript', 'script_transcript', 'podcast__name')
     readonly_fields = ('created_at', 'updated_at')
-    raw_id_fields = ('rss_feed',)
-    
+    raw_id_fields = ('podcast',)
+
     def truncated_url(self, obj):
         if len(obj.raw_audio_url) > 50:
             return obj.raw_audio_url[:47] + "..."
@@ -77,7 +77,7 @@ class PodcastAdmin(admin.ModelAdmin):
     
     fieldsets = (
         ('Basic Information', {
-            'fields': ('rss_feed', 'raw_audio_url', 'tags', 'title', 'release_date')
+            'fields': ('podcast', 'raw_audio_url', 'tags', 'title', 'release_date')
         }),
         ('Content', {
             'fields': ('transcript', 'script_transcript', 'summary'),
@@ -94,48 +94,48 @@ class PodcastAdmin(admin.ModelAdmin):
                'index_to_search']
     
     def index_to_search(self, request, queryset):
-        """Index selected podcasts to Meilisearch."""
-        for podcast in queryset:
+        """Index selected episodes to Meilisearch."""
+        for episode in queryset:
             try:
-                podcast.index_to_search()
-                self.message_user(request, f"Podcast {podcast.raw_audio_url[:50]}... indexed successfully.")
+                episode.index_to_search()
+                self.message_user(request, f"Episode {episode.raw_audio_url[:50]}... indexed successfully.")
             except Exception as e:
-                self.message_user(request, f"Error indexing {podcast.raw_audio_url[:50]}...: {str(e)}", level='ERROR')
-        self.message_user(request, f"Indexing initiated for {queryset.count()} podcasts.")
+                self.message_user(request, f"Error indexing {episode.raw_audio_url[:50]}...: {str(e)}", level='ERROR')
+        self.message_user(request, f"Indexing initiated for {queryset.count()} episodes.")
 
     def clear_transcript(self, request, queryset):
         queryset.update(transcript='')
-        self.message_user(request, f"Cleared transcripts for {queryset.count()} podcasts.")
-    clear_transcript.short_description = "Clear transcripts for selected podcasts"
+        self.message_user(request, f"Cleared transcripts for {queryset.count()} episodes.")
+    clear_transcript.short_description = "Clear transcripts for selected episodes"
     
     def export_transcripts(self, request, queryset):
         # This could be enhanced to actually export data
         count = queryset.filter(transcript__isnull=False).exclude(transcript='').count()
-        self.message_user(request, f"Found {count} podcasts with transcripts to export.")
-    export_transcripts.short_description = "Export transcripts for selected podcasts"
-    
+        self.message_user(request, f"Found {count} episodes with transcripts to export.")
+    export_transcripts.short_description = "Export transcripts for selected episodes"
+
     def fetch_transcript(self, request, queryset):
-        """Fetch transcripts for selected podcasts."""
-        for podcast in queryset:
-            add_transcript.delay(podcast.id)
-        self.message_user(request, f"Transcript processing initiated for {queryset.count()} podcasts.")
-    fetch_transcript.short_description = "Fetch transcripts for selected podcasts"
+        """Fetch transcripts for selected episodes."""
+        for episode in queryset:
+            add_transcript.delay(episode.id)
+        self.message_user(request, f"Transcript processing initiated for {queryset.count()} episodes.")
+    fetch_transcript.short_description = "Fetch transcripts for selected episodes"
 
     def add_summary(self, request, queryset):
-        """Generate summaries for selected podcasts."""
+        """Generate summaries for selected episodes."""
         success_count = 0
         error_count = 0
-        
-        for podcast in queryset:
+
+        for episode in queryset:
             try:
-                summary = podcast.generate_summary()
+                summary = episode.generate_summary()
                 if summary:
                     success_count += 1
             except Exception as e:
                 error_count += 1
                 self.message_user(
                     request, 
-                    f"Error generating summary for {podcast.raw_audio_url[:50]}...: {str(e)}", 
+                    f"Error generating summary for {episode.raw_audio_url[:50]}...: {str(e)}", 
                     level='ERROR'
                 )
         
@@ -153,70 +153,70 @@ class PodcastAdmin(admin.ModelAdmin):
             )
     
     def suggest_tags(self, request, queryset):
-        """Use AI to suggest and apply tags to selected podcasts."""
+        """Use AI to suggest and apply tags to selected episodes."""
         success_count = 0
         error_count = 0
         no_transcript_count = 0
-        
-        for podcast in queryset:
-            if not podcast.transcript or not podcast.transcript.strip():
+
+        for episode in queryset:
+            if not episode.transcript or not episode.transcript.strip():
                 no_transcript_count += 1
                 continue
             try:
-                applied_tags = suggest_and_apply_tags.delay(podcast.id)
+                applied_tags = suggest_and_apply_tags.delay(episode.id)
             except Exception as e:
                 error_count += 1
                 self.message_user(
                     request, 
-                    f"Error suggesting tags for {podcast.raw_audio_url[:50]}...: {str(e)}", 
+                    f"Error suggesting tags for {episode.raw_audio_url[:50]}...: {str(e)}", 
                     level='ERROR'
                 )
         
         if success_count > 0:
             self.message_user(
                 request, 
-                f"Successfully suggested tags for {success_count} podcasts."
+                f"Successfully suggested tags for {success_count} episodes."
             )
         
         if no_transcript_count > 0:
             self.message_user(
                 request, 
-                f"{no_transcript_count} podcasts skipped (no transcript available).", 
+                f"{no_transcript_count} episodes skipped (no transcript available).", 
                 level='WARNING'
             )
         
         if error_count > 0:
             self.message_user(
                 request, 
-                f"{error_count} podcasts failed to process.", 
+                f"{error_count} episodes failed to process.", 
                 level='ERROR'
             )
     
-    suggest_tags.short_description = "AI suggest and apply tags for selected podcasts"
-    
+    suggest_tags.short_description = "AI suggest and apply tags for selected episodes"
+
     def generate_speaker_scripts(self, request, queryset):
-        """Generate speaker-attributed scripts for selected podcasts."""
+        """Generate speaker-attributed scripts for selected episodes."""
         success_count = 0
         error_count = 0
         no_transcript_count = 0
         already_has_script_count = 0
-        
-        for podcast in queryset:
-            if not podcast.transcript or not podcast.transcript.strip():
+
+        for episode in queryset:
+            if not episode.transcript or not episode.transcript.strip():
                 no_transcript_count += 1
                 continue
-            
-            if podcast.script_transcript and podcast.script_transcript.strip():
+
+            if episode.script_transcript and episode.script_transcript.strip():
                 already_has_script_count += 1
                 continue
                 
             try:
-                script = podcast.generate_speaker_script()
+                script = episode.generate_speaker_script()
             except Exception as e:
                 error_count += 1
                 self.message_user(
                     request, 
-                    f"Error generating speaker script for {podcast.raw_audio_url[:50]}...: {str(e)}", 
+                    f"Error generating speaker script for {episode.raw_audio_url[:50]}...: {str(e)}", 
                     level='ERROR'
                 )
         
@@ -229,41 +229,41 @@ class PodcastAdmin(admin.ModelAdmin):
         if no_transcript_count > 0:
             self.message_user(
                 request, 
-                f"{no_transcript_count} podcasts skipped (no transcript available).", 
+                f"{no_transcript_count} episodes skipped (no transcript available).", 
                 level='WARNING'
             )
         
         if already_has_script_count > 0:
             self.message_user(
                 request, 
-                f"{already_has_script_count} podcasts skipped (already have speaker scripts).", 
+                f"{already_has_script_count} episodes skipped (already have speaker scripts).", 
                 level='WARNING'
             )
         
         if error_count > 0:
             self.message_user(
                 request, 
-                f"{error_count} podcasts failed to generate speaker scripts.", 
+                f"{error_count} episodes failed to generate speaker scripts.", 
                 level='ERROR'
             )
-    
-    generate_speaker_scripts.short_description = "Generate speaker scripts for selected podcasts"
-    
+
+    generate_speaker_scripts.short_description = "Generate speaker scripts for selected episodes"
+
     def run_complete_workflow(self, request, queryset):
         """Run the complete workflow (transcript, tags, summary, speaker script) for selected podcasts."""
         total_processed = 0
         total_errors = []
         
-        for podcast in queryset:
+        for episode in queryset:
             try:
-                process_complete_workflow.delay(podcast.id)
+                process_complete_workflow.delay(episode.id)
                 total_processed += 1
             except Exception as e:
-                total_errors.append(f"{podcast.raw_audio_url[:30]}...: {str(e)}")
+                total_errors.append(f"{episode.raw_audio_url[:30]}...: {str(e)}")
         
         self.message_user(
-            request, 
-            f"Processed {total_processed} podcasts. "
+            request,
+            f"Processed {total_processed} episodes. "
         )
         
         if total_errors:
@@ -282,7 +282,7 @@ class PodcastAdmin(admin.ModelAdmin):
 
 @admin.register(Tag)
 class TagAdmin(ImportExportModelAdmin):
-    list_display = ('name', 'slug', 'color_display', 'rss_feed_count', 'podcast_count', 'created_at')
+    list_display = ('name', 'slug', 'color_display', 'podcast_count', 'podcast_count', 'created_at')
     list_filter = ('created_at', 'updated_at')
     search_fields = ('name', 'slug', 'description')
     readonly_fields = ('created_at', 'updated_at')
@@ -296,10 +296,10 @@ class TagAdmin(ImportExportModelAdmin):
     color_display.allow_tags = True
     color_display.short_description = 'Color'
     
-    def rss_feed_count(self, obj):
-        return obj.rss_feeds.count()
-    rss_feed_count.short_description = 'RSS Feeds'
-    
+    def episode_count(self, obj):
+        return obj.episodes.count()
+    episode_count.short_description = 'Episodes'
+
     def podcast_count(self, obj):
         return obj.podcasts.count()
     podcast_count.short_description = 'Podcasts'

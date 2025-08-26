@@ -1,59 +1,71 @@
-from celery import shared_task
-from audio_processing.models import Podcast
 import logging
+from django.utils import timezone
+from ..models import Podcast, Episode
+from celery import shared_task
 
 logger = logging.getLogger(__name__)
 
 
-@shared_task
-def add_transcript(podcast_id):
+def process_podcast_rss_feed(feed_url):
     """
-    Celery task to process a podcast file and generate transcript.
+    Process a podcast feed by URL.
+    Creates or gets the Podcast object and processes it.
     """
-    logger.info(f"Processing transcript for podcast ID: {podcast_id}")
-    # Get or create podcast entry
-    podcast = Podcast.objects.get(pk=podcast_id)
+    logger.info(f"Processing podcast feed: {feed_url}")
+
+    # Get or create Podcast object
+    podcast, created = Podcast.objects.get_or_create(
+        url=feed_url,
+        defaults={'name': f'RSS Feed from {feed_url}', 'is_active': True}
+    )
     
-    # Process transcript using model method
-    transcript = podcast.generate_transcript()
-    
-    if transcript:
-        logger.info(f"Podcast transcript updated: {podcast}")
-        return {"success": True, "transcript_length": len(transcript)}
-    else:
-        logger.error(f"Failed to process transcript for: {podcast}")
-        return {"success": False, "error": "Failed to generate transcript"}
+    if created:
+        logger.info(f"Created new Podcast object for {feed_url}")
+
+    return podcast.process_feed()
+
 
 @shared_task
-def suggest_and_apply_tags(podcast_id):
+def process_podcast_by_id(podcast_id):
     """
-    Celery task to suggest and apply tags to a podcast.
+    Celery task to process a podcast by its database ID.
     """
-    logger.info(f"Suggesting tags for podcast ID: {podcast_id}")
-    
     try:
-        podcast = Podcast.objects.get(pk=podcast_id)
-        applied_tags = podcast.suggest_and_apply_tags()
-        
-        if applied_tags is not None:
-            logger.info(f"Applied {len(applied_tags)} tags to podcast: {podcast.raw_audio_url[:50]}...")
-            return {"success": True, "applied_tags": len(applied_tags)}
-        else:
-            logger.error(f"No tags applied for podcast: {podcast.raw_audio_url[:50]}")
-            return {"success": False, "error": "No tags applied"}
-    
-    except Exception as e:
-        logger.error(f"Error suggesting tags for podcast ID {podcast_id}: {str(e)}")
-        return {"success": False, "error": str(e)}
-    
+        podcast = Podcast.objects.get(id=podcast_id)
+        return podcast.process_feed()
+    except Podcast.DoesNotExist:
+        logger.error(f"Podcast with ID {podcast_id} does not exist")
+        return {'error': f"Podcast with ID {podcast_id} does not exist"}
+
+
 @shared_task
-def process_complete_workflow(podcast_id):
+def process_all_active_podcasts():
     """
-    Celery task to process the complete workflow for a podcast:
-    1. Generate transcript
-    2. Suggest and apply tags
+    Celery task to process all active podcasts.
     """
-    logger.info(f"Starting complete workflow for podcast ID: {podcast_id}")
+    active_podcasts = Podcast.objects.filter(is_active=True)
+    results = []
+
+    for podcast in active_podcasts:
+        logger.info(f"Processing podcast: {podcast.name} ({podcast.url})")
+        result = podcast.process_feed()
+        results.append(result)
     
-    podcast = Podcast.objects.get(pk=podcast_id)
-    return podcast.process_complete_workflow()
+    summary = {
+        'total_feeds_processed': len(results),
+        'feeds': results
+    }
+    
+    logger.info(f"Completed processing all active RSS feeds: {len(results)} feeds")
+    return summary
+
+
+def get_podcast_summary(podcast_id):
+    """
+    Get summary information about a podcast and its episodes.
+    """
+    try:
+        podcast = Podcast.objects.get(id=podcast_id)
+        return podcast.get_summary()
+    except Podcast.DoesNotExist:
+        return {'error': f"Podcast with ID {podcast_id} does not exist"}
