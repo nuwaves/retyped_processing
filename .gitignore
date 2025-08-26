@@ -5,6 +5,7 @@
 *.pyc*
 # C extensions
 *.so
+.env.dev
 
 # Distribution / packaging
 .Python

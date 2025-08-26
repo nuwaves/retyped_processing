@@ -14,8 +14,8 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "audio_processing",
     "import_export",
-    "constance",
-]
+    "constance"
+    ]
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",

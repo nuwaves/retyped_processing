@@ -12,7 +12,7 @@ class Podcast(models.Model):
     description = models.TextField(blank=True, null=True, help_text="Description of the podcast")
     is_active = models.BooleanField(default=True, help_text="Whether to actively process this podcast")
     last_processed = models.DateTimeField(blank=True, null=True, help_text="Last time this podcast was processed")
-    tags = models.ManyToManyField('Tag', blank=True, related_name='rss_feeds', help_text="Tags associated with this RSS feed")
+    tags = models.ManyToManyField('Tag', blank=True, related_name='podcasts', help_text="Tags associated with this RSS feed")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
