@@ -2,7 +2,7 @@ from django.contrib import admin
 from .models import Episode, Podcast, Tag
 from audio_processing.tasks.episode_tasks import add_transcript, suggest_and_apply_tags, process_complete_workflow
 from import_export.admin import ImportExportModelAdmin
-from audio_processing.tasks.podcast_tasks import process_podcast_by_id, process_all_active_podcasts
+from audio_processing.tasks.podcast_tasks import process_podcast_by_id
 
 @admin.register(Podcast)
 class PodcastAdmin(ImportExportModelAdmin):
