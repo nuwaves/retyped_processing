@@ -17,8 +17,8 @@ class Podcast(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        verbose_name = "RSS Feed"
-        verbose_name_plural = "RSS Feeds"
+        verbose_name = "Podcast"
+        verbose_name_plural = "Podcasts"
         ordering = ['-created_at']
 
     def __str__(self):

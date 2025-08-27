@@ -30,16 +30,16 @@ class PodcastAdmin(ImportExportModelAdmin):
     
     def mark_active(self, request, queryset):
         queryset.update(is_active=True)
-        self.message_user(request, f"{queryset.count()} RSS feeds marked as active.")
-    mark_active.short_description = "Mark selected RSS feeds as active"
-    
+        self.message_user(request, f"{queryset.count()} Podcasts marked as active.")
+    mark_active.short_description = "Mark selected Podcasts as active"
+
     def mark_inactive(self, request, queryset):
         queryset.update(is_active=False)
-        self.message_user(request, f"{queryset.count()} RSS feeds marked as inactive.")
-    mark_inactive.short_description = "Mark selected RSS feeds as inactive"
-    
+        self.message_user(request, f"{queryset.count()} Podcasts marked as inactive.")
+    mark_inactive.short_description = "Mark selected Podcasts as inactive"
+
     def process_feed(self, request, queryset):
-        """Process selected RSS feeds."""
+        """Process selected Podcasts."""
         for podcast in queryset:
             process_podcast_by_id.delay(podcast.id)
         self.message_user(request, f"Processing initiated for {queryset.count()} Podcasts.")

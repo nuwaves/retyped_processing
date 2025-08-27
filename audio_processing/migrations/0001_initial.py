@@ -47,8 +47,8 @@ class Migration(migrations.Migration):
                 ('tags', models.ManyToManyField(blank=True, help_text='Tags associated with this RSS feed', related_name='rss_feeds', to='audio_processing.tag')),
             ],
             options={
-                'verbose_name': 'RSS Feed',
-                'verbose_name_plural': 'RSS Feeds',
+                'verbose_name': 'Podcast',
+                'verbose_name_plural': 'Podcasts',
                 'ordering': ['-created_at'],
             },
         ),

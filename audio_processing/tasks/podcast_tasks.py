@@ -55,8 +55,8 @@ def process_all_active_podcasts():
         'total_feeds_processed': len(results),
         'feeds': results
     }
-    
-    logger.info(f"Completed processing all active RSS feeds: {len(results)} feeds")
+
+    logger.info(f"Completed processing all active podcasts: {len(results)} podcasts")
     return summary
 
 
