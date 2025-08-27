@@ -6,10 +6,10 @@ from audio_processing.tasks.podcast_tasks import process_podcast_by_id, process_
 
 @admin.register(Podcast)
 class PodcastAdmin(ImportExportModelAdmin):
-    list_display = ('name', 'url', 'is_active', 'last_processed', 'episode_count')
-    list_filter = ('is_active', 'created_at', 'last_processed', 'tags')
-    search_fields = ('name', 'url', 'description')
-    readonly_fields = ('created_at', 'updated_at', 'last_processed')
+    list_display = ('name', 'author', 'language', 'is_active', 'last_processed', 'episode_count', 'itunes_explicit')
+    list_filter = ('is_active', 'language', 'itunes_explicit', 'itunes_type', 'created_at', 'last_processed', 'tags')
+    search_fields = ('name', 'url', 'description', 'author', 'subtitle', 'itunes_keywords')
+    readonly_fields = ('created_at', 'updated_at', 'last_processed', 'pub_date', 'last_build_date')
     list_editable = ('is_active',)
     
     def episode_count(self, obj):
@@ -20,8 +20,28 @@ class PodcastAdmin(ImportExportModelAdmin):
         ('Basic Information', {
             'fields': ('name', 'url', 'description', 'is_active', 'tags')
         }),
+        ('Podcast Metadata', {
+            'fields': ('subtitle', 'summary', 'author', 'language', 'copyright'),
+            'classes': ('collapse',)
+        }),
+        ('iTunes Information', {
+            'fields': ('itunes_explicit', 'itunes_type', 'itunes_keywords', 'itunes_categories'),
+            'classes': ('collapse',)
+        }),
+        ('Images & Branding', {
+            'fields': ('image_url', 'itunes_image_url'),
+            'classes': ('collapse',)
+        }),
+        ('Owner Information', {
+            'fields': ('owner_name', 'owner_email'),
+            'classes': ('collapse',)
+        }),
+        ('Publication Dates', {
+            'fields': ('pub_date', 'last_build_date', 'last_processed'),
+            'classes': ('collapse',)
+        }),
         ('Timestamps', {
-            'fields': ('created_at', 'updated_at', 'last_processed'),
+            'fields': ('created_at', 'updated_at'),
             'classes': ('collapse',)
         }),
     )
@@ -48,10 +68,10 @@ class PodcastAdmin(ImportExportModelAdmin):
 
 @admin.register(Episode)
 class EpisodeAdmin(admin.ModelAdmin):
-    list_display = ('title', 'truncated_url', 'podcast', 'has_transcript', 'has_script', 'has_summary', 'created_at', 'updated_at', 'release_date')
-    list_filter = ('podcast', 'created_at', 'updated_at', 'tags', 'release_date')
-    search_fields = ('raw_audio_url', 'transcript', 'script_transcript', 'podcast__name')
-    readonly_fields = ('created_at', 'updated_at')
+    list_display = ('title', 'truncated_url', 'podcast', 'episode_number', 'season_number', 'duration_display', 'has_transcript', 'has_script', 'has_summary', 'release_date', 'itunes_explicit')
+    list_filter = ('podcast', 'episode_type', 'itunes_explicit', 'created_at', 'updated_at', 'tags', 'release_date', 'season_number')
+    search_fields = ('title', 'description', 'raw_audio_url', 'transcript', 'script_transcript', 'podcast__name', 'itunes_keywords')
+    readonly_fields = ('created_at', 'updated_at', 'audio_length', 'pub_date', 'error')
     raw_id_fields = ('podcast',)
 
     def truncated_url(self, obj):
@@ -59,6 +79,18 @@ class EpisodeAdmin(admin.ModelAdmin):
             return obj.raw_audio_url[:47] + "..."
         return obj.raw_audio_url
     truncated_url.short_description = 'Audio URL'
+    
+    def duration_display(self, obj):
+        if obj.duration:
+            total_seconds = int(obj.duration.total_seconds())
+            hours, remainder = divmod(total_seconds, 3600)
+            minutes, seconds = divmod(remainder, 60)
+            if hours:
+                return f"{hours}:{minutes:02d}:{seconds:02d}"
+            else:
+                return f"{minutes}:{seconds:02d}"
+        return '-'
+    duration_display.short_description = 'Duration'
     
     def has_transcript(self, obj):
         return bool(obj.transcript and obj.transcript.strip())
@@ -77,14 +109,34 @@ class EpisodeAdmin(admin.ModelAdmin):
     
     fieldsets = (
         ('Basic Information', {
-            'fields': ('podcast', 'raw_audio_url', 'tags', 'title', 'release_date')
+            'fields': ('podcast', 'title', 'subtitle', 'description', 'tags')
         }),
-        ('Content', {
+        ('Audio Information', {
+            'fields': ('raw_audio_url', 'audio_type', 'audio_length', 'duration'),
+            'classes': ('collapse',)
+        }),
+        ('Episode Metadata', {
+            'fields': ('episode_number', 'season_number', 'episode_type'),
+            'classes': ('collapse',)
+        }),
+        ('iTunes Information', {
+            'fields': ('itunes_explicit', 'itunes_episode_type', 'itunes_keywords'),
+            'classes': ('collapse',)
+        }),
+        ('Rich Content', {
+            'fields': ('content_encoded',),
+            'classes': ('collapse',)
+        }),
+        ('Processing Content', {
             'fields': ('transcript', 'script_transcript', 'summary'),
             'classes': ('wide',)
         }),
-        ('Timestamps', {
-            'fields': ('created_at', 'updated_at'),
+        ('Dates', {
+            'fields': ('release_date', 'pub_date'),
+            'classes': ('collapse',)
+        }),
+        ('System Information', {
+            'fields': ('error', 'created_at', 'updated_at'),
             'classes': ('collapse',)
         }),
     )

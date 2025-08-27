@@ -18,20 +18,55 @@ logger = logging.getLogger(__name__)
 transcribe_client = boto3.client('transcribe', region_name='us-east-1')
 
 class Episode(models.Model, GroqMixin, AwsMixin, TaggableMixin, SummarizableMixin):
+    # Relationship
     podcast = models.ForeignKey('Podcast', on_delete=models.CASCADE, related_name='episodes', blank=True, null=True, help_text="Podcast this episode belongs to")
+    
+    # Basic episode info
+    title = models.CharField(max_length=512, blank=True, null=True, help_text="Title of the podcast episode")
+    description = models.TextField(blank=True, null=True, help_text="Episode description")
+    subtitle = models.CharField(max_length=500, blank=True, null=True, help_text="Episode subtitle")
+    
+    # Audio information
     raw_audio_url = models.URLField(max_length=2000, help_text="URL of the raw audio file")
+    audio_type = models.CharField(max_length=50, blank=True, null=True, help_text="Audio MIME type (e.g., audio/mpeg)")
+    audio_length = models.BigIntegerField(blank=True, null=True, help_text="Audio file size in bytes")
+    duration = models.DurationField(blank=True, null=True, help_text="Episode duration")
+    
+    # Episode metadata
+    episode_number = models.IntegerField(blank=True, null=True, help_text="Episode number")
+    season_number = models.IntegerField(blank=True, null=True, help_text="Season number")
+    episode_type = models.CharField(max_length=20, blank=True, null=True, help_text="Episode type (full, trailer, bonus)")
+    
+    # iTunes specific
+    itunes_explicit = models.BooleanField(default=False, help_text="iTunes explicit content flag for episode")
+    itunes_episode_type = models.CharField(max_length=20, blank=True, null=True, help_text="iTunes episode type")
+    itunes_keywords = models.CharField(max_length=500, blank=True, null=True, help_text="iTunes keywords for episode")
+    
+    # Episode content
+    content_encoded = models.TextField(blank=True, null=True, help_text="HTML encoded content/show notes")
+    
+    # Processing fields
     transcript = models.TextField(blank=True, null=True, help_text="Raw transcript from speech-to-text")
     script_transcript = models.TextField(blank=True, null=True, help_text="Formatted transcript with speaker identification")
     summary = models.TextField(blank=True, null=True, help_text="AI-generated summary of the episode")
-    title = models.CharField(max_length=512, blank=True, null=True, help_text="Title of the podcast episode")
-    tags = models.ManyToManyField('Tag', blank=True, related_name='episodes', help_text="Tags associated with this episode")
+    
+    # Dates
     release_date = models.DateTimeField(blank=True, null=True, help_text="Original release date of the podcast episode")
+    pub_date = models.DateTimeField(blank=True, null=True, help_text="Publication date from RSS")
+    
+    # System fields
+    tags = models.ManyToManyField('Tag', blank=True, related_name='episodes', help_text="Tags associated with this episode")
     error = models.TextField(blank=True, null=True, help_text="Error message if processing failed")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return self.raw_audio_url
+        if self.title:
+            return self.title
+        elif self.podcast and self.podcast.name:
+            return f"{self.podcast.name} - Episode"
+        else:
+            return f"Episode {self.id or 'New'}"
     
     def clean_url(self, url):
         """
