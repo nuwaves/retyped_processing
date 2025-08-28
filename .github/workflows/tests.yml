@@ -54,6 +54,7 @@ jobs:
         echo "SECRET_KEY=test-secret-key-for-ci" >> $GITHUB_ENV
         echo "DEBUG=False" >> $GITHUB_ENV
         echo "DB_PASSWORD=postgres" >> $GITHUB_ENV
+        echo "DB_NAME=audio_processing" >> $GITHUB_ENV
 
     - name: Wait for PostgreSQL
       run: |

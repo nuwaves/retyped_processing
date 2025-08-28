@@ -51,7 +51,7 @@ WSGI_APPLICATION = "audio_processing.wsgi.application"
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
-        "NAME": os.environ.get("DB_NAME", "django_db"),
+        "NAME": os.environ.get("DB_NAME", "audio_processing"),
         "USER": os.environ.get("DB_USER", "postgres"),
         "PASSWORD": os.environ.get("DB_PASSWORD", ""),
         "HOST": os.environ.get("DB_HOST", "localhost"),
