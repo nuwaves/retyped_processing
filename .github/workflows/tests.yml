@@ -53,6 +53,7 @@ jobs:
         echo "DATABASE_URL=postgres://postgres:postgres@localhost:5432/test_audio_processing" >> $GITHUB_ENV
         echo "SECRET_KEY=test-secret-key-for-ci" >> $GITHUB_ENV
         echo "DEBUG=False" >> $GITHUB_ENV
+        echo "DB_PASSWORD=postgres" >> $GITHUB_ENV
 
     - name: Wait for PostgreSQL
       run: |
