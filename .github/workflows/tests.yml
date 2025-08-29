@@ -17,7 +17,7 @@ jobs:
         image: postgres:13
         env:
           POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: test_audio_processing
+          POSTGRES_DB: audio_processing
         options: >-
           --health-cmd pg_isready
           --health-interval 10s
