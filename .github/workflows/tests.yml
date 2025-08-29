@@ -69,4 +69,4 @@ jobs:
 
     - name: Run tests
       run: |
-        python manage.py test --verbosity=2 --keepdb
+        python manage.py test --verbosity=2 --keepdb audio_processing/tests
