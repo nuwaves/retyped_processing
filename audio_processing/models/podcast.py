@@ -238,76 +238,71 @@ class Podcast(models.Model):
             return existing_episode
         
         # Create new episode with all the rich metadata
-        try:
-            episode_data = {
-                'podcast': self,
-                'title': title,
-                'raw_audio_url': audio_url,
-                'audio_type': audio_type,
-                'audio_length': audio_length,
-                'release_date': release_date,
-                'pub_date': pub_date,
-            }
-            
-            # Add optional fields from entry
-            if hasattr(entry, 'summary') and entry.summary:
-                episode_data['description'] = entry.summary
-            
-            if hasattr(entry, 'subtitle') and entry.subtitle:
-                episode_data['subtitle'] = entry.subtitle
-            
-            if hasattr(entry, 'itunes_episode') and entry.itunes_episode:
-                try:
-                    episode_data['episode_number'] = int(entry.itunes_episode)
-                except (ValueError, TypeError):
-                    pass
-            
-            if hasattr(entry, 'itunes_season') and entry.itunes_season:
-                try:
-                    episode_data['season_number'] = int(entry.itunes_season)
-                except (ValueError, TypeError):
-                    pass
-            
-            if hasattr(entry, 'itunes_episodetype') and entry.itunes_episodetype:
-                episode_data['episode_type'] = entry.itunes_episodetype
-            
-            if hasattr(entry, 'itunes_explicit'):
-                episode_data['itunes_explicit'] = entry.itunes_explicit == 'yes'
-            
-            if hasattr(entry, 'itunes_keywords') and entry.itunes_keywords:
-                episode_data['itunes_keywords'] = entry.itunes_keywords
-            
-            if hasattr(entry, 'content') and entry.content:
-                # Get the first content item (usually HTML)
-                if len(entry.content) > 0:
-                    episode_data['content_encoded'] = entry.content[0].get('value', '')
-            
-            if hasattr(entry, 'itunes_duration') and entry.itunes_duration:
-                try:
-                    # Parse duration (format: HH:MM:SS or MM:SS or seconds)
-                    duration_str = entry.itunes_duration
-                    parts = duration_str.split(':')
-                    if len(parts) == 3:  # HH:MM:SS
-                        hours, minutes, seconds = map(int, parts)
-                        total_seconds = hours * 3600 + minutes * 60 + seconds
-                    elif len(parts) == 2:  # MM:SS
-                        minutes, seconds = map(int, parts)
-                        total_seconds = minutes * 60 + seconds
-                    else:  # Just seconds
-                        total_seconds = int(duration_str)
-                    
-                    from datetime import timedelta
-                    episode_data['duration'] = timedelta(seconds=total_seconds)
-                except (ValueError, TypeError):
-                    pass
-            
-            episode = Episode.objects.create(**episode_data)
-            logger.info(f"Created episode: {title} - {audio_url} (released: {release_date})")
-            return episode
-            
-        except Exception as e:
-            logger.error(f"Failed to create episode for entry '{title}': {str(e)}")
-            return None
+        episode_data = {
+            'podcast': self,
+            'title': title,
+            'raw_audio_url': audio_url,
+            'audio_type': audio_type,
+            'audio_length': audio_length,
+            'release_date': release_date,
+            'pub_date': pub_date,
+        }
+        
+        # Add optional fields from entry
+        if hasattr(entry, 'summary') and entry.summary:
+            episode_data['description'] = entry.summary
+        
+        if hasattr(entry, 'subtitle') and entry.subtitle:
+            episode_data['subtitle'] = entry.subtitle
+        
+        if hasattr(entry, 'itunes_episode') and entry.itunes_episode:
+            try:
+                episode_data['episode_number'] = int(entry.itunes_episode)
+            except (ValueError, TypeError):
+                pass
+        
+        if hasattr(entry, 'itunes_season') and entry.itunes_season:
+            try:
+                episode_data['season_number'] = int(entry.itunes_season)
+            except (ValueError, TypeError):
+                pass
+        
+        if hasattr(entry, 'itunes_episodetype') and entry.itunes_episodetype:
+            episode_data['episode_type'] = entry.itunes_episodetype
+        
+        if hasattr(entry, 'itunes_explicit'):
+            episode_data['itunes_explicit'] = entry.itunes_explicit == 'yes'
+        
+        if hasattr(entry, 'itunes_keywords') and entry.itunes_keywords:
+            episode_data['itunes_keywords'] = entry.itunes_keywords
+        
+        if hasattr(entry, 'content') and entry.content:
+            # Get the first content item (usually HTML)
+            if len(entry.content) > 0:
+                episode_data['content_encoded'] = entry.content[0].get('value', '')
+        
+        if hasattr(entry, 'itunes_duration') and entry.itunes_duration:
+            try:
+                # Parse duration (format: HH:MM:SS or MM:SS or seconds)
+                duration_str = entry.itunes_duration
+                parts = duration_str.split(':')
+                if len(parts) == 3:  # HH:MM:SS
+                    hours, minutes, seconds = map(int, parts)
+                    total_seconds = hours * 3600 + minutes * 60 + seconds
+                elif len(parts) == 2:  # MM:SS
+                    minutes, seconds = map(int, parts)
+                    total_seconds = minutes * 60 + seconds
+                else:  # Just seconds
+                    total_seconds = int(duration_str)
+                
+                from datetime import timedelta
+                episode_data['duration'] = timedelta(seconds=total_seconds)
+            except (ValueError, TypeError):
+                pass
+        
+        episode = Episode.objects.create(**episode_data)
+        logger.info(f"Created episode: {title} - {audio_url} (released: {release_date})")
+        return episode
     
     def _update_existing_episode(self, episode, entry, title, audio_type, audio_length, release_date, pub_date):
         """Helper method to update existing episode with missing data"""
