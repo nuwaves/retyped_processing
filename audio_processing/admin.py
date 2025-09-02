@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Episode, Podcast, Tag
+from .models import Episode, Podcast, Tag, PodcastOwner, Quote
 from audio_processing.tasks.episode_tasks import add_transcript, suggest_and_apply_tags, process_complete_workflow
 from import_export.admin import ImportExportModelAdmin
 from audio_processing.tasks.podcast_tasks import process_podcast_by_id
@@ -369,3 +369,103 @@ class TagAdmin(ImportExportModelAdmin):
             'classes': ('collapse',)
         }),
     )
+
+
+@admin.register(PodcastOwner)
+class PodcastOwnerAdmin(admin.ModelAdmin):
+    list_display = ('full_name', 'email', 'podcast_name', 'approval_status', 'date_approved', 'date_rejected', 'created_at')
+    list_filter = ('approval_status', 'created_at', 'date_approved', 'date_rejected')
+    search_fields = ('first_name', 'last_name', 'email', 'podcast__name')
+    readonly_fields = ('created_at', 'updated_at', 'date_approved', 'date_rejected')
+    raw_id_fields = ('podcast', 'approved_by')
+    list_editable = ('approval_status',)
+    
+    def podcast_name(self, obj):
+        return obj.podcast.name if obj.podcast else '-'
+    podcast_name.short_description = 'Podcast'
+    podcast_name.admin_order_field = 'podcast__name'
+    
+    def full_name(self, obj):
+        return obj.full_name
+    full_name.short_description = 'Full Name'
+    full_name.admin_order_field = 'first_name'
+    
+    fieldsets = (
+        ('Personal Information', {
+            'fields': ('first_name', 'last_name', 'email')
+        }),
+        ('Podcast Association', {
+            'fields': ('podcast',)
+        }),
+        ('Approval Status', {
+            'fields': ('approval_status', 'approved_by', 'approval_notes')
+        }),
+        ('Status Dates', {
+            'fields': ('date_approved', 'date_rejected'),
+            'classes': ('collapse',)
+        }),
+        ('Timestamps', {
+            'fields': ('created_at', 'updated_at'),
+            'classes': ('collapse',)
+        }),
+    )
+    
+    actions = ['approve_owners', 'reject_owners', 'reset_to_pending']
+    
+    def approve_owners(self, request, queryset):
+        """Approve selected podcast owners."""
+        count = 0
+        for owner in queryset:
+            if not owner.is_approved:
+                owner.approve(approved_by=request.user)
+                count += 1
+        
+        self.message_user(request, f"Approved {count} podcast owner(s).")
+    approve_owners.short_description = "Approve selected podcast owners"
+    
+    def reject_owners(self, request, queryset):
+        """Reject selected podcast owners."""
+        count = 0
+        for owner in queryset:
+            if not owner.is_rejected:
+                owner.reject(rejected_by=request.user)
+                count += 1
+        
+        self.message_user(request, f"Rejected {count} podcast owner(s).")
+    reject_owners.short_description = "Reject selected podcast owners"
+    
+    def reset_to_pending(self, request, queryset):
+        """Reset selected podcast owners to pending status."""
+        count = 0
+        for owner in queryset:
+            if not owner.is_pending:
+                owner.reset_to_pending()
+                count += 1
+        
+        self.message_user(request, f"Reset {count} podcast owner(s) to pending status.")
+    reset_to_pending.short_description = "Reset selected owners to pending"
+
+
+@admin.register(Quote)
+class QuoteAdmin(admin.ModelAdmin):
+    list_display = ('text_preview', 'speaker', 'podcast_name', 'quote_type', 'created_at')
+    list_filter = ('created_at', 'episode__podcast')
+    search_fields = ('text', 'speaker', 'episode__title', 'episode__podcast__name')
+    readonly_fields = ('created_at', 'updated_at', 'word_count')
+    raw_id_fields = ('episode', 'submitted_by')
+    date_hierarchy = 'created_at'
+    
+    fieldsets = (
+        ('Quote Content', {
+            'fields': ('episode', 'text', 'speaker', 'context')
+        }),
+        ('Metadata', {
+            'fields': ('quote_type', 'timestamp')
+        }),
+        ('System Info', {
+            'fields': ('created_at', 'updated_at'),
+            'classes': ('collapse',)
+        }),
+    )
+
+    actions = []

@@ -11,13 +11,15 @@ from .groq_mixin import GroqMixin
 from .aws_mixin import AwsMixin
 from .taggable_mixin import TaggableMixin
 from .summarizable_mixin import SummarizableMixin
+from .searchable_mixin import SearchableMixin
+from .quotable_mixin import QuotableMixin
 import boto3
 import time
 import uuid
 logger = logging.getLogger(__name__)
 transcribe_client = boto3.client('transcribe', region_name='us-east-1')
 
-class Episode(models.Model, GroqMixin, AwsMixin, TaggableMixin, SummarizableMixin):
+class Episode(models.Model, GroqMixin, AwsMixin, TaggableMixin, SummarizableMixin, SearchableMixin, QuotableMixin):
     # Relationship
     podcast = models.ForeignKey('Podcast', on_delete=models.CASCADE, related_name='episodes', blank=True, null=True, help_text="Podcast this episode belongs to")
     
@@ -36,7 +38,8 @@ class Episode(models.Model, GroqMixin, AwsMixin, TaggableMixin, SummarizableMixi
     episode_number = models.IntegerField(blank=True, null=True, help_text="Episode number")
     season_number = models.IntegerField(blank=True, null=True, help_text="Season number")
     episode_type = models.CharField(max_length=20, blank=True, null=True, help_text="Episode type (full, trailer, bonus)")
-    
+    has_public_transcript = models.BooleanField(default=False, help_text="Whether the episode has a public transcript")
+
     # iTunes specific
     itunes_explicit = models.BooleanField(default=False, help_text="iTunes explicit content flag for episode")
     itunes_episode_type = models.CharField(max_length=20, blank=True, null=True, help_text="iTunes episode type")
@@ -66,6 +69,29 @@ class Episode(models.Model, GroqMixin, AwsMixin, TaggableMixin, SummarizableMixi
             return f"{self.podcast.name} - Episode"
         else:
             return f"Episode {self.id or 'New'}"
+    
+    @property
+    def public_transcript_allowed(self):
+        """
+        Determine if this episode's transcript can be made public.
+        Returns True if either:
+        1. The episode has_public_transcript is True, OR
+        2. The podcast owner is approved
+        """
+        # First check if the episode itself has public transcript enabled
+        if self.has_public_transcript:
+            return True
+        
+        # If not, check if the podcast has an approved owner
+        if self.podcast and hasattr(self.podcast, 'owner'):
+            try:
+                return self.podcast.owner.is_approved
+            except AttributeError:
+                # In case owner doesn't exist or is_approved property is missing
+                pass
+        
+        # Default to False if neither condition is met
+        return False
     
     def clean_url(self, url):
         """
@@ -240,7 +266,7 @@ class Episode(models.Model, GroqMixin, AwsMixin, TaggableMixin, SummarizableMixi
 
     def process_complete_workflow(self):
         """
-        Complete workflow: generate transcript, apply tags, create speaker script, and generate summary.
+        Complete workflow: generate transcript, apply tags, create speaker script, generate summary, and extract quotes.
         Returns a summary of what was accomplished.
         """
         results = {
@@ -248,6 +274,7 @@ class Episode(models.Model, GroqMixin, AwsMixin, TaggableMixin, SummarizableMixi
             'tags_applied': 0,
             'script_generated': False,
             'summary_generated': False,
+            'quotes_extracted': 0,
             'errors': []
         }
         
@@ -285,6 +312,14 @@ class Episode(models.Model, GroqMixin, AwsMixin, TaggableMixin, SummarizableMixi
                 logger.info(f"Episode summary generated for: {self.raw_audio_url}")
             else:
                 results['errors'].append("Failed to generate episode summary")
+            
+            # Step 5: Extract key quotes
+            quotes = self.extract_quotes()
+            if quotes:
+                results['quotes_extracted'] = len(quotes)
+                logger.info(f"Extracted {len(quotes)} quotes from: {self.raw_audio_url}")
+            else:
+                results['errors'].append("Failed to extract quotes")
             
             return results
             
