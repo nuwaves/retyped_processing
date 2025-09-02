@@ -16,10 +16,9 @@ Including another URLconf
 """
 
 from django.contrib import admin
-from django.urls import path
+from django.urls import path, include
 from django.http import JsonResponse
-from django.urls import path
-from .views import EpisodeViewSet, PodcastViewSet, TagsViewSet
+from .api_urls import api_v1_patterns
 from drf_yasg.views import get_schema_view
 from drf_yasg import openapi
 
@@ -38,32 +37,18 @@ schema_view = get_schema_view(
 )
 
 urlpatterns = [
+    # Documentation endpoints
     path('swagger<format>/', schema_view.without_ui(cache_timeout=0),
         name='schema-json'),
     path('swagger/', schema_view.with_ui('swagger',
         cache_timeout=0), name='schema-swagger-ui'),
     path('redoc/', schema_view.with_ui('redoc',
         cache_timeout=0), name='schema-redoc'),
+    
+    # Admin and health endpoints
     path("admin/", admin.site.urls),
     path("health/", health_check, name="health"),
-    path(
-        "tags/", TagsViewSet.as_view({"get": "list"}),
-        name="retyped-tags-list"
-    ),
-    path(
-        "episodes/", EpisodeViewSet.as_view({"get": "list"}),
-        name="retyped-episode-list"
-    ),
-    path(
-        "episodes/<int:pk>", EpisodeViewSet.as_view({"get": "retrieve"}),
-        name="retyped-episode-retrieve"
-    ),
-    path(
-        "podcasts/", PodcastViewSet.as_view({"get": "list"}),
-        name="retyped-episode-list"
-    ),
-    path(
-        "podcasts/<int:pk>", PodcastViewSet.as_view({"get": "retrieve"}),
-        name="retyped-episode-retrieve"
-    ),
+    
+    # API v1 endpoints
+    path("api/v1/", include((api_v1_patterns, 'api_v1'), namespace='v1')),
 ]
