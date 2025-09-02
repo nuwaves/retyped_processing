@@ -8,7 +8,7 @@ from audio_processing.tasks.podcast_tasks import process_podcast_by_id
 class PodcastAdmin(ImportExportModelAdmin):
     list_display = ('name', 'author', 'language', 'is_active', 'last_processed', 'episode_count', 'itunes_explicit')
     list_filter = ('is_active', 'language', 'itunes_explicit', 'itunes_type', 'created_at', 'last_processed', 'tags')
-    search_fields = ('name', 'url', 'description', 'author', 'subtitle', 'itunes_keywords')
+    search_fields = ('name', 'url', 'description', 'author', 'subtitle')
     readonly_fields = ('created_at', 'updated_at', 'last_processed', 'pub_date', 'last_build_date')
     list_editable = ('is_active',)
     
@@ -25,7 +25,7 @@ class PodcastAdmin(ImportExportModelAdmin):
             'classes': ('collapse',)
         }),
         ('iTunes Information', {
-            'fields': ('itunes_explicit', 'itunes_type', 'itunes_keywords', 'itunes_categories'),
+            'fields': ('itunes_explicit', 'itunes_type', 'itunes_categories'),
             'classes': ('collapse',)
         }),
         ('Images & Branding', {
@@ -70,7 +70,7 @@ class PodcastAdmin(ImportExportModelAdmin):
 class EpisodeAdmin(admin.ModelAdmin):
     list_display = ('title', 'truncated_url', 'podcast', 'episode_number', 'season_number', 'duration_display', 'has_transcript', 'has_script', 'has_summary', 'release_date', 'itunes_explicit')
     list_filter = ('podcast', 'episode_type', 'itunes_explicit', 'created_at', 'updated_at', 'tags', 'release_date', 'season_number')
-    search_fields = ('title', 'description', 'raw_audio_url', 'transcript', 'script_transcript', 'podcast__name', 'itunes_keywords')
+    search_fields = ('title', 'description', 'raw_audio_url', 'transcript', 'script_transcript', 'podcast__name')
     readonly_fields = ('created_at', 'updated_at', 'audio_length', 'pub_date', 'error')
     raw_id_fields = ('podcast',)
 
@@ -120,7 +120,7 @@ class EpisodeAdmin(admin.ModelAdmin):
             'classes': ('collapse',)
         }),
         ('iTunes Information', {
-            'fields': ('itunes_explicit', 'itunes_episode_type', 'itunes_keywords'),
+            'fields': ('itunes_explicit', 'itunes_episode_type'),
             'classes': ('collapse',)
         }),
         ('Rich Content', {

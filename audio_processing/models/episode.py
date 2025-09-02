@@ -40,7 +40,6 @@ class Episode(models.Model, GroqMixin, AwsMixin, TaggableMixin, SummarizableMixi
     # iTunes specific
     itunes_explicit = models.BooleanField(default=False, help_text="iTunes explicit content flag for episode")
     itunes_episode_type = models.CharField(max_length=20, blank=True, null=True, help_text="iTunes episode type")
-    itunes_keywords = models.CharField(max_length=500, blank=True, null=True, help_text="iTunes keywords for episode")
     
     # Episode content
     content_encoded = models.TextField(blank=True, null=True, help_text="HTML encoded content/show notes")
