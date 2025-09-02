@@ -13,7 +13,7 @@ class Podcast(models.Model):
     description = models.TextField(blank=True, null=True, help_text="Description of the podcast")
     
     # RSS metadata
-    subtitle = models.CharField(max_length=500, blank=True, null=True, help_text="iTunes subtitle")
+    subtitle = models.CharField(max_length=5000, blank=True, null=True, help_text="iTunes subtitle")
     summary = models.TextField(blank=True, null=True, help_text="iTunes summary (longer description)")
     author = models.CharField(max_length=200, blank=True, null=True, help_text="Podcast author/creator")
     language = models.CharField(max_length=10, blank=True, null=True, help_text="Language code (e.g., 'en')")
@@ -22,7 +22,6 @@ class Podcast(models.Model):
     # iTunes specific fields
     itunes_explicit = models.BooleanField(default=False, help_text="iTunes explicit content flag")
     itunes_type = models.CharField(max_length=20, blank=True, null=True, help_text="iTunes podcast type (episodic/serial)")
-    itunes_keywords = models.CharField(max_length=500, blank=True, null=True, help_text="iTunes keywords")
     itunes_categories = models.JSONField(blank=True, null=True, help_text="iTunes categories as JSON")
     
     # Images
@@ -82,7 +81,7 @@ class Podcast(models.Model):
             return
         
         feed_info = feed.feed
-        
+
         # Basic information
         if hasattr(feed_info, 'title') and feed_info.title:
             self.name = feed_info.title
@@ -96,41 +95,46 @@ class Podcast(models.Model):
         if hasattr(feed_info, 'copyright') and feed_info.copyright:
             self.copyright = feed_info.copyright
         
-        # iTunes specific fields
-        if hasattr(feed_info, 'subtitle') and feed_info.subtitle:
+        # iTunes specific fields - feedparser converts itunes: namespace to attributes
+        # Try both direct access and iTunes-specific attribute names
+        if hasattr(feed_info, 'itunes_subtitle') and feed_info.itunes_subtitle:
+            self.subtitle = feed_info.itunes_subtitle
+        elif hasattr(feed_info, 'subtitle') and feed_info.subtitle:
             self.subtitle = feed_info.subtitle
         
-        if hasattr(feed_info, 'summary') and feed_info.summary:
+        if hasattr(feed_info, 'itunes_summary') and feed_info.itunes_summary:
+            self.summary = feed_info.itunes_summary
+        elif hasattr(feed_info, 'summary') and feed_info.summary:
             self.summary = feed_info.summary
         
-        if hasattr(feed_info, 'author') and feed_info.author:
+        if hasattr(feed_info, 'itunes_author') and feed_info.itunes_author:
+            self.author = feed_info.itunes_author
+        elif hasattr(feed_info, 'author') and feed_info.author:
             self.author = feed_info.author
-        
-        # iTunes metadata
+
+        # iTunes metadata - these are namespace-specific
         if hasattr(feed_info, 'itunes_explicit'):
             self.itunes_explicit = feed_info.itunes_explicit == 'yes'
         
         if hasattr(feed_info, 'itunes_type') and feed_info.itunes_type:
             self.itunes_type = feed_info.itunes_type
-        
-        if hasattr(feed_info, 'itunes_keywords') and feed_info.itunes_keywords:
-            self.itunes_keywords = feed_info.itunes_keywords
-        
-        # Categories
+
         if hasattr(feed_info, 'tags') and feed_info.tags:
-            categories = []
-            for tag in feed_info.tags:
-                if hasattr(tag, 'term'):
-                    categories.append(tag.term)
-            if categories:
-                self.itunes_categories = categories
+            itunes_keywords = [tag.term for tag in feed_info.tags if hasattr(tag, 'term')]
+            self._process_itunes_keywords_as_tags(itunes_keywords)
         
-        # Images
-        if hasattr(feed_info, 'image') and hasattr(feed_info.image, 'href'):
-            self.image_url = feed_info.image.href
+        # Images - handle both standard and iTunes image formats
+        if hasattr(feed_info, 'image'):
+            if hasattr(feed_info.image, 'href'):
+                self.image_url = feed_info.image.href
+            elif hasattr(feed_info.image, 'url'):
+                self.image_url = feed_info.image.url
         
-        if hasattr(feed_info, 'itunes_image') and hasattr(feed_info.itunes_image, 'href'):
-            self.itunes_image_url = feed_info.itunes_image.href
+        if hasattr(feed_info, 'itunes_image'):
+            if hasattr(feed_info.itunes_image, 'href'):
+                self.itunes_image_url = feed_info.itunes_image.href
+            elif hasattr(feed_info.itunes_image, 'url'):
+                self.itunes_image_url = feed_info.itunes_image.url
         
         # Owner information
         if hasattr(feed_info, 'itunes_owner'):
@@ -160,6 +164,34 @@ class Podcast(models.Model):
         
         self.save()
         logger.info(f"Updated podcast metadata: {self.name}")
+        
+        # Debug: Log available attributes to help with troubleshooting
+        self._debug_feed_attributes(feed_info)
+    
+    def _debug_feed_attributes(self, feed_info):
+        """Debug method to log available feed attributes."""
+        logger.debug(f"Available feed attributes for {self.name}:")
+        
+        # Get all attributes that contain 'itunes'
+        itunes_attrs = [attr for attr in dir(feed_info) if 'itunes' in attr.lower() and not attr.startswith('_')]
+        if itunes_attrs:
+            logger.debug(f"iTunes attributes found: {itunes_attrs}")
+        else:
+            logger.debug("No iTunes attributes found")
+        
+        # Check for common attributes
+        common_attrs = ['title', 'subtitle', 'summary', 'author', 'description', 'language', 'image']
+        for attr in common_attrs:
+            if hasattr(feed_info, attr):
+                value = getattr(feed_info, attr)
+                logger.debug(f"{attr}: {type(value)} - {str(value)[:100] if value else 'None'}...")
+        
+        # Special handling for tags/categories
+        if hasattr(feed_info, 'tags'):
+            logger.debug(f"Tags found: {len(feed_info.tags) if feed_info.tags else 0}")
+            if feed_info.tags:
+                for i, tag in enumerate(feed_info.tags[:3]):  # Show first 3 tags
+                    logger.debug(f"  Tag {i}: {tag}")
     
     def create_episode_from_entry(self, entry):
         """
@@ -273,8 +305,8 @@ class Podcast(models.Model):
         if hasattr(entry, 'itunes_explicit'):
             episode_data['itunes_explicit'] = entry.itunes_explicit == 'yes'
         
-        if hasattr(entry, 'itunes_keywords') and entry.itunes_keywords:
-            episode_data['itunes_keywords'] = entry.itunes_keywords
+        if hasattr(entry, 'tags') and entry.tags:
+            episode_data['itunes_keywords'] = [tag.term for tag in entry.tags if hasattr(tag, 'term')]
         
         if hasattr(entry, 'content') and entry.content:
             # Get the first content item (usually HTML)
@@ -398,3 +430,73 @@ class Podcast(models.Model):
             'created_at': self.created_at,
             'updated_at': self.updated_at
         }
+
+    def _process_itunes_keywords_as_tags(self, itunes_keywords):
+        """
+        Process iTunes keywords and create/add them as tags to this podcast.
+        Keywords are typically comma-separated in the iTunes keywords field.
+        """
+        if not itunes_keywords:
+            return
+        
+        # Import Tag model here to avoid circular imports
+        from .tag import Tag
+        
+        # Process each keyword
+        added_tags = []
+        for keyword in itunes_keywords:
+            if not keyword or len(keyword) > 100:  # Skip empty or too long keywords
+                continue
+                
+            try:
+                # Get or create tag
+                tag, created = Tag.objects.get_or_create(
+                    name=keyword,
+                    defaults={
+                        'slug': self._generate_slug_from_keyword(keyword),
+                        'description': f'Auto-generated tag from iTunes keywords'
+                    }
+                )
+                
+                # Add tag to podcast if not already present
+                if not self.tags.filter(id=tag.id).exists():
+                    self.tags.add(tag)
+                    added_tags.append(tag.name)
+                    
+                    if created:
+                        logger.info(f"Created new tag: {tag.name}")
+                    else:
+                        logger.info(f"Added existing tag: {tag.name}")
+                        
+            except Exception as e:
+                logger.error(f"Failed to process keyword '{keyword}' as tag: {str(e)}")
+                continue
+        
+        if added_tags:
+            logger.info(f"Added {len(added_tags)} tags to podcast '{self.name}': {', '.join(added_tags)}")
+        else:
+            logger.info(f"No new tags were added to podcast '{self.name}'")
+
+    def _generate_slug_from_keyword(self, keyword):
+        """
+        Generate a URL-friendly slug from a keyword.
+        """
+        import re
+        from django.utils.text import slugify
+        
+        # Use Django's slugify to create a URL-friendly slug
+        slug = slugify(keyword)
+        
+        # If slugify returns empty (e.g., for non-ASCII characters), 
+        # create a basic slug by removing non-alphanumeric characters
+        if not slug:
+            slug = re.sub(r'[^a-zA-Z0-9\s-]', '', keyword.lower())
+            slug = re.sub(r'[\s-]+', '-', slug).strip('-')
+        
+        # Ensure slug is not empty and not too long
+        if not slug:
+            slug = 'tag'
+        
+        slug = slug[:50]  # Limit length
+        
+        return slug

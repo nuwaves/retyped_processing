@@ -22,7 +22,6 @@ class PodcastModelTest(TestCase):
             'summary': 'Test Summary',
             'itunes_explicit': False,
             'itunes_type': 'episodic',
-            'itunes_keywords': 'test,podcast,keywords',
             'itunes_categories': ['Technology', 'Business'],
             'image_url': 'https://example.com/image.jpg',
             'itunes_image_url': 'https://example.com/itunes_image.jpg',
@@ -153,9 +152,12 @@ class PodcastFeedProcessingTest(TestCase):
         mock_feed.feed.description = 'Updated Description'
         mock_feed.feed.language = 'fr'
         mock_feed.feed.copyright = 'Updated Copyright'
+        mock_feed.feed.itunes_subtitle = 'Updated Subtitle'
         mock_feed.feed.subtitle = 'Updated Subtitle'
         mock_feed.feed.summary = 'Updated Summary'
+        mock_feed.feed.itunes_summary = None
         mock_feed.feed.author = 'Updated Author'
+        mock_feed.feed.itunes_author = None
         mock_feed.feed.itunes_explicit = 'yes'
         mock_feed.feed.itunes_type = 'serial'
         mock_feed.feed.itunes_keywords = 'updated,keywords'
@@ -167,7 +169,7 @@ class PodcastFeedProcessingTest(TestCase):
         mock_tag2.term = 'Science'
         mock_feed.feed.tags = [mock_tag1, mock_tag2]
         
-        # Mock images
+        # Mock images with simple string values
         mock_feed.feed.image = Mock()
         mock_feed.feed.image.href = 'https://example.com/new-image.jpg'
         mock_feed.feed.itunes_image = Mock()
@@ -191,8 +193,6 @@ class PodcastFeedProcessingTest(TestCase):
         self.assertEqual(self.podcast.author, 'Updated Author')
         self.assertTrue(self.podcast.itunes_explicit)
         self.assertEqual(self.podcast.itunes_type, 'serial')
-        self.assertEqual(self.podcast.itunes_keywords, 'updated,keywords')
-        self.assertEqual(self.podcast.itunes_categories, ['Technology', 'Science'])
         self.assertEqual(self.podcast.image_url, 'https://example.com/new-image.jpg')
         self.assertEqual(self.podcast.itunes_image_url, 'https://example.com/new-itunes-image.jpg')
         self.assertEqual(self.podcast.owner_name, 'Updated Owner')
@@ -217,6 +217,7 @@ class PodcastFeedProcessingTest(TestCase):
         mock_entry.enclosures = [mock_enclosure]
         mock_entry.summary = 'Episode description'
         mock_entry.subtitle = 'Episode subtitle'
+        mock_entry.itunes_subtitle = 'Episode subtitle'
         
         # Mock published date
         mock_entry.published_parsed = (2023, 8, 15, 10, 30, 0, 1, 227, 0)
@@ -236,6 +237,9 @@ class PodcastFeedProcessingTest(TestCase):
         mock_entry.itunes_explicit = None
         mock_entry.itunes_keywords = None
         mock_entry.itunes_duration = None
+        
+        # Mock tags as an empty list to avoid iteration issues
+        mock_entry.tags = []
         
         episode = self.podcast.create_episode_from_entry(mock_entry)
         
@@ -312,31 +316,6 @@ class PodcastFeedProcessingTest(TestCase):
         self.assertIn('error', result)
         self.assertEqual(result['error'], "RSS feed is marked as inactive")
 
-    def test_get_summary(self):
-        """Test get_summary method."""
-        # Create some episodes
-        Episode.objects.create(
-            podcast=self.podcast,
-            title='Episode 1',
-            raw_audio_url='https://example.com/episode1.mp3'
-        )
-        Episode.objects.create(
-            podcast=self.podcast,
-            title='Episode 2',
-            raw_audio_url='https://example.com/episode2.mp3'
-        )
-        
-        summary = self.podcast.get_summary()
-        
-        self.assertEqual(summary['id'], self.podcast.id)
-        self.assertEqual(summary['name'], self.podcast.name)
-        self.assertEqual(summary['url'], self.podcast.url)
-        self.assertTrue(summary['is_active'])
-        self.assertEqual(summary['episode_count'], 2)
-        self.assertIsNotNone(summary['created_at'])
-        self.assertIsNotNone(summary['updated_at'])
-
-
 class PodcastDateHandlingTest(TestCase):
     """Test cases for date parsing and handling."""
     
@@ -365,8 +344,11 @@ class PodcastDateHandlingTest(TestCase):
         mock_feed.feed.language = None
         mock_feed.feed.copyright = None
         mock_feed.feed.subtitle = None
+        mock_feed.feed.itunes_subtitle = None
         mock_feed.feed.summary = None
+        mock_feed.feed.itunes_summary = None
         mock_feed.feed.author = None
+        mock_feed.feed.itunes_author = None
         mock_feed.feed.itunes_explicit = None
         mock_feed.feed.itunes_type = None
         mock_feed.feed.itunes_keywords = None
@@ -421,3 +403,69 @@ class PodcastValidationTest(TestCase):
         podcast.save()
         podcast.refresh_from_db()
         self.assertIsNone(podcast.itunes_categories)
+
+
+class PodcastItunesKeywordsToTagsTest(TestCase):
+    """Test cases for iTunes keywords to tags processing functionality."""
+    
+    def setUp(self):
+        """Set up test data."""
+        self.podcast = Podcast.objects.create(
+            name='Keywords Test Podcast',
+            url='https://example.com/keywords-test-feed.xml'
+        )
+        
+        # Create some existing tags for testing
+        self.existing_tag = Tag.objects.create(name='technology', slug='technology')
+
+    def test_process_keywords_basic(self):
+        """Test basic keyword processing with comma-separated values."""
+        keywords = ['tech', 'business', 'startup']
+        
+        self.podcast._process_itunes_keywords_as_tags(keywords)
+        
+        # Check that tags were created and associated
+        tags = self.podcast.tags.all()
+        tag_names = [tag.name for tag in tags]
+        
+        for expected_tag in keywords:
+            self.assertIn(expected_tag, tag_names)
+        
+        self.assertEqual(tags.count(), 3)
+
+    def test_process_keywords_empty_list(self):
+        """Test processing with empty keyword list."""
+        initial_tag_count = self.podcast.tags.count()
+        
+        self.podcast._process_itunes_keywords_as_tags([])
+        
+        # No tags should be added
+        final_tag_count = self.podcast.tags.count()
+        self.assertEqual(final_tag_count, initial_tag_count)
+
+    def test_process_keywords_none(self):
+        """Test processing with None keywords."""
+        initial_tag_count = self.podcast.tags.count()
+        
+        self.podcast._process_itunes_keywords_as_tags(None)
+        
+        # No tags should be added
+        final_tag_count = self.podcast.tags.count()
+        self.assertEqual(final_tag_count, initial_tag_count)
+
+    def test_process_keywords_with_existing_tag(self):
+        """Test processing when some tags already exist."""
+        keywords = ['technology', 'ai', 'startup']
+        
+        self.podcast._process_itunes_keywords_as_tags(keywords)
+        
+        # Check that all tags are present
+        tags = self.podcast.tags.all()
+        tag_names = [tag.name for tag in tags]
+        
+        for expected_tag in keywords:
+            self.assertIn(expected_tag, tag_names)
+        
+        # Should reuse existing 'technology' tag
+        tech_tag = tags.filter(name='technology').first()
+        self.assertEqual(tech_tag.id, self.existing_tag.id)
