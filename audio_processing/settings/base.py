@@ -16,7 +16,7 @@ INSTALLED_APPS = [
     "import_export",
     "constance",
     "rest_framework",
-    "drf_yasg"
+    "drf_yasg",
 ]
 
 MIDDLEWARE = [
