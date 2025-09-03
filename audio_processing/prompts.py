@@ -68,3 +68,40 @@ def get_episode_summary_prompt(transcript):
     return f"""Summarize this podcast episode in 200-400 words. Include the main topic, key points, participants, and takeaways:
 
 {transcript}"""
+
+
+def get_quote_extraction_prompt(transcript):
+    """
+    Generate a prompt for extracting key quotes from a podcast episode transcript.
+    
+    Args:
+        transcript: The podcast transcript to analyze for quotes
+    
+    Returns:
+        str: Formatted prompt for quote extraction
+    """
+    return f"""Please analyze the following podcast episode transcript and extract up to 12 of the most interesting quotes. 
+Focus on snippets that are particularly:
+- Entertaining or funny
+- Controversial or thought-provoking
+- Informative or insightful
+- Memorable or quotable
+
+For each quote, provide:
+1. The exact quote text (keep it concise, ideally 1-3 sentences)
+2. The speaker (if identifiable from context, otherwise use "Unknown")
+3. A category: memorable, funny, controversial, key_insight, or educational
+4. Brief context if helpful
+
+Format your response as JSON with this structure:
+{{
+    "quotes": [
+        {{
+            "text": "The exact quote text here",
+            "speaker": "Speaker name or Unknown",
+        }}
+    ]
+}}
+
+Transcript:
+{transcript}"""

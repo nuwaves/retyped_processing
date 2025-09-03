@@ -1,59 +1,115 @@
 from celery import shared_task
-from audio_processing.models import Podcast
+from audio_processing.models import Episode
 import logging
 
 logger = logging.getLogger(__name__)
 
 
 @shared_task
-def add_transcript(podcast_id):
+def add_transcript(episode_id):
     """
-    Celery task to process a podcast file and generate transcript.
+    Celery task to process an episode and generate transcript.
     """
-    logger.info(f"Processing transcript for podcast ID: {podcast_id}")
-    # Get or create podcast entry
-    podcast = Podcast.objects.get(pk=podcast_id)
-    
-    # Process transcript using model method
-    transcript = podcast.generate_transcript()
-    
-    if transcript:
-        logger.info(f"Podcast transcript updated: {podcast}")
-        return {"success": True, "transcript_length": len(transcript)}
-    else:
-        logger.error(f"Failed to process transcript for: {podcast}")
-        return {"success": False, "error": "Failed to generate transcript"}
-
-@shared_task
-def suggest_and_apply_tags(podcast_id):
-    """
-    Celery task to suggest and apply tags to a podcast.
-    """
-    logger.info(f"Suggesting tags for podcast ID: {podcast_id}")
+    logger.info(f"Processing transcript for episode ID: {episode_id}")
     
     try:
-        podcast = Podcast.objects.get(pk=podcast_id)
-        applied_tags = podcast.suggest_and_apply_tags()
+        episode = Episode.objects.get(pk=episode_id)
+        
+        # Process transcript using model method
+        transcript = episode.generate_transcript()
+        
+        if transcript:
+            logger.info(f"Episode transcript updated: {episode.title}")
+            return {"success": True, "transcript_length": len(transcript)}
+        else:
+            logger.error(f"Failed to process transcript for: {episode.title}")
+            return {"success": False, "error": "Failed to generate transcript"}
+    
+    except Episode.DoesNotExist:
+        logger.error(f"Episode with ID {episode_id} not found")
+        return {"success": False, "error": "Episode not found"}
+    except Exception as e:
+        logger.error(f"Error processing transcript for episode ID {episode_id}: {str(e)}")
+        return {"success": False, "error": str(e)}
+
+@shared_task
+def suggest_and_apply_tags(episode_id):
+    """
+    Celery task to suggest and apply tags to an episode.
+    """
+    logger.info(f"Suggesting tags for episode ID: {episode_id}")
+    
+    try:
+        episode = Episode.objects.get(pk=episode_id)
+        applied_tags = episode.suggest_and_apply_tags()
         
         if applied_tags is not None:
-            logger.info(f"Applied {len(applied_tags)} tags to podcast: {podcast.raw_audio_url[:50]}...")
+            logger.info(f"Applied {len(applied_tags)} tags to episode: {episode.title}")
             return {"success": True, "applied_tags": len(applied_tags)}
         else:
-            logger.error(f"No tags applied for podcast: {podcast.raw_audio_url[:50]}")
+            logger.error(f"No tags applied for episode: {episode.title}")
             return {"success": False, "error": "No tags applied"}
     
+    except Episode.DoesNotExist:
+        logger.error(f"Episode with ID {episode_id} not found")
+        return {"success": False, "error": "Episode not found"}
     except Exception as e:
-        logger.error(f"Error suggesting tags for podcast ID {podcast_id}: {str(e)}")
+        logger.error(f"Error suggesting tags for episode ID {episode_id}: {str(e)}")
+        return {"success": False, "error": str(e)}
+
+@shared_task
+def extract_quotes(episode_id):
+    """
+    Celery task to extract quotes from an episode transcript.
+    """
+    logger.info(f"Extracting quotes for episode ID: {episode_id}")
+    
+    try:
+        episode = Episode.objects.get(pk=episode_id)
+        
+        # Extract quotes using model method (from QuotableMixin)
+        quotes = episode.extract_quotes()
+        
+        if quotes:
+            logger.info(f"Extracted {len(quotes)} quotes from episode: {episode.title}")
+            return {
+                "success": True, 
+                "quotes_extracted": len(quotes),
+                "quote_ids": [quote.id for quote in quotes]
+            }
+        else:
+            logger.warning(f"No quotes extracted for episode: {episode.title}")
+            return {"success": True, "quotes_extracted": 0, "quote_ids": []}
+    
+    except Episode.DoesNotExist:
+        logger.error(f"Episode with ID {episode_id} not found")
+        return {"success": False, "error": "Episode not found"}
+    except Exception as e:
+        logger.error(f"Error extracting quotes for episode ID {episode_id}: {str(e)}")
         return {"success": False, "error": str(e)}
     
 @shared_task
-def process_complete_workflow(podcast_id):
+def process_complete_workflow(episode_id):
     """
-    Celery task to process the complete workflow for a podcast:
-    1. Generate transcript
-    2. Suggest and apply tags
+    Celery task to process the complete workflow for an episode:
+    1. Generate transcript (if needed)
+    2. Apply tags
+    3. Generate speaker script
+    4. Generate summary
+    5. Extract quotes
     """
-    logger.info(f"Starting complete workflow for podcast ID: {podcast_id}")
+    logger.info(f"Starting complete workflow for episode ID: {episode_id}")
     
-    podcast = Podcast.objects.get(pk=podcast_id)
-    return podcast.process_complete_workflow()
+    try:
+        episode = Episode.objects.get(pk=episode_id)
+        result = episode.process_complete_workflow()
+        
+        logger.info(f"Completed workflow for episode: {episode.title}")
+        return result
+    
+    except Episode.DoesNotExist:
+        logger.error(f"Episode with ID {episode_id} not found")
+        return {"success": False, "error": "Episode not found"}
+    except Exception as e:
+        logger.error(f"Error in complete workflow for episode ID {episode_id}: {str(e)}")
+        return {"success": False, "error": str(e)}

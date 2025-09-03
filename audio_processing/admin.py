@@ -1,6 +1,6 @@
 from django.contrib import admin
-from .models import Episode, Podcast, Tag
-from audio_processing.tasks.episode_tasks import add_transcript, suggest_and_apply_tags, process_complete_workflow
+from .models import Episode, Podcast, Tag, PodcastOwner, Quote
+from audio_processing.tasks.episode_tasks import add_transcript, suggest_and_apply_tags, process_complete_workflow, extract_quotes
 from import_export.admin import ImportExportModelAdmin
 from audio_processing.tasks.podcast_tasks import process_podcast_by_id
 
@@ -8,7 +8,7 @@ from audio_processing.tasks.podcast_tasks import process_podcast_by_id
 class PodcastAdmin(ImportExportModelAdmin):
     list_display = ('name', 'author', 'language', 'is_active', 'last_processed', 'episode_count', 'itunes_explicit')
     list_filter = ('is_active', 'language', 'itunes_explicit', 'itunes_type', 'created_at', 'last_processed', 'tags')
-    search_fields = ('name', 'url', 'description', 'author', 'subtitle', 'itunes_keywords')
+    search_fields = ('name', 'url', 'description', 'author', 'subtitle')
     readonly_fields = ('created_at', 'updated_at', 'last_processed', 'pub_date', 'last_build_date')
     list_editable = ('is_active',)
     
@@ -25,7 +25,7 @@ class PodcastAdmin(ImportExportModelAdmin):
             'classes': ('collapse',)
         }),
         ('iTunes Information', {
-            'fields': ('itunes_explicit', 'itunes_type', 'itunes_keywords', 'itunes_categories'),
+            'fields': ('itunes_explicit', 'itunes_type', 'itunes_categories'),
             'classes': ('collapse',)
         }),
         ('Images & Branding', {
@@ -95,7 +95,7 @@ class PodcastAdmin(ImportExportModelAdmin):
 class EpisodeAdmin(admin.ModelAdmin):
     list_display = ('title', 'truncated_url', 'podcast', 'episode_number', 'season_number', 'duration_display', 'has_transcript', 'has_script', 'has_summary', 'release_date', 'itunes_explicit')
     list_filter = ('podcast', 'episode_type', 'itunes_explicit', 'created_at', 'updated_at', 'tags', 'release_date', 'season_number')
-    search_fields = ('title', 'description', 'raw_audio_url', 'transcript', 'script_transcript', 'podcast__name', 'itunes_keywords')
+    search_fields = ('title', 'description', 'raw_audio_url', 'transcript', 'script_transcript', 'podcast__name')
     readonly_fields = ('created_at', 'updated_at', 'audio_length', 'pub_date', 'error')
     raw_id_fields = ('podcast',)
 
@@ -145,7 +145,7 @@ class EpisodeAdmin(admin.ModelAdmin):
             'classes': ('collapse',)
         }),
         ('iTunes Information', {
-            'fields': ('itunes_explicit', 'itunes_episode_type', 'itunes_keywords'),
+            'fields': ('itunes_explicit', 'itunes_episode_type'),
             'classes': ('collapse',)
         }),
         ('Rich Content', {
@@ -168,7 +168,7 @@ class EpisodeAdmin(admin.ModelAdmin):
 
     actions = ['clear_transcript', 'export_transcripts', 'fetch_transcript',
                'suggest_tags', 'generate_speaker_scripts', 'run_complete_workflow', 'add_summary',
-               'index_to_search']
+               'extract_quotes_action', 'index_to_search']
     
     def index_to_search(self, request, queryset):
         """Index selected episodes to Meilisearch."""
@@ -356,6 +356,50 @@ class EpisodeAdmin(admin.ModelAdmin):
     
     run_complete_workflow.short_description = "Run complete workflow (transcript + tags + speaker script)"
 
+    def extract_quotes_action(self, request, queryset):
+        """Extract memorable quotes from selected episodes."""
+        success_count = 0
+        error_count = 0
+        no_transcript_count = 0
+        
+        for episode in queryset:
+            if not episode.transcript or not episode.transcript.strip():
+                no_transcript_count += 1
+                continue
+            
+            try:
+                extract_quotes.delay(episode.id)
+                success_count += 1
+            except Exception as e:
+                error_count += 1
+                self.message_user(
+                    request, 
+                    f"Error initiating quote extraction for {episode.title or 'Untitled'}: {str(e)}", 
+                    level='ERROR'
+                )
+        
+        if success_count > 0:
+            self.message_user(
+                request, 
+                f"Quote extraction initiated for {success_count} episode(s)."
+            )
+        
+        if no_transcript_count > 0:
+            self.message_user(
+                request, 
+                f"{no_transcript_count} episode(s) skipped (no transcript available).", 
+                level='WARNING'
+            )
+        
+        if error_count > 0:
+            self.message_user(
+                request, 
+                f"{error_count} episode(s) failed to start quote extraction.", 
+                level='ERROR'
+            )
+    
+    extract_quotes_action.short_description = "Extract quotes from selected episodes"
+
 
 @admin.register(Tag)
 class TagAdmin(ImportExportModelAdmin):
@@ -394,3 +438,103 @@ class TagAdmin(ImportExportModelAdmin):
             'classes': ('collapse',)
         }),
     )
+
+
+@admin.register(PodcastOwner)
+class PodcastOwnerAdmin(admin.ModelAdmin):
+    list_display = ('full_name', 'email', 'podcast_name', 'approval_status', 'date_approved', 'date_rejected', 'created_at')
+    list_filter = ('approval_status', 'created_at', 'date_approved', 'date_rejected')
+    search_fields = ('first_name', 'last_name', 'email', 'podcast__name')
+    readonly_fields = ('created_at', 'updated_at', 'date_approved', 'date_rejected')
+    raw_id_fields = ('podcast', 'approved_by')
+    list_editable = ('approval_status',)
+    
+    def podcast_name(self, obj):
+        return obj.podcast.name if obj.podcast else '-'
+    podcast_name.short_description = 'Podcast'
+    podcast_name.admin_order_field = 'podcast__name'
+    
+    def full_name(self, obj):
+        return obj.full_name
+    full_name.short_description = 'Full Name'
+    full_name.admin_order_field = 'first_name'
+    
+    fieldsets = (
+        ('Personal Information', {
+            'fields': ('first_name', 'last_name', 'email')
+        }),
+        ('Podcast Association', {
+            'fields': ('podcast',)
+        }),
+        ('Approval Status', {
+            'fields': ('approval_status', 'approved_by', 'approval_notes')
+        }),
+        ('Status Dates', {
+            'fields': ('date_approved', 'date_rejected'),
+            'classes': ('collapse',)
+        }),
+        ('Timestamps', {
+            'fields': ('created_at', 'updated_at'),
+            'classes': ('collapse',)
+        }),
+    )
+    
+    actions = ['approve_owners', 'reject_owners', 'reset_to_pending']
+    
+    def approve_owners(self, request, queryset):
+        """Approve selected podcast owners."""
+        count = 0
+        for owner in queryset:
+            if not owner.is_approved:
+                owner.approve(approved_by=request.user)
+                count += 1
+        
+        self.message_user(request, f"Approved {count} podcast owner(s).")
+    approve_owners.short_description = "Approve selected podcast owners"
+    
+    def reject_owners(self, request, queryset):
+        """Reject selected podcast owners."""
+        count = 0
+        for owner in queryset:
+            if not owner.is_rejected:
+                owner.reject(rejected_by=request.user)
+                count += 1
+        
+        self.message_user(request, f"Rejected {count} podcast owner(s).")
+    reject_owners.short_description = "Reject selected podcast owners"
+    
+    def reset_to_pending(self, request, queryset):
+        """Reset selected podcast owners to pending status."""
+        count = 0
+        for owner in queryset:
+            if not owner.is_pending:
+                owner.reset_to_pending()
+                count += 1
+        
+        self.message_user(request, f"Reset {count} podcast owner(s) to pending status.")
+    reset_to_pending.short_description = "Reset selected owners to pending"
+
+
+@admin.register(Quote)
+class QuoteAdmin(admin.ModelAdmin):
+    list_display = ('speaker', 'created_at')
+    list_filter = ('created_at', 'episode__podcast')
+    search_fields = ('text', 'speaker', 'episode__title', 'episode__podcast__name')
+    readonly_fields = ('created_at', 'updated_at')
+    raw_id_fields = ('episode',)
+    date_hierarchy = 'created_at'
+    
+    fieldsets = (
+        ('Quote Content', {
+            'fields': ('episode', 'text', 'speaker', 'context')
+        }),
+        ('Metadata', {
+            'fields': ('timestamp',)
+        }),
+        ('System Info', {
+            'fields': ('created_at', 'updated_at'),
+            'classes': ('collapse',)
+        }),
+    )
+
+    actions = []
