@@ -11,13 +11,16 @@ from .groq_mixin import GroqMixin
 from .aws_mixin import AwsMixin
 from .taggable_mixin import TaggableMixin
 from .summarizable_mixin import SummarizableMixin
+from .searchable_mixin import SearchableMixin
 import boto3
 import time
 import uuid
 logger = logging.getLogger(__name__)
 transcribe_client = boto3.client('transcribe', region_name='us-east-1')
 
-class Episode(models.Model, GroqMixin, AwsMixin, TaggableMixin, SummarizableMixin):
+class Episode(models.Model, GroqMixin, AwsMixin, TaggableMixin, SummarizableMixin, SearchableMixin):
+    # Search configuration
+    SEARCH_INDEX_UID = 'episodes'
     # Relationship
     podcast = models.ForeignKey('Podcast', on_delete=models.CASCADE, related_name='episodes', blank=True, null=True, help_text="Podcast this episode belongs to")
     
@@ -293,59 +296,29 @@ class Episode(models.Model, GroqMixin, AwsMixin, TaggableMixin, SummarizableMixi
             results['errors'].append(f"Workflow error: {str(e)}")
             return results
     
-    def index_to_search(self, index_uid='episodes'):
+    def get_search_document(self):
         """
-        Index this episode's transcript and metadata to Meilisearch for search functionality.
+        Prepare episode data for search indexing.
         
-        Args:
-            index_uid (str): The Meilisearch index to post to
-            
         Returns:
-            dict: Response from Meilisearch API or None if failed
+            dict: Document data to be indexed, or None if not indexable
         """
-        try:
-            # Check if we have the required data
-            if not self.transcript or not self.transcript.strip():
-                logger.warning(f"No transcript available for Meilisearch indexing: {self.raw_audio_url}")
-                return None
-            
-            # Construct the endpoint URL
-            endpoint_url = f"{settings.MEILISEARCH_URL.rstrip('/')}/indexes/{index_uid}/documents"
-
-            # Prepare headers
-            headers = {
-                "Content-Type": "application/json"
-            }
-
-            headers["Authorization"] = 'Bearer ' + settings.MEILISEARCH_API_KEY
-
-            # Prepare document data
-            document = {
-                "id": self.id,
-                "title": self.title or "Untitled Podcast",
-                "transcript": self.transcript,
-                "summary": self.summary or "",
-                "raw_audio_url": self.raw_audio_url,
-                "release_date": self.release_date.isoformat() if self.release_date else None,
-                "created_at": self.created_at.isoformat(),
-                "updated_at": self.updated_at.isoformat(),
-                "podcast_name": self.podcast.name if self.podcast else None,
-                "tags": [tag.name for tag in self.tags.all()]
-            }
-            
-            # Make the API request
-            logger.info(f"Indexing episode to Meilisearch: {self.title or self.raw_audio_url[:50]}...")
-            response = requests.post(endpoint_url, headers=headers, json=[document], timeout=30)
-            response.raise_for_status()
-            
-            result = response.json()
-            logger.info(f"Successfully indexed episode to Meilisearch: {result}")
-            return result
-            
-        except requests.exceptions.RequestException as e:
-            logger.error(f"Failed to index episode to Meilisearch (HTTP error): {str(e)}")
+        # Check if we have the required data
+        if not self.transcript or not self.transcript.strip():
+            logger.warning(f"No transcript available for search indexing: {self.raw_audio_url}")
             return None
-        except Exception as e:
-            logger.error(f"Failed to index episode to Meilisearch: {str(e)}")
-            return None
+        
+        # Prepare document data
+        return {
+            "id": self.id,
+            "title": self.title or "Untitled Episode",
+            "transcript": self.transcript,
+            "summary": self.summary or "",
+            "raw_audio_url": self.raw_audio_url,
+            "release_date": self.release_date.isoformat() if self.release_date else None,
+            "created_at": self.created_at.isoformat(),
+            "updated_at": self.updated_at.isoformat(),
+            "podcast_name": self.podcast.name if self.podcast else None,
+            "tags": [tag.name for tag in self.tags.all()]
+        }
     

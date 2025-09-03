@@ -46,7 +46,7 @@ class PodcastAdmin(ImportExportModelAdmin):
         }),
     )
     
-    actions = ['mark_active', 'mark_inactive', 'process_feed']
+    actions = ['mark_active', 'mark_inactive', 'process_feed', 'index_to_search']
     
     def mark_active(self, request, queryset):
         queryset.update(is_active=True)
@@ -64,6 +64,31 @@ class PodcastAdmin(ImportExportModelAdmin):
             process_podcast_by_id.delay(podcast.id)
         self.message_user(request, f"Processing initiated for {queryset.count()} Podcasts.")
     process_feed.short_description = "Process selected Podcasts"
+
+    def index_to_search(self, request, queryset):
+        """Index selected podcasts to Meilisearch."""
+        success_count = 0
+        error_count = 0
+        
+        for podcast in queryset:
+            try:
+                result = podcast.index_to_search()
+                if result:
+                    success_count += 1
+                    self.message_user(request, f"Podcast '{podcast.name}' indexed successfully.")
+                else:
+                    error_count += 1
+                    self.message_user(request, f"Failed to index podcast '{podcast.name}' (no data to index).", level='WARNING')
+            except Exception as e:
+                error_count += 1
+                self.message_user(request, f"Error indexing podcast '{podcast.name}': {str(e)}", level='ERROR')
+        
+        if success_count > 0:
+            self.message_user(request, f"Successfully indexed {success_count} podcast(s) to Meilisearch.")
+        
+        if error_count > 0:
+            self.message_user(request, f"{error_count} podcast(s) failed to index.", level='ERROR')
+    index_to_search.short_description = "Index selected podcasts to Meilisearch"
 
 
 @admin.register(Episode)

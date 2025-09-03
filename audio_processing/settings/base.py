@@ -14,8 +14,10 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "audio_processing",
     "import_export",
-    "constance"
-    ]
+    "constance",
+    "rest_framework",
+    "drf_yasg",
+]
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
@@ -164,4 +166,11 @@ LOGGING = {
             'propagate': False,
         },
     },
+}
+
+# REST Framework configuration
+
+REST_FRAMEWORK = {
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.LimitOffsetPagination',
+    'PAGE_SIZE': 32
 }
