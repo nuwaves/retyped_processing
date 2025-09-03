@@ -1,6 +1,6 @@
 from django.contrib import admin
 from .models import Episode, Podcast, Tag, PodcastOwner, Quote
-from audio_processing.tasks.episode_tasks import add_transcript, suggest_and_apply_tags, process_complete_workflow
+from audio_processing.tasks.episode_tasks import add_transcript, suggest_and_apply_tags, process_complete_workflow, extract_quotes
 from import_export.admin import ImportExportModelAdmin
 from audio_processing.tasks.podcast_tasks import process_podcast_by_id
 
@@ -46,7 +46,7 @@ class PodcastAdmin(ImportExportModelAdmin):
         }),
     )
     
-    actions = ['mark_active', 'mark_inactive', 'process_feed']
+    actions = ['mark_active', 'mark_inactive', 'process_feed', 'index_to_search']
     
     def mark_active(self, request, queryset):
         queryset.update(is_active=True)
@@ -64,6 +64,31 @@ class PodcastAdmin(ImportExportModelAdmin):
             process_podcast_by_id.delay(podcast.id)
         self.message_user(request, f"Processing initiated for {queryset.count()} Podcasts.")
     process_feed.short_description = "Process selected Podcasts"
+
+    def index_to_search(self, request, queryset):
+        """Index selected podcasts to Meilisearch."""
+        success_count = 0
+        error_count = 0
+        
+        for podcast in queryset:
+            try:
+                result = podcast.index_to_search()
+                if result:
+                    success_count += 1
+                    self.message_user(request, f"Podcast '{podcast.name}' indexed successfully.")
+                else:
+                    error_count += 1
+                    self.message_user(request, f"Failed to index podcast '{podcast.name}' (no data to index).", level='WARNING')
+            except Exception as e:
+                error_count += 1
+                self.message_user(request, f"Error indexing podcast '{podcast.name}': {str(e)}", level='ERROR')
+        
+        if success_count > 0:
+            self.message_user(request, f"Successfully indexed {success_count} podcast(s) to Meilisearch.")
+        
+        if error_count > 0:
+            self.message_user(request, f"{error_count} podcast(s) failed to index.", level='ERROR')
+    index_to_search.short_description = "Index selected podcasts to Meilisearch"
 
 
 @admin.register(Episode)
@@ -143,7 +168,7 @@ class EpisodeAdmin(admin.ModelAdmin):
 
     actions = ['clear_transcript', 'export_transcripts', 'fetch_transcript',
                'suggest_tags', 'generate_speaker_scripts', 'run_complete_workflow', 'add_summary',
-               'index_to_search']
+               'extract_quotes_action', 'index_to_search']
     
     def index_to_search(self, request, queryset):
         """Index selected episodes to Meilisearch."""
@@ -331,6 +356,50 @@ class EpisodeAdmin(admin.ModelAdmin):
     
     run_complete_workflow.short_description = "Run complete workflow (transcript + tags + speaker script)"
 
+    def extract_quotes_action(self, request, queryset):
+        """Extract memorable quotes from selected episodes."""
+        success_count = 0
+        error_count = 0
+        no_transcript_count = 0
+        
+        for episode in queryset:
+            if not episode.transcript or not episode.transcript.strip():
+                no_transcript_count += 1
+                continue
+            
+            try:
+                extract_quotes.delay(episode.id)
+                success_count += 1
+            except Exception as e:
+                error_count += 1
+                self.message_user(
+                    request, 
+                    f"Error initiating quote extraction for {episode.title or 'Untitled'}: {str(e)}", 
+                    level='ERROR'
+                )
+        
+        if success_count > 0:
+            self.message_user(
+                request, 
+                f"Quote extraction initiated for {success_count} episode(s)."
+            )
+        
+        if no_transcript_count > 0:
+            self.message_user(
+                request, 
+                f"{no_transcript_count} episode(s) skipped (no transcript available).", 
+                level='WARNING'
+            )
+        
+        if error_count > 0:
+            self.message_user(
+                request, 
+                f"{error_count} episode(s) failed to start quote extraction.", 
+                level='ERROR'
+            )
+    
+    extract_quotes_action.short_description = "Extract quotes from selected episodes"
+
 
 @admin.register(Tag)
 class TagAdmin(ImportExportModelAdmin):
@@ -448,11 +517,11 @@ class PodcastOwnerAdmin(admin.ModelAdmin):
 
 @admin.register(Quote)
 class QuoteAdmin(admin.ModelAdmin):
-    list_display = ('text_preview', 'speaker', 'podcast_name', 'quote_type', 'created_at')
+    list_display = ('speaker', 'created_at')
     list_filter = ('created_at', 'episode__podcast')
     search_fields = ('text', 'speaker', 'episode__title', 'episode__podcast__name')
-    readonly_fields = ('created_at', 'updated_at', 'word_count')
-    raw_id_fields = ('episode', 'submitted_by')
+    readonly_fields = ('created_at', 'updated_at')
+    raw_id_fields = ('episode',)
     date_hierarchy = 'created_at'
     
     fieldsets = (
@@ -460,7 +529,7 @@ class QuoteAdmin(admin.ModelAdmin):
             'fields': ('episode', 'text', 'speaker', 'context')
         }),
         ('Metadata', {
-            'fields': ('quote_type', 'timestamp')
+            'fields': ('timestamp',)
         }),
         ('System Info', {
             'fields': ('created_at', 'updated_at'),

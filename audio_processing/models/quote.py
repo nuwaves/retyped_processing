@@ -60,12 +60,6 @@ class Quote(models.Model):
             models.Index(fields=['speaker']),
             models.Index(fields=['created_at']),
         ]
-        constraints = [
-            models.CheckConstraint(
-                check=models.Q(text__length__gte=10),
-                name='quote_text_min_length'
-            )
-        ]
 
     def __str__(self):
         """Return a truncated version of the quote with speaker info."""

@@ -1,21 +1,17 @@
 import logging
 import json
 import re
-from django.db import models
 
 logger = logging.getLogger(__name__)
 
 
-class QuotableMixin(models.Model):
+class QuotableMixin():
     """
     Mixin for models that can have quotes extracted from their content.
     
     This mixin provides functionality to extract memorable quotes using LLM analysis
     and create Quote objects associated with the model instance.
     """
-    
-    class Meta:
-        abstract = True
 
     def extract_quotes(self):
         """
@@ -39,25 +35,30 @@ class QuotableMixin(models.Model):
             transcript_excerpt = self.transcript[:8000]
             prompt = get_quote_extraction_prompt(transcript_excerpt)
             
-            # Use Groq for quote extraction (assumes model has get_groq_completion method)
-            if not hasattr(self, 'get_groq_completion'):
-                logger.error(f"Model {self.__class__.__name__} does not have get_groq_completion method")
-                return []
-            
             response = self.get_groq_completion(prompt, max_tokens=2000)
-            
             if not response:
                 logger.error(f"Failed to get LLM response for quote extraction: {getattr(self, 'raw_audio_url', 'Unknown')}")
                 return []
-            
+            # Remove code block markers and leading/trailing whitespace
+            cleaned_response = response
+            # Remove everything before the first code block (if present)
+            code_block_match = re.search(r'```json(.*?)```', cleaned_response, re.DOTALL | re.IGNORECASE)
+            if code_block_match:
+                cleaned_response = code_block_match.group(1)
+            # If not found, fallback to removing any generic code block
+            else:
+                code_block_match = re.search(r'```(.*?)```', cleaned_response, re.DOTALL)
+                if code_block_match:
+                    cleaned_response = code_block_match.group(1)
+            cleaned_response = cleaned_response.strip('`\n ')
             # Parse JSON response
             try:
-                quote_data = json.loads(response)
+                quote_data = json.loads(cleaned_response)
                 quotes_list = quote_data.get('quotes', [])
             except json.JSONDecodeError as e:
-                logger.error(f"Failed to parse quote extraction JSON: {str(e)}")
+                logger.error(f"Failed to parse quote extraction JSON: {str(e)} | Raw: {cleaned_response[:200]}")
                 # Try to extract quotes from a more flexible format
-                quotes_list = self._parse_quotes_fallback(response)
+                quotes_list = self._parse_quotes_fallback(cleaned_response)
             
             # Create Quote objects
             return self._create_quote_objects(quotes_list)
@@ -93,8 +94,6 @@ class QuotableMixin(models.Model):
                         quotes.append({
                             'text': match[0].strip(),
                             'speaker': match[1].strip() if match[1].strip() else None,
-                            'quote_type': 'memorable',
-                            'context': None
                         })
                 
                 if quotes:  # If we found quotes with this pattern, stop trying others

@@ -2,11 +2,15 @@ from django.db import models
 from django.utils import timezone
 import feedparser
 import logging
+from .searchable_mixin import SearchableMixin
 
 logger = logging.getLogger(__name__)
 
 
-class Podcast(models.Model):
+class Podcast(models.Model, SearchableMixin):
+    # Search configuration
+    SEARCH_INDEX_UID = 'podcasts'
+    
     # Basic info
     name = models.CharField(max_length=1000, help_text="Friendly name for the podcast")
     url = models.URLField(unique=True, help_text="RSS feed URL")
@@ -510,3 +514,36 @@ class Podcast(models.Model):
         slug = slug[:50]  # Limit length
         
         return slug
+    def get_search_document(self):
+        """
+        Prepare podcast data for search indexing.
+        
+        Returns:
+            dict: Document data to be indexed, or None if not indexable
+        """
+        # Check if we have minimum required data
+        if not self.name or not self.name.strip():
+            logger.warning(f"No name available for podcast search indexing: {self.url}")
+            return None
+        
+        # Prepare document data
+        return {
+            "id": self.id,
+            "name": self.name,
+            "description": self.description or "",
+            "subtitle": self.subtitle or "",
+            "summary": self.summary or "",
+            "author": self.author or "",
+            "language": self.language or "",
+            "itunes_categories": self.itunes_categories or [],
+            "url": self.url,
+            "image_url": self.image_url or "",
+            "owner_name": self.owner_name or "",
+            "owner_email": self.owner_email or "",
+            "pub_date": self.pub_date.isoformat() if self.pub_date else None,
+            "created_at": self.created_at.isoformat(),
+            "updated_at": self.updated_at.isoformat(),
+            "is_active": self.is_active,
+            "episode_count": self.episodes.count(),
+            "tags": [tag.name for tag in self.tags.all()]
+        }

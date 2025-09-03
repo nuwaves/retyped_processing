@@ -19,5 +19,6 @@ __all__ = [
     'SummarizableMixin', 
     'SearchableMixin',
     'QuotableMixin',
-    'UserAnalytics'
+    'UserAnalytics',
+    'SummarizableMixin'
 ]

@@ -99,8 +99,6 @@ Format your response as JSON with this structure:
         {{
             "text": "The exact quote text here",
             "speaker": "Speaker name or Unknown",
-            "quote_type": "memorable|funny|controversial|key_insight|educational",
-            "context": "Brief context if needed"
         }}
     ]
 }}
