@@ -44,9 +44,8 @@ class EpisodeViewSetTest(TestCase):
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         data = response.json()
-
-        self.assertEqual(len(data), 1)
-        self.assertEqual(data[0]['title'], self.episode.title)
+        self.assertEqual(len(data['results']), 1)
+        self.assertEqual(data['results'][0]['title'], self.episode.title)
 
     def test_retrieve_episode(self):
         """Test retrieving a single episode."""

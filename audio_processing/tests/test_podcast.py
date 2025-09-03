@@ -173,7 +173,7 @@ class PodcastFeedProcessingTest(TestCase):
         mock_tag2.term = "Science"
         mock_feed.feed.tags = [mock_tag1, mock_tag2]
 
-        # Mock images
+        # Mock images with simple string values
         mock_feed.feed.image = Mock()
         mock_feed.feed.image.href = "https://example.com/new-image.jpg"
         mock_feed.feed.itunes_image = Mock()
@@ -419,38 +419,38 @@ class PodcastValidationTest(TestCase):
 
 class PodcastItunesKeywordsToTagsTest(TestCase):
     """Test cases for iTunes keywords to tags processing functionality."""
-    
+
     def setUp(self):
         """Set up test data."""
         self.podcast = Podcast.objects.create(
-            name='Keywords Test Podcast',
-            url='https://example.com/keywords-test-feed.xml'
+            name="Keywords Test Podcast",
+            url="https://example.com/keywords-test-feed.xml",
         )
-        
+
         # Create some existing tags for testing
-        self.existing_tag = Tag.objects.create(name='technology', slug='technology')
+        self.existing_tag = Tag.objects.create(name="technology", slug="technology")
 
     def test_process_keywords_basic(self):
         """Test basic keyword processing with comma-separated values."""
-        keywords = ['tech', 'business', 'startup']
-        
+        keywords = ["tech", "business", "startup"]
+
         self.podcast._process_itunes_keywords_as_tags(keywords)
-        
+
         # Check that tags were created and associated
         tags = self.podcast.tags.all()
         tag_names = [tag.name for tag in tags]
-        
+
         for expected_tag in keywords:
             self.assertIn(expected_tag, tag_names)
-        
+
         self.assertEqual(tags.count(), 3)
 
     def test_process_keywords_empty_list(self):
         """Test processing with empty keyword list."""
         initial_tag_count = self.podcast.tags.count()
-        
+
         self.podcast._process_itunes_keywords_as_tags([])
-        
+
         # No tags should be added
         final_tag_count = self.podcast.tags.count()
         self.assertEqual(final_tag_count, initial_tag_count)
@@ -458,26 +458,26 @@ class PodcastItunesKeywordsToTagsTest(TestCase):
     def test_process_keywords_none(self):
         """Test processing with None keywords."""
         initial_tag_count = self.podcast.tags.count()
-        
+
         self.podcast._process_itunes_keywords_as_tags(None)
-        
+
         # No tags should be added
         final_tag_count = self.podcast.tags.count()
         self.assertEqual(final_tag_count, initial_tag_count)
 
     def test_process_keywords_with_existing_tag(self):
         """Test processing when some tags already exist."""
-        keywords = ['technology', 'ai', 'startup']
-        
+        keywords = ["technology", "ai", "startup"]
+
         self.podcast._process_itunes_keywords_as_tags(keywords)
-        
+
         # Check that all tags are present
         tags = self.podcast.tags.all()
         tag_names = [tag.name for tag in tags]
-        
+
         for expected_tag in keywords:
             self.assertIn(expected_tag, tag_names)
-        
+
         # Should reuse existing 'technology' tag
-        tech_tag = tags.filter(name='technology').first()
+        tech_tag = tags.filter(name="technology").first()
         self.assertEqual(tech_tag.id, self.existing_tag.id)

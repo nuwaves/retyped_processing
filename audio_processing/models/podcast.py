@@ -122,7 +122,14 @@ class Podcast(models.Model, SearchableMixin):
         
         if hasattr(feed_info, 'itunes_type') and feed_info.itunes_type:
             self.itunes_type = feed_info.itunes_type
+        
+        if hasattr(feed_info, 'itunes_keywords') and feed_info.itunes_keywords:
+            self.itunes_keywords = feed_info.itunes_keywords
 
+        if hasattr(feed_info, 'transcript') and feed_info.transcript:
+            self.has_public_transcript = True
+
+        # Categories
         if hasattr(feed_info, 'tags') and feed_info.tags:
             itunes_keywords = [tag.term for tag in feed_info.tags if hasattr(tag, 'term')]
             self._process_itunes_keywords_as_tags(itunes_keywords)
@@ -316,7 +323,10 @@ class Podcast(models.Model, SearchableMixin):
             # Get the first content item (usually HTML)
             if len(entry.content) > 0:
                 episode_data['content_encoded'] = entry.content[0].get('value', '')
-        
+
+        if hasattr(entry, 'transcript') and entry.transcript:
+            episode_data['has_public_transcript'] = True
+
         if hasattr(entry, 'itunes_duration') and entry.itunes_duration:
             try:
                 # Parse duration (format: HH:MM:SS or MM:SS or seconds)
@@ -525,7 +535,6 @@ class Podcast(models.Model, SearchableMixin):
             "summary": self.summary or "",
             "author": self.author or "",
             "language": self.language or "",
-            "itunes_keywords": self.itunes_keywords or "",
             "itunes_categories": self.itunes_categories or [],
             "url": self.url,
             "image_url": self.image_url or "",
