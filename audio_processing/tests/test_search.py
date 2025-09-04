@@ -3,6 +3,8 @@ from django.contrib.auth.models import User
 from django.urls import reverse
 from rest_framework.test import APIClient
 from rest_framework import status
+from meilisearch import Client
+from django.conf import settings
 
 from ..models import Podcast, Episode, Tag
 
@@ -12,6 +14,11 @@ class SearchViewSetTest(TestCase):
     
     def setUp(self):
         """Set up test data."""
+
+        self.search_client = Client(settings.MEILISEARCH_URL, settings.MEILISEARCH_API_KEY)
+        self.search_client.create_index("episodes", {"primaryKey": "id"})
+        self.search_client.create_index("podcasts", {"primaryKey": "id"})
+
         self.client = APIClient()
         
         # Create test user
