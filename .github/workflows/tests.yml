@@ -66,6 +66,7 @@ jobs:
         echo "DEBUG=False" >> $GITHUB_ENV
         echo "DB_PASSWORD=postgres" >> $GITHUB_ENV
         echo "DB_NAME=audio_processing" >> $GITHUB_ENV
+        echo "MEILISEARCH_API_KEY=test767ff88c4893803599b546731d95" >> $GITHUB_ENV
 
     - name: Wait for PostgreSQL
       run: |
