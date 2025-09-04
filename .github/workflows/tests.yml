@@ -34,6 +34,8 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
+        env:
+          MEILI_MASTER_KEY: 'test767ff88c4893803599b546731d95'
 
     steps:
     - uses: actions/checkout@v4
