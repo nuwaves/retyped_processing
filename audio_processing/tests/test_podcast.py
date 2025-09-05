@@ -10,7 +10,7 @@ from django.urls import reverse
 from rest_framework.test import APIClient
 from rest_framework import status
 
-from audio_processing.models import Podcast, Episode, Tag
+from audio_processing.models import Podcast, Episode, Tag, UserAnalytics
 
 
 class PodcastModelTest(TestCase):

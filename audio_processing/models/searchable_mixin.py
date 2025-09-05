@@ -1,6 +1,6 @@
 import logging
-import requests
 from django.conf import settings
+from meilisearch import Client
 
 logger = logging.getLogger(__name__)
 
@@ -13,7 +13,16 @@ class SearchableMixin:
     to define what data should be indexed.
     """
     
-    def index_to_search(self, index_uid=None):
+    def _get_meili_client(self):
+        """
+        Get the MeiliSearch client instance.
+        
+        Returns:
+            Client: MeiliSearch client
+        """
+        return Client(settings.MEILISEARCH_URL, settings.MEILISEARCH_API_KEY)
+
+    def index_to_search(self, index_uid=None, sync=True):
         """
         Index this instance's data to Meilisearch for search functionality.
         
@@ -35,27 +44,21 @@ class SearchableMixin:
                 logger.warning(f"No search document data available for indexing: {self}")
                 return None
             
-            # Construct the endpoint URL
-            endpoint_url = f"{settings.MEILISEARCH_URL.rstrip('/')}/indexes/{index_uid}/documents"
-
-            # Prepare headers
-            headers = {
-                "Content-Type": "application/json",
-                "Authorization": f'Bearer {settings.MEILISEARCH_API_KEY}'
-            }
+            client = self._get_meili_client()
+            index = client.index(index_uid)
             
             # Make the API request
             logger.info(f"Indexing {self._meta.model_name} to Meilisearch: {self}...")
-            response = requests.post(endpoint_url, headers=headers, json=[document], timeout=30)
-            response.raise_for_status()
-            
-            result = response.json()
-            logger.info(f"Successfully indexed {self._meta.model_name} to Meilisearch: {result}")
-            return result
-            
-        except requests.exceptions.RequestException as e:
-            logger.error(f"Failed to index {self._meta.model_name} to Meilisearch (HTTP error): {str(e)}")
-            return None
+            task = index.add_documents([document])
+
+            if sync:
+                completed_task = client.wait_for_task(task.task_uid)
+                logger.info(f"Successfully indexed {self._meta.model_name} to Meilisearch: {completed_task}")
+                return completed_task
+            else:
+                logger.info(f"Indexing {self._meta.model_name} to Meilisearch initiated: {task.task_uid}")
+                return {"task_uid": task.task_uid}
+
         except Exception as e:
             logger.error(f"Failed to index {self._meta.model_name} to Meilisearch: {str(e)}")
             return None
@@ -87,26 +90,15 @@ class SearchableMixin:
             if index_uid is None:
                 index_uid = getattr(self, 'SEARCH_INDEX_UID', self._meta.model_name + 's')
             
-            # Construct the endpoint URL
-            endpoint_url = f"{settings.MEILISEARCH_URL.rstrip('/')}/indexes/{index_uid}/documents/{self.id}"
-
-            # Prepare headers
-            headers = {
-                "Authorization": f'Bearer {settings.MEILISEARCH_API_KEY}'
-            }
+            client = self._get_meili_client()
+            index = client.index(index_uid)
             
             # Make the API request
             logger.info(f"Removing {self._meta.model_name} from Meilisearch: {self}...")
-            response = requests.delete(endpoint_url, headers=headers, timeout=30)
-            response.raise_for_status()
-            
-            result = response.json() if response.content else {"status": "deleted"}
+            result = index.delete_document(str(self.id))
             logger.info(f"Successfully removed {self._meta.model_name} from Meilisearch: {result}")
             return result
             
-        except requests.exceptions.RequestException as e:
-            logger.error(f"Failed to remove {self._meta.model_name} from Meilisearch (HTTP error): {str(e)}")
-            return None
         except Exception as e:
             logger.error(f"Failed to remove {self._meta.model_name} from Meilisearch: {str(e)}")
             return None
