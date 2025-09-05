@@ -25,6 +25,11 @@ api_v1_patterns = [
         "episodes/<int:pk>/", EpisodeViewSet.as_view({"get": "retrieve"}),
         name="api-v1-episodes-retrieve"
     ),
+    path(
+        "episodes/top-by-views/",
+        EpisodeViewSet.as_view({"get": "top_by_views"}),
+        name="api-v1-episodes-top-by-views"
+    ),
     
     # Podcasts endpoints
     path(
@@ -34,6 +39,11 @@ api_v1_patterns = [
     path(
         "podcasts/<int:pk>/", PodcastViewSet.as_view({"get": "retrieve"}),
         name="api-v1-podcasts-retrieve"
+    ),
+    path(
+        "podcasts/top-by-views/",
+        PodcastViewSet.as_view({"get": "top_by_views"}),
+        name="api-v1-podcasts-top-by-views"
     ),
     
     # Search endpoints

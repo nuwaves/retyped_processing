@@ -17,7 +17,9 @@ class UserAnalytics(models.Model):
         User,
         on_delete=models.CASCADE,
         related_name='analytics',
-        help_text="User who performed the action"
+        help_text="User who performed the action",
+        blank=True,
+        null=True
     )
     
     # Entity relationships (one of these will be set)
