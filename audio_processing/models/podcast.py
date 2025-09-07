@@ -8,6 +8,7 @@ logger = logging.getLogger(__name__)
 
 
 class Podcast(models.Model, SearchableMixin):
+    slug = models.SlugField(max_length=255, unique=True, blank=True, help_text="Unique slug for podcast")
     # Search configuration
     SEARCH_INDEX_UID = 'podcasts'
     
@@ -54,6 +55,19 @@ class Podcast(models.Model, SearchableMixin):
 
     def __str__(self):
         return self.name
+
+    def save(self, *args, **kwargs):
+        from django.utils.text import slugify
+        if not self.slug and self.name:
+            base_slug = slugify(self.name)
+            slug = base_slug
+            # Ensure uniqueness
+            counter = 1
+            while Podcast.objects.filter(slug=slug).exclude(pk=self.pk).exists():
+                slug = f"{base_slug}-{counter}"
+                counter += 1
+            self.slug = slug
+        super().save(*args, **kwargs)
     
     def fetch_feed(self):
         """

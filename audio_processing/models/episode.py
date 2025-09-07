@@ -16,10 +16,12 @@ from .quotable_mixin import QuotableMixin
 import boto3
 import time
 import uuid
+from django.utils.text import slugify
 logger = logging.getLogger(__name__)
 transcribe_client = boto3.client('transcribe', region_name='us-east-1')
 
 class Episode(models.Model, GroqMixin, AwsMixin, TaggableMixin, SummarizableMixin, SearchableMixin, QuotableMixin):
+    slug = models.SlugField(max_length=512, unique=True, blank=True, help_text="Unique slug for episode, prefixed with podcast slug")
     # Search configuration
     SEARCH_INDEX_UID = 'episodes'
     # Relationship
@@ -71,6 +73,23 @@ class Episode(models.Model, GroqMixin, AwsMixin, TaggableMixin, SummarizableMixi
             return f"{self.podcast.name} - Episode"
         else:
             return f"Episode {self.id or 'New'}"
+
+    def save(self, *args, **kwargs):
+        # Clean audio URL
+        if self.raw_audio_url:
+            self.raw_audio_url = self.clean_url(self.raw_audio_url)
+        # Generate slug if not set
+        if not self.slug and self.title and self.podcast and self.podcast.slug:
+            base_slug = f"{self.podcast.slug}-{slugify(self.title)}"
+            slug = base_slug
+            counter = 1
+            while Episode.objects.filter(slug=slug).exclude(pk=self.pk).exists():
+                slug = f"{base_slug}-{counter}"
+                counter += 1
+            self.slug = slug
+        if self.raw_audio_url:
+            self.raw_audio_url = self.clean_url(self.raw_audio_url)
+        super().save(*args, **kwargs)
     
     @property
     def public_transcript_allowed(self):
@@ -220,14 +239,6 @@ class Episode(models.Model, GroqMixin, AwsMixin, TaggableMixin, SummarizableMixi
             logger.error(f"Failed to upload audio to S3: {str(e)}")
             return None
 
-    def save(self, *args, **kwargs):
-        """
-        Override save to clean URL parameters from raw_audio_url.
-        """
-        if self.raw_audio_url:
-            self.raw_audio_url = self.clean_url(self.raw_audio_url)
-        super().save(*args, **kwargs)
-    
     def generate_transcript(self, method='groq'):
         """
         Generate transcript using the specified method or auto-detect best available.
