@@ -113,3 +113,34 @@ def process_complete_workflow(episode_id):
     except Exception as e:
         logger.error(f"Error in complete workflow for episode ID {episode_id}: {str(e)}")
         return {"success": False, "error": str(e)}
+    
+@shared_task
+def extract_entities(episode_id):
+    """
+    Celery task to extract entities from an episode transcript.
+    """
+    logger.info(f"Extracting entities for episode ID: {episode_id}")
+
+    try:
+        episode = Episode.objects.get(pk=episode_id)
+
+        # Extract entities using model method (from EntityMixin)
+        entities = episode.extract_entities()
+
+        if entities:
+            logger.info(f"Extracted {len(entities)} entities from episode: {episode.title}")
+            return {
+                "success": True,
+                "entities_extracted": len(entities),
+                "entity_ids": [entity.id for entity in entities]
+            }
+        else:
+            logger.warning(f"No entities extracted for episode: {episode.title}")
+            return {"success": True, "entities_extracted": 0, "entity_ids": []}
+
+    except Episode.DoesNotExist:
+        logger.error(f"Episode with ID {episode_id} not found")
+        return {"success": False, "error": "Episode not found"}
+    except Exception as e:
+        logger.error(f"Error extracting entities for episode ID {episode_id}: {str(e)}")
+        return {"success": False, "error": str(e)}

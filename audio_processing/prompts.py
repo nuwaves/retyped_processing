@@ -1,3 +1,12 @@
+def get_entity_extraction_prompt(text):
+    """
+    Generate a prompt for extracting named entities from text.
+    """
+    return (
+        "Extract named entities (Person, Organization, Product) from the following text. "
+        "Return a JSON array of objects with 'name' and 'type' (PERSON, ORGANIZATION, PRODUCT). "
+        "Example: [{\"name\": \"John Doe\", \"type\": \"PERSON\"}, {\"name\": \"Acme Corp\", \"type\": \"ORGANIZATION\"}].\n\nText:\n" + text
+    )
 
 
 def get_tag_suggestion_prompt(tag_list, transcript_excerpt):

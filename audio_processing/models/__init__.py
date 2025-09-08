@@ -8,6 +8,7 @@ from .summarizable_mixin import SummarizableMixin
 from .searchable_mixin import SearchableMixin
 from .quotable_mixin import QuotableMixin
 from .user_analytics import UserAnalytics
+from .entity import Entity
 
 __all__ = [
     'Episode', 
@@ -20,5 +21,6 @@ __all__ = [
     'SearchableMixin',
     'QuotableMixin',
     'UserAnalytics',
-    'SummarizableMixin'
+    'SummarizableMixin',
+    'Entity'
 ]
