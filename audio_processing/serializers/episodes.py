@@ -17,7 +17,7 @@ class EpisodeListSerializer(EpisodeSerializer):
     class Meta:
         model = Episode
         fields = [
-            "id", "tags", "title", "subtitle",
+            "id", "slug", "tags", "title", "subtitle",
             "description", "summary", "release_date",
             "created_at", "updated_at", "podcast"
         ]

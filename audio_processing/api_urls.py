@@ -18,6 +18,11 @@ api_v1_patterns = [
     
     # Episodes endpoints
     path(
+        "episodes/top-by-views/",
+        EpisodeViewSet.as_view({"get": "top_by_views"}),
+        name="api-v1-episodes-top-by-views"
+    ),
+    path(
         "episodes/", EpisodeViewSet.as_view({"get": "list"}),
         name="api-v1-episodes-list"
     ),
@@ -26,12 +31,17 @@ api_v1_patterns = [
         name="api-v1-episodes-retrieve"
     ),
     path(
-        "episodes/top-by-views/",
-        EpisodeViewSet.as_view({"get": "top_by_views"}),
-        name="api-v1-episodes-top-by-views"
+        "episodes/<slug:slug>/",
+        EpisodeViewSet.as_view({"get": "retrieve"}),
+        name="api-v1-episodes-retrieve-slug"
     ),
     
     # Podcasts endpoints
+    path(
+        "podcasts/top-by-views/",
+        PodcastViewSet.as_view({"get": "top_by_views"}),
+        name="api-v1-podcasts-top-by-views"
+    ),
     path(
         "podcasts/", PodcastViewSet.as_view({"get": "list"}),
         name="api-v1-podcasts-list"
@@ -41,9 +51,9 @@ api_v1_patterns = [
         name="api-v1-podcasts-retrieve"
     ),
     path(
-        "podcasts/top-by-views/",
-        PodcastViewSet.as_view({"get": "top_by_views"}),
-        name="api-v1-podcasts-top-by-views"
+        "podcasts/<slug:slug>/",
+        PodcastViewSet.as_view({"get": "retrieve"}),
+        name="api-v1-podcasts-retrieve-slug"
     ),
     
     # Search endpoints

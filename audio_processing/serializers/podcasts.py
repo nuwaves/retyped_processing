@@ -15,6 +15,6 @@ class PodcastListSerializer(PodcastSerializer):
     class Meta:
         model = Podcast
         fields = [
-            "id", "name", "url", "description",
+            "id", "slug", "name", "url", "description",
             "tags", "created_at", "updated_at",
         ]

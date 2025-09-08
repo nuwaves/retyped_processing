@@ -49,7 +49,7 @@ class EpisodeViewSetTest(TestCase):
 
     def test_retrieve_episode(self):
         """Test retrieving a single episode."""
-        url = reverse('v1:api-v1-episodes-retrieve', kwargs={'pk': self.episode.pk})
+        url = reverse('v1:api-v1-episodes-retrieve-slug', kwargs={'slug': self.episode.slug})
         response = self.client.get(url)
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
@@ -73,7 +73,7 @@ class EpisodeViewSetTest(TestCase):
         """Test that unauthenticated requests can retrieve an episode."""
         self.client.force_authenticate(user=None)
 
-        url = reverse('v1:api-v1-episodes-retrieve', kwargs={'pk': self.episode.pk})
+        url = reverse('v1:api-v1-episodes-retrieve-slug', kwargs={'slug': self.episode.slug})
         response = self.client.get(url)
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)

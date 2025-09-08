@@ -6,9 +6,9 @@ from audio_processing.tasks.podcast_tasks import process_podcast_by_id
 
 @admin.register(Podcast)
 class PodcastAdmin(ImportExportModelAdmin):
-    list_display = ('name', 'author', 'language', 'is_active', 'last_processed', 'episode_count', 'itunes_explicit')
+    list_display = ('name', 'slug', 'author', 'language', 'is_active', 'last_processed', 'episode_count', 'itunes_explicit')
     list_filter = ('is_active', 'language', 'itunes_explicit', 'itunes_type', 'created_at', 'last_processed', 'tags')
-    search_fields = ('name', 'url', 'description', 'author', 'subtitle')
+    search_fields = ('name', 'slug', 'url', 'description', 'author', 'subtitle')
     readonly_fields = ('created_at', 'updated_at', 'last_processed', 'pub_date', 'last_build_date')
     list_editable = ('is_active',)
     
@@ -18,7 +18,7 @@ class PodcastAdmin(ImportExportModelAdmin):
 
     fieldsets = (
         ('Basic Information', {
-            'fields': ('name', 'url', 'description', 'is_active', 'tags')
+            'fields': ('name', 'slug', 'url', 'description', 'is_active', 'tags')
         }),
         ('Podcast Metadata', {
             'fields': ('subtitle', 'summary', 'author', 'language', 'copyright'),
@@ -93,9 +93,9 @@ class PodcastAdmin(ImportExportModelAdmin):
 
 @admin.register(Episode)
 class EpisodeAdmin(admin.ModelAdmin):
-    list_display = ('title', 'truncated_url', 'podcast', 'episode_number', 'season_number', 'duration_display', 'has_transcript', 'has_script', 'has_summary', 'release_date', 'itunes_explicit')
+    list_display = ('title', 'slug', 'truncated_url', 'podcast', 'episode_number', 'season_number', 'duration_display', 'has_transcript', 'has_script', 'has_summary', 'release_date', 'itunes_explicit')
     list_filter = ('podcast', 'episode_type', 'itunes_explicit', 'created_at', 'updated_at', 'tags', 'release_date', 'season_number')
-    search_fields = ('title', 'description', 'raw_audio_url', 'transcript', 'script_transcript', 'podcast__name')
+    search_fields = ('title', 'slug', 'description', 'raw_audio_url', 'transcript', 'script_transcript', 'podcast__name')
     readonly_fields = ('created_at', 'updated_at', 'audio_length', 'pub_date', 'error')
     raw_id_fields = ('podcast',)
 
@@ -134,7 +134,7 @@ class EpisodeAdmin(admin.ModelAdmin):
     
     fieldsets = (
         ('Basic Information', {
-            'fields': ('podcast', 'title', 'subtitle', 'description', 'tags')
+            'fields': ('podcast', 'title', 'slug', 'subtitle', 'description', 'tags')
         }),
         ('Audio Information', {
             'fields': ('raw_audio_url', 'audio_type', 'audio_length', 'duration'),

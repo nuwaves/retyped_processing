@@ -18,6 +18,7 @@ class EpisodeViewSet(
         "podcast__name",
         "title",
     ]
+    lookup_field = 'slug'
 
     def top_by_views(self, request):
         timeframe = request.query_params.get('timeframe', 'all')

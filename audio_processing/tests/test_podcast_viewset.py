@@ -45,3 +45,12 @@ class PodcastViewSetAPITest(TestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         data = response.json()
         self.assertEqual(data, [])
+
+    def test_retrieve_podcast_by_slug(self):
+        podcast = self.podcast1
+        url = reverse('v1:api-v1-podcasts-retrieve-slug', kwargs={'slug': podcast.slug})
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        data = response.json()
+        self.assertEqual(data['name'], podcast.name)
+        self.assertEqual(data['slug'], podcast.slug)

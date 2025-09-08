@@ -17,6 +17,7 @@ class PodcastViewSet(
         permissions.IsAuthenticatedOrReadOnly,
     ]
     filter_backends = [filters.SearchFilter]
+    lookup_field = 'slug'
 
     def get_serializer_class(self):
         if self.action in ("list",):
