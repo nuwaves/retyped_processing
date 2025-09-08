@@ -146,7 +146,7 @@ class GroqMixin():
         
         try:
             # Get the prompt from prompts file
-            prompt = get_speaker_transcript_prompt(self.transcript)
+            prompt = get_speaker_transcript_prompt(self)
             
             # Use the generic completion method
             script_content = self.get_groq_completion(

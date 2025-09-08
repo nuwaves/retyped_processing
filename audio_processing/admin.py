@@ -526,7 +526,7 @@ class QuoteAdmin(admin.ModelAdmin):
     
     fieldsets = (
         ('Quote Content', {
-            'fields': ('episode', 'text', 'speaker', 'context')
+            'fields': ('episode', 'text', 'speaker')
         }),
         ('Metadata', {
             'fields': ('timestamp',)

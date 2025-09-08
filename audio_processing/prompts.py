@@ -20,7 +20,7 @@ Consider the topic, genre, subject matter, and themes discussed in the podcast.
 Again, you should respond only with a JSON array of tag IDs.
 Do not include any additional text or explanations."""
 
-def get_speaker_transcript_prompt(transcript_excerpt):
+def get_speaker_transcript_prompt(episode):
     """
     Generate a prompt for converting a transcript into a speaker-formatted script.
     
@@ -30,10 +30,12 @@ def get_speaker_transcript_prompt(transcript_excerpt):
     Returns:
         str: Formatted prompt for speaker identification and script formatting
     """
+    transcript = episode.transcript
+
     return f"""You are an AI assistant that converts podcast transcripts into properly formatted scripts with speaker identification.
 
 Original transcript:
-{transcript_excerpt}
+{transcript}
 
 Please rewrite this transcript as a script format with identified speakers. Follow these guidelines:
 
@@ -53,7 +55,14 @@ Example format:
 Ezra Klein: Welcome to today's show. I'm Ezra Klein here with my guest John Doe.
 John Doe: Thanks for having me on the show.
 Ezra Klein: Here's my first question for you...
-[Discussion continues...]"""
+[Discussion continues...]
+
+Please use this additional information to intuit which speakers are talking at any point:
+
+Podcast description: {episode.podcast.description}
+Podcast summary: {episode.podcast.summary}
+Episode description: {episode.description}
+"""
 
 def get_episode_summary_prompt(transcript):
     """

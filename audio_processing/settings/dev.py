@@ -57,3 +57,5 @@ INSTALLED_APPS += [
 # INTERNAL_IPS = [
 #     '127.0.0.1',
 # ]
+
+CELERY_QUEUE_NAME_PREFIX = 'dev-'
