@@ -2,8 +2,14 @@ import logging
 from django.conf import settings
 import requests
 import re
-from ..prompts import get_tag_suggestion_prompt, get_speaker_transcript_prompt
+from ...prompts import get_tag_suggestion_prompt, get_speaker_transcript_prompt
 from constance import config
+import os
+import tempfile
+import os
+import tempfile
+from audio_processing.models.mixins.audio_chunking import transcribe_audio_in_chunks
+from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
@@ -70,68 +76,55 @@ class GroqMixin():
         except (KeyError, IndexError) as e:
             logger.error(f"Unexpected Groq API response format: {str(e)}")
             return None
-        except Exception as e:
-            logger.error(f"Groq API call failed: {str(e)}")
-            return None
 
-    def _call_groq_for_tag_suggestions(self, tag_list):
-        """Call Groq API to get tag suggestions based on transcript."""
-        # Get the prompt from prompts file
-        prompt = get_tag_suggestion_prompt(tag_list, self.transcript[:2000])
-        
-        # Use the generic completion method
-        return self.get_groq_completion(
-            prompt=prompt,
-            model=getattr(config, 'TAG_MODEL', None),
-            max_tokens=100,
-            temperature=0.3
-        )
-        
-    
     def get_transcript_from_groq(self):
         """
-        Get transcript from Groq Whisper API.
-        
+        Get transcript from Groq Whisper API. If file >100MB, use AudioChunkingMixin to chunk, transcribe, and stitch together.
         Returns:
             str: The transcript text or None if failed
         """
-        try:
-            url = "https://api.groq.com/openai/v1/audio/transcriptions"
-            api_key = getattr(settings, 'GROQ_API_KEY', '')
-            
-            if not api_key:
-                logger.error("GROQ_API_KEY not configured")
-                return None
-            
-            headers = {"Authorization": f"Bearer {api_key}"}
-            clean_url = self.clean_url(self.raw_audio_url)
-            files = {
-                "url": (None, clean_url),
-                "model": (None, "whisper-large-v3"),
-                "language": (None, "en"),
-                "response_format": (None, "json"),
-            }
-            
-            response = requests.post(url, headers=headers, files=files)
-            response.raise_for_status()
-            
-            transcript = response.json().get("text", "")
-            
-            if transcript:
-                self.transcript = transcript
-                self.save()
-                logger.info(f"Transcript updated for: {self.raw_audio_url}")
-                return transcript
-            else:
-                logger.warning(f"No transcript returned for: {self.raw_audio_url}")
-                return None
-         
-        except requests.exceptions.RequestException as e:
-            logger.error(f"API request failed for {self.raw_audio_url}: {str(e)} and response was: {response.json() if 'response' in locals() else 'N/A'}")
+        url = "https://api.groq.com/openai/v1/audio/transcriptions"
+        api_key = getattr(settings, 'GROQ_API_KEY', '')
+        if not api_key:
+            logger.error("GROQ_API_KEY not configured")
             return None
-        except Exception as e:
-            logger.error(f"Failed to process transcript for {self.raw_audio_url}: {str(e)} and response was: {response.json() if 'response' in locals() else 'N/A'}")
+        headers = {"Authorization": f"Bearer {api_key}"}
+        clean_url = self.clean_url(self.raw_audio_url)
+        # Download the file locally to check size
+        with requests.get(clean_url, stream=True, timeout=300) as r:
+            r.raise_for_status()
+            with tempfile.NamedTemporaryFile(delete=False) as tmp:
+                for chunk in r.iter_content(chunk_size=8192):
+                    tmp.write(chunk)
+                tmp_path = tmp.name
+        file_size = os.path.getsize(tmp_path)
+        max_chunk_size = 100 * 1024 * 1024  # 100MB
+        if file_size > max_chunk_size:
+            # Use the mixin to chunk and transcribe
+            result = transcribe_audio_in_chunks(Path(tmp_path))
+            transcript = result.get("text", "")
+        else:
+            # Single file, send as usual
+            with open(tmp_path, 'rb') as f:
+                files = {
+                    "file": (os.path.basename(tmp_path), f),
+                    "model": (None, "whisper-large-v3"),
+                    "language": (None, "en"),
+                    "response_format": (None, "json"),
+                }
+                response = requests.post(url, headers=headers, files=files)
+                response.raise_for_status()
+                transcript = response.json().get("text", "")
+        os.remove(tmp_path)
+        if transcript.strip():
+            self.transcript = transcript
+            self.save()
+            logger.info(f"Transcript updated for: {self.raw_audio_url}")
+            return transcript
+        else:
+            logger.warning(f"No transcript returned for: {self.raw_audio_url}")
             return None
+
     
     def generate_speaker_script(self):
         """

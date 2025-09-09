@@ -7,8 +7,8 @@ import requests
 import uuid
 import time
 import mimetypes
-from .groq_mixin import GroqMixin
-from .aws_mixin import AwsMixin
+from .mixins.groq_mixin import GroqMixin
+from .mixins.aws_mixin import AwsMixin
 from .taggable_mixin import TaggableMixin
 from .summarizable_mixin import SummarizableMixin
 from .searchable_mixin import SearchableMixin
