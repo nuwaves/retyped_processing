@@ -293,56 +293,51 @@ class Episode(models.Model, GroqMixin, AwsMixin, TaggableMixin, SummarizableMixi
             'quotes_extracted': 0,
             'errors': []
         }
-        try:
-            # Step 1: Generate transcript if needed
-            if not self.transcript:
-                transcript = self.generate_transcript()
-                if transcript:
-                    results['transcript_generated'] = True
-                    logger.info(f"Transcript generated for: {self.raw_audio_url}")
-                else:
-                    results['errors'].append("Failed to generate transcript")
-                    return results
-            # Step 2: Apply tags
-            applied_tags = self.suggest_and_apply_tags()
-            if applied_tags:
-                results['tags_applied'] = len(applied_tags)
-                logger.info(f"Applied {len(applied_tags)} tags to: {self.raw_audio_url}")
+        # Step 1: Generate transcript if needed
+        if not self.transcript:
+            transcript = self.generate_transcript()
+            if transcript:
+                results['transcript_generated'] = True
+                logger.info(f"Transcript generated for: {self.raw_audio_url}")
             else:
-                results['errors'].append("Failed to apply tags")
-            # Step 3: Generate speaker script
-            script = self.generate_speaker_script()
-            if script:
-                results['script_generated'] = True
-                logger.info(f"Speaker script generated for: {self.raw_audio_url}")
-            else:
-                results['errors'].append("Failed to generate speaker script")
-            # Step 4: Generate episode summary
-            summary = self.generate_summary()
-            if summary:
-                results['summary_generated'] = True
-                logger.info(f"Episode summary generated for: {self.raw_audio_url}")
-            else:
-                results['errors'].append("Failed to generate episode summary")
-            # Step 5: Extract entities
-            entities = self.extract_entities()
-            if entities:
-                results['entities_extracted'] = len(entities)
-                logger.info(f"Extracted {len(entities)} entities from: {self.raw_audio_url}")
-            else:
-                results['errors'].append("Failed to extract entities")
-            # Step 6: Extract key quotes
-            quotes = self.extract_quotes()
-            if quotes:
-                results['quotes_extracted'] = len(quotes)
-                logger.info(f"Extracted {len(quotes)} quotes from: {self.raw_audio_url}")
-            else:
-                results['errors'].append("Failed to extract quotes")
-            return results
-        except Exception as e:
-            logger.error(f"Error in complete workflow for {self.raw_audio_url}: {str(e)}")
-            results['errors'].append(f"Workflow error: {str(e)}")
-            return results
+                results['errors'].append("Failed to generate transcript")
+                return results
+        # Step 2: Apply tags
+        applied_tags = self.suggest_and_apply_tags()
+        if applied_tags:
+            results['tags_applied'] = len(applied_tags)
+            logger.info(f"Applied {len(applied_tags)} tags to: {self.raw_audio_url}")
+        else:
+            results['errors'].append("Failed to apply tags")
+        # Step 3: Generate speaker script
+        script = self.generate_speaker_script()
+        if script:
+            results['script_generated'] = True
+            logger.info(f"Speaker script generated for: {self.raw_audio_url}")
+        else:
+            results['errors'].append("Failed to generate speaker script")
+        # Step 4: Generate episode summary
+        summary = self.generate_summary()
+        if summary:
+            results['summary_generated'] = True
+            logger.info(f"Episode summary generated for: {self.raw_audio_url}")
+        else:
+            results['errors'].append("Failed to generate episode summary")
+        # Step 5: Extract entities
+        entities = self.extract_entities()
+        if entities:
+            results['entities_extracted'] = len(entities)
+            logger.info(f"Extracted {len(entities)} entities from: {self.raw_audio_url}")
+        else:
+            results['errors'].append("Failed to extract entities")
+        # Step 6: Extract key quotes
+        quotes = self.extract_quotes()
+        if quotes:
+            results['quotes_extracted'] = len(quotes)
+            logger.info(f"Extracted {len(quotes)} quotes from: {self.raw_audio_url}")
+        else:
+            results['errors'].append("Failed to extract quotes")
+        return results
     
     def get_search_document(self):
         """
