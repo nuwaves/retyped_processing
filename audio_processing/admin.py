@@ -1,5 +1,10 @@
 from django.contrib import admin
 from .models import Episode, Podcast, Tag, PodcastOwner, Quote, Entity
+from django.contrib.admin import SimpleListFilter
+from audio_processing.tasks.episode_tasks import add_transcript, suggest_and_apply_tags, process_complete_workflow, extract_quotes
+from import_export.admin import ImportExportModelAdmin
+from audio_processing.tasks.podcast_tasks import process_podcast_by_id
+
 @admin.register(Entity)
 class EntityAdmin(admin.ModelAdmin):
     list_display = ('name', 'type', 'created_at', 'updated_at')
@@ -15,9 +20,6 @@ class EntityAdmin(admin.ModelAdmin):
             'classes': ('collapse',)
         }),
     )
-from audio_processing.tasks.episode_tasks import add_transcript, suggest_and_apply_tags, process_complete_workflow, extract_quotes
-from import_export.admin import ImportExportModelAdmin
-from audio_processing.tasks.podcast_tasks import process_podcast_by_id
 
 @admin.register(Podcast)
 class PodcastAdmin(ImportExportModelAdmin):
@@ -109,7 +111,26 @@ class PodcastAdmin(ImportExportModelAdmin):
 @admin.register(Episode)
 class EpisodeAdmin(admin.ModelAdmin):
     list_display = ('title', 'slug', 'truncated_url', 'podcast', 'episode_number', 'season_number', 'duration_display', 'has_transcript', 'has_script', 'has_summary', 'release_date', 'itunes_explicit')
-    list_filter = ('podcast', 'episode_type', 'itunes_explicit', 'created_at', 'updated_at', 'tags', 'release_date', 'season_number')
+
+    class HasTranscriptFilter(SimpleListFilter):
+        title = 'Has Transcript'
+        parameter_name = 'has_transcript'
+
+        def lookups(self, request, model_admin):
+            return (
+                ('yes', 'Yes'),
+                ('no', 'No'),
+            )
+
+        def queryset(self, request, queryset):
+            if self.value() == 'yes':
+                return queryset.exclude(transcript__isnull=True).exclude(transcript='')
+            if self.value() == 'no':
+                return queryset.filter(models.Q(transcript__isnull=True) | models.Q(transcript=''))
+            return queryset
+
+        # ...existing code...
+    list_filter = ('podcast', 'episode_type', 'itunes_explicit', 'created_at', 'updated_at', 'tags', 'release_date', HasTranscriptFilter)
     search_fields = ('title', 'slug', 'description', 'raw_audio_url', 'transcript', 'script_transcript', 'podcast__name')
     readonly_fields = ('created_at', 'updated_at', 'audio_length', 'pub_date', 'error')
     raw_id_fields = ('podcast',)
