@@ -4,6 +4,7 @@ from django.contrib.admin import SimpleListFilter
 from audio_processing.tasks.episode_tasks import add_transcript, suggest_and_apply_tags, process_complete_workflow, extract_quotes
 from import_export.admin import ImportExportModelAdmin
 from audio_processing.tasks.podcast_tasks import process_podcast_by_id
+from django.db import models
 
 @admin.register(Entity)
 class EntityAdmin(admin.ModelAdmin):
