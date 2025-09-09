@@ -129,7 +129,6 @@ class EpisodeAdmin(admin.ModelAdmin):
                 return queryset.filter(models.Q(transcript__isnull=True) | models.Q(transcript=''))
             return queryset
 
-        # ...existing code...
     list_filter = ('podcast', 'episode_type', 'itunes_explicit', 'created_at', 'updated_at', 'tags', 'release_date', HasTranscriptFilter)
     search_fields = ('title', 'slug', 'description', 'raw_audio_url', 'transcript', 'script_transcript', 'podcast__name')
     readonly_fields = ('created_at', 'updated_at', 'audio_length', 'pub_date', 'error')
