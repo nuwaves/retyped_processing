@@ -5,7 +5,7 @@ def get_entity_extraction_prompt(text):
     Generate a prompt for extracting named entities from text.
     """
     return (
-        "Extract named entities (Person, Organization, Product) from the following text. "
+        "Extract named entities (Person, Organization, Product) from the following text. Attempt to give a complete common first name and last name for - for example 'Joe Biden' and not 'Biden' but 'Bill Gates' and not 'William Gates'"
         "Return a JSON array of objects with 'name' and 'type' (PERSON, ORGANIZATION, PRODUCT). Return only the JSON. Your entire response should be a valid JSON object."
         "Example: [{\"name\": \"John Doe\", \"type\": \"PERSON\"}, {\"name\": \"Acme Corp\", \"type\": \"ORGANIZATION\"}].\n\nText:\n" + text
     )

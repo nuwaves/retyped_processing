@@ -24,8 +24,8 @@ class EntityAdmin(admin.ModelAdmin):
 
 @admin.register(Podcast)
 class PodcastAdmin(ImportExportModelAdmin):
-    list_display = ('name', 'slug', 'author', 'language', 'is_active', 'last_processed', 'episode_count', 'itunes_explicit')
-    list_filter = ('is_active', 'language', 'itunes_explicit', 'itunes_type', 'created_at', 'last_processed', 'tags')
+    list_display = ('name', 'slug', 'author', 'language', 'is_active', 'last_processed', 'episode_count')
+    list_filter = ('is_active', 'language', 'itunes_type', 'created_at', 'last_processed', 'tags')
     search_fields = ('name', 'slug', 'url', 'description', 'author', 'subtitle')
     readonly_fields = ('created_at', 'updated_at', 'last_processed', 'pub_date', 'last_build_date')
     list_editable = ('is_active',)
@@ -109,9 +109,26 @@ class PodcastAdmin(ImportExportModelAdmin):
     index_to_search.short_description = "Index selected podcasts to Meilisearch"
 
 
+class HasErrorFilter(SimpleListFilter):
+    title = 'Has Error'
+    parameter_name = 'has_error'
+
+    def lookups(self, request, model_admin):
+        return (
+            ('yes', 'Yes'),
+            ('no', 'No'),
+        )
+
+    def queryset(self, request, queryset):
+        if self.value() == 'yes':
+            return queryset.exclude(error__isnull=True).exclude(error='')
+        if self.value() == 'no':
+            return queryset.filter(models.Q(error__isnull=True) | models.Q(error=''))
+        return queryset
+
 @admin.register(Episode)
 class EpisodeAdmin(admin.ModelAdmin):
-    list_display = ('title', 'slug', 'truncated_url', 'podcast', 'episode_number', 'season_number', 'duration_display', 'has_transcript', 'has_script', 'has_summary', 'release_date', 'itunes_explicit')
+    list_display = ('title', 'slug', 'truncated_url', 'podcast', 'episode_number', 'season_number', 'duration_display', 'has_transcript', 'has_script', 'has_summary', 'release_date', 'error')
 
     class HasTranscriptFilter(SimpleListFilter):
         title = 'Has Transcript'
@@ -130,7 +147,7 @@ class EpisodeAdmin(admin.ModelAdmin):
                 return queryset.filter(models.Q(transcript__isnull=True) | models.Q(transcript=''))
             return queryset
 
-    list_filter = ('podcast', 'episode_type', 'itunes_explicit', 'created_at', 'updated_at', 'tags', 'release_date', HasTranscriptFilter)
+    list_filter = ('podcast', 'episode_type', 'itunes_explicit', 'created_at', 'updated_at', 'tags', 'release_date', HasTranscriptFilter, HasErrorFilter)
     search_fields = ('title', 'slug', 'description', 'raw_audio_url', 'transcript', 'script_transcript', 'podcast__name')
     readonly_fields = ('created_at', 'updated_at', 'audio_length', 'pub_date', 'error')
     raw_id_fields = ('podcast',)
