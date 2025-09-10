@@ -1,11 +1,13 @@
 import meilisearch
 
 from ..models import Podcast, Episode, Tag
+from ..models.entity import Entity
 from ..serializers import (
     PodcastListSerializer,
     EpisodeSerializer,
     TagSerializer
 )
+from ..serializers.entities import EntitySerializer
 from django.conf import settings
 from django.db.models import Q
 from rest_framework import viewsets, status
@@ -16,6 +18,7 @@ from rest_framework.permissions import IsAuthenticated
 client = meilisearch.Client(settings.MEILISEARCH_URL, settings.MEILISEARCH_API_KEY)
 episodes_index = client.index('episodes')
 podcasts_index = client.index('podcasts')
+entities_index = client.index('entities')
 
 
 class SearchViewSet(viewsets.GenericViewSet):
@@ -28,11 +31,11 @@ class SearchViewSet(viewsets.GenericViewSet):
     @action(detail=False, methods=['get'], url_path='search')
     def search(self, request):
         """
-        Search across podcasts, episodes, and tags.
+        Search across podcasts, episodes, tags, and entities.
         
         Query Parameters:
         - q: Search query (required)
-        - type: Content type to search ('podcast', 'episode', 'tag', 'all') - default: 'all'
+        - type: Content type to search ('podcast', 'episode', 'tag', 'entity', 'all') - default: 'all'
         """
         query = request.query_params.get('q', '')
         search_type = request.query_params.get('type', 'all')
@@ -44,22 +47,20 @@ class SearchViewSet(viewsets.GenericViewSet):
         search_results = {}
         if search_type in ['episode', 'all']:
             episode_results = episodes_index.search(query)
-            
-            # Extract episode IDs from MeiliSearch results
             episode_ids = [hit['id'] for hit in episode_results.get('hits', [])]
-            
-            # Fetch episodes from database and serialize them
             episodes = Episode.objects.filter(id__in=episode_ids)
             search_results['episodes'] = [EpisodeSerializer(episode).data for episode in episodes]
 
         if search_type in ['podcast', 'all']:
             podcast_results = podcasts_index.search(query)
-
-            # Extract podcast IDs from MeiliSearch results
             podcast_ids = [hit['id'] for hit in podcast_results.get('hits', [])]
-
-            # Fetch podcasts from database and serialize them
             podcasts = Podcast.objects.filter(id__in=podcast_ids)
             search_results['podcasts'] = [PodcastListSerializer(podcast).data for podcast in podcasts]
+
+        if search_type in ['entity', 'all']:
+            entity_results = entities_index.search(query)
+            entity_ids = [hit['id'] for hit in entity_results.get('hits', [])]
+            entities = Entity.objects.filter(id__in=entity_ids)
+            search_results['entities'] = [EntitySerializer(entity).data for entity in entities]
 
         return Response(search_results)

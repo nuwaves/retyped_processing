@@ -1,11 +1,25 @@
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 from audio_processing.models.mixins.groq_mixin import GroqMixin
+from audio_processing.models.searchable_mixin import SearchableMixin
 import json
 from audio_processing.prompts import get_entity_extraction_prompt
 import re
 
-class Entity(models.Model, GroqMixin):
+class Entity(models.Model, GroqMixin, SearchableMixin):
+    SEARCH_INDEX_UID = "entities"
+
+    def get_search_document(self):
+        """
+        Returns a dictionary representing the entity for search indexing.
+        """
+        return {
+            "id": self.id,
+            "name": self.name,
+            "type": self.type,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+        }
     class EntityType(models.TextChoices):
         PERSON = 'PERSON', _('Person')
         ORGANIZATION = 'ORGANIZATION', _('Organization')
