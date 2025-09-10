@@ -211,8 +211,8 @@ SOCIAL_AUTH_FACEBOOK_SCOPE = ['email']
 #SOCIAL_AUTH_FACEBOOK_PROFILE_EXTRA_PARAMS = {}
 
 # Twitter configuration
-SOCIAL_AUTH_TWITTER_OAUTH2_KEY = os.environ.get('SA_TWITTER_API_V2_KEY', '')
-SOCIAL_AUTH_TWITTER_OAUTH2_SECRET = os.environ.get('SA_TWITTER_API_V2_SECRET', '')
+SOCIAL_AUTH_TWITTER_KEY = os.environ.get('SA_TWITTER_API_KEY', '')
+SOCIAL_AUTH_TWITTER_SECRET = os.environ.get('SA_TWITTER_API_SECRET', '')
 
 # Instagram Configuration
 # Instagram configuration
@@ -227,7 +227,6 @@ AUTHENTICATION_BACKENDS = (
     'social_core.backends.facebook.FacebookAppOAuth2',
     'social_core.backends.facebook.FacebookOAuth2',
     'social_core.backends.twitter.TwitterOAuth',
-    'social_core.backends.twitter_oauth2.TwitterOAuth2',
     'drf_social_oauth2.backends.DjangoOAuth2',
     'django.contrib.auth.backends.ModelBackend',
 )
