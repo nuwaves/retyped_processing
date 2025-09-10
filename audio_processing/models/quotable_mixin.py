@@ -2,6 +2,8 @@ import logging
 import json
 import re
 
+from audio_processing.prompts import get_quote_extraction_prompt
+
 logger = logging.getLogger(__name__)
 
 
@@ -26,10 +28,7 @@ class QuotableMixin():
             logger.warning(f"No transcript available for quote extraction: {getattr(self, 'raw_audio_url', 'Unknown')}")
             return []
         
-        try:
-            # Import prompt function
-            from audio_processing.prompts import get_quote_extraction_prompt
-            
+        try:            
             # Prepare the prompt for quote extraction
             # Limit transcript length to avoid token limits
             transcript_excerpt = self.transcript[:8000]
@@ -39,7 +38,6 @@ class QuotableMixin():
             if not response:
                 logger.error(f"Failed to get LLM response for quote extraction: {getattr(self, 'raw_audio_url', 'Unknown')}")
                 return []
-            # Remove code block markers and leading/trailing whitespace
             cleaned_response = response
             # Remove everything before the first code block (if present)
             code_block_match = re.search(r'```json(.*?)```', cleaned_response, re.DOTALL | re.IGNORECASE)

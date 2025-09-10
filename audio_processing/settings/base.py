@@ -114,6 +114,7 @@ AWS_TRANSCRIBE_OUTPUT_BUCKET = os.environ.get("AWS_TRANSCRIBE_OUTPUT_BUCKET", No
 CELERY_BROKER_URL = "sqs://{aws_access_key}:{aws_secret_key}@".format(
     aws_access_key=AWS_ACCESS_KEY_ID, aws_secret_key=AWS_SECRET_ACCESS_KEY,
 )
+CELERY_QUEUE_NAME_PREFIX = ''
 
 # Meilisearch settings
 MEILISEARCH_URL = os.environ.get("MEILISEARCH_URL", "")

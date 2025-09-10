@@ -1,13 +1,31 @@
 from django.contrib import admin
-from .models import Episode, Podcast, Tag, PodcastOwner, Quote
+from .models import Episode, Podcast, Tag, PodcastOwner, Quote, Entity
+from django.contrib.admin import SimpleListFilter
 from audio_processing.tasks.episode_tasks import add_transcript, suggest_and_apply_tags, process_complete_workflow, extract_quotes
 from import_export.admin import ImportExportModelAdmin
 from audio_processing.tasks.podcast_tasks import process_podcast_by_id
+from django.db import models
+
+@admin.register(Entity)
+class EntityAdmin(admin.ModelAdmin):
+    list_display = ('name', 'type', 'created_at', 'updated_at')
+    list_filter = ('type', 'created_at', 'updated_at')
+    search_fields = ('name',)
+    readonly_fields = ('created_at', 'updated_at')
+    fieldsets = (
+        ('Entity Information', {
+            'fields': ('name', 'type')
+        }),
+        ('Timestamps', {
+            'fields': ('created_at', 'updated_at'),
+            'classes': ('collapse',)
+        }),
+    )
 
 @admin.register(Podcast)
 class PodcastAdmin(ImportExportModelAdmin):
-    list_display = ('name', 'slug', 'author', 'language', 'is_active', 'last_processed', 'episode_count', 'itunes_explicit')
-    list_filter = ('is_active', 'language', 'itunes_explicit', 'itunes_type', 'created_at', 'last_processed', 'tags')
+    list_display = ('name', 'slug', 'author', 'language', 'is_active', 'last_processed', 'episode_count')
+    list_filter = ('is_active', 'language', 'itunes_type', 'created_at', 'last_processed', 'tags')
     search_fields = ('name', 'slug', 'url', 'description', 'author', 'subtitle')
     readonly_fields = ('created_at', 'updated_at', 'last_processed', 'pub_date', 'last_build_date')
     list_editable = ('is_active',)
@@ -91,10 +109,45 @@ class PodcastAdmin(ImportExportModelAdmin):
     index_to_search.short_description = "Index selected podcasts to Meilisearch"
 
 
+class HasErrorFilter(SimpleListFilter):
+    title = 'Has Error'
+    parameter_name = 'has_error'
+
+    def lookups(self, request, model_admin):
+        return (
+            ('yes', 'Yes'),
+            ('no', 'No'),
+        )
+
+    def queryset(self, request, queryset):
+        if self.value() == 'yes':
+            return queryset.exclude(error__isnull=True).exclude(error='')
+        if self.value() == 'no':
+            return queryset.filter(models.Q(error__isnull=True) | models.Q(error=''))
+        return queryset
+
 @admin.register(Episode)
 class EpisodeAdmin(admin.ModelAdmin):
-    list_display = ('title', 'slug', 'truncated_url', 'podcast', 'episode_number', 'season_number', 'duration_display', 'has_transcript', 'has_script', 'has_summary', 'release_date', 'itunes_explicit')
-    list_filter = ('podcast', 'episode_type', 'itunes_explicit', 'created_at', 'updated_at', 'tags', 'release_date', 'season_number')
+    list_display = ('title', 'slug', 'truncated_url', 'podcast', 'episode_number', 'season_number', 'duration_display', 'has_transcript', 'has_script', 'has_summary', 'release_date', 'error')
+
+    class HasTranscriptFilter(SimpleListFilter):
+        title = 'Has Transcript'
+        parameter_name = 'has_transcript'
+
+        def lookups(self, request, model_admin):
+            return (
+                ('yes', 'Yes'),
+                ('no', 'No'),
+            )
+
+        def queryset(self, request, queryset):
+            if self.value() == 'yes':
+                return queryset.exclude(transcript__isnull=True).exclude(transcript='')
+            if self.value() == 'no':
+                return queryset.filter(models.Q(transcript__isnull=True) | models.Q(transcript=''))
+            return queryset
+
+    list_filter = ('podcast', 'episode_type', 'itunes_explicit', 'created_at', 'updated_at', 'tags', 'release_date', HasTranscriptFilter, HasErrorFilter)
     search_fields = ('title', 'slug', 'description', 'raw_audio_url', 'transcript', 'script_transcript', 'podcast__name')
     readonly_fields = ('created_at', 'updated_at', 'audio_length', 'pub_date', 'error')
     raw_id_fields = ('podcast',)
@@ -134,7 +187,7 @@ class EpisodeAdmin(admin.ModelAdmin):
     
     fieldsets = (
         ('Basic Information', {
-            'fields': ('podcast', 'title', 'slug', 'subtitle', 'description', 'tags')
+            'fields': ('podcast', 'title', 'slug', 'subtitle', 'description', 'tags', 'entities')
         }),
         ('Audio Information', {
             'fields': ('raw_audio_url', 'audio_type', 'audio_length', 'duration'),
@@ -168,7 +221,45 @@ class EpisodeAdmin(admin.ModelAdmin):
 
     actions = ['clear_transcript', 'export_transcripts', 'fetch_transcript',
                'suggest_tags', 'generate_speaker_scripts', 'run_complete_workflow', 'add_summary',
-               'extract_quotes_action', 'index_to_search']
+               'extract_quotes_action', 'index_to_search', 'extract_entities_action']
+    def extract_entities_action(self, request, queryset):
+        """Extract named entities from selected episodes."""
+        success_count = 0
+        error_count = 0
+        no_transcript_count = 0
+        from audio_processing.tasks.episode_tasks import extract_entities
+        for episode in queryset:
+            if not episode.transcript or not episode.transcript.strip():
+                no_transcript_count += 1
+                continue
+            try:
+                extract_entities.delay(episode.id)
+                success_count += 1
+            except Exception as e:
+                error_count += 1
+                self.message_user(
+                    request,
+                    f"Error extracting entities for {episode.title or 'Untitled'}: {str(e)}",
+                    level='ERROR'
+                )
+        if success_count > 0:
+            self.message_user(
+                request,
+                f"Entity extraction initiated for {success_count} episode(s)."
+            )
+        if no_transcript_count > 0:
+            self.message_user(
+                request,
+                f"{no_transcript_count} episode(s) skipped (no transcript available).",
+                level='WARNING'
+            )
+        if error_count > 0:
+            self.message_user(
+                request,
+                f"{error_count} episode(s) failed to start entity extraction.",
+                level='ERROR'
+            )
+    extract_entities_action.short_description = "Extract entities from selected episodes"
     
     def index_to_search(self, request, queryset):
         """Index selected episodes to Meilisearch."""
@@ -526,7 +617,7 @@ class QuoteAdmin(admin.ModelAdmin):
     
     fieldsets = (
         ('Quote Content', {
-            'fields': ('episode', 'text', 'speaker', 'context')
+            'fields': ('episode', 'text', 'speaker')
         }),
         ('Metadata', {
             'fields': ('timestamp',)

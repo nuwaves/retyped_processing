@@ -7,8 +7,8 @@ import requests
 import uuid
 import time
 import mimetypes
-from .groq_mixin import GroqMixin
-from .aws_mixin import AwsMixin
+from .mixins.groq_mixin import GroqMixin
+from .mixins.aws_mixin import AwsMixin
 from .taggable_mixin import TaggableMixin
 from .summarizable_mixin import SummarizableMixin
 from .searchable_mixin import SearchableMixin
@@ -65,6 +65,8 @@ class Episode(models.Model, GroqMixin, AwsMixin, TaggableMixin, SummarizableMixi
     error = models.TextField(blank=True, null=True, help_text="Error message if processing failed")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    entities = models.ManyToManyField('Entity', blank=True, related_name='episodes', help_text="Entities associated with this episode")
 
     def __str__(self):
         if self.title:
@@ -279,7 +281,7 @@ class Episode(models.Model, GroqMixin, AwsMixin, TaggableMixin, SummarizableMixi
 
     def process_complete_workflow(self):
         """
-        Complete workflow: generate transcript, apply tags, create speaker script, generate summary, and extract quotes.
+        Complete workflow: generate transcript, apply tags, create speaker script, generate summary, extract entities, and extract quotes.
         Returns a summary of what was accomplished.
         """
         results = {
@@ -287,59 +289,55 @@ class Episode(models.Model, GroqMixin, AwsMixin, TaggableMixin, SummarizableMixi
             'tags_applied': 0,
             'script_generated': False,
             'summary_generated': False,
+            'entities_extracted': 0,
             'quotes_extracted': 0,
             'errors': []
         }
-        
-        try:
-            # Step 1: Generate transcript if needed
-            if not self.transcript:
-                transcript = self.generate_transcript()
-                if transcript:
-                    results['transcript_generated'] = True
-                    logger.info(f"Transcript generated for: {self.raw_audio_url}")
-                else:
-                    results['errors'].append("Failed to generate transcript")
-                    return results
-            
-            # Step 2: Apply tags
-            applied_tags = self.suggest_and_apply_tags()
-            if applied_tags:
-                results['tags_applied'] = len(applied_tags)
-                logger.info(f"Applied {len(applied_tags)} tags to: {self.raw_audio_url}")
+        # Step 1: Generate transcript if needed
+        if not self.transcript:
+            transcript = self.generate_transcript()
+            if transcript:
+                results['transcript_generated'] = True
+                logger.info(f"Transcript generated for: {self.raw_audio_url}")
             else:
-                results['errors'].append("Failed to apply tags")
-            
-            # Step 3: Generate speaker script
-            script = self.generate_speaker_script()
-            if script:
-                results['script_generated'] = True
-                logger.info(f"Speaker script generated for: {self.raw_audio_url}")
-            else:
-                results['errors'].append("Failed to generate speaker script")
-            
-            # Step 4: Generate episode summary
-            summary = self.generate_summary()
-            if summary:
-                results['summary_generated'] = True
-                logger.info(f"Episode summary generated for: {self.raw_audio_url}")
-            else:
-                results['errors'].append("Failed to generate episode summary")
-            
-            # Step 5: Extract key quotes
-            quotes = self.extract_quotes()
-            if quotes:
-                results['quotes_extracted'] = len(quotes)
-                logger.info(f"Extracted {len(quotes)} quotes from: {self.raw_audio_url}")
-            else:
-                results['errors'].append("Failed to extract quotes")
-            
-            return results
-            
-        except Exception as e:
-            logger.error(f"Error in complete workflow for {self.raw_audio_url}: {str(e)}")
-            results['errors'].append(f"Workflow error: {str(e)}")
-            return results
+                results['errors'].append("Failed to generate transcript")
+                return results
+        # Step 2: Apply tags
+        applied_tags = self.suggest_and_apply_tags()
+        if applied_tags:
+            results['tags_applied'] = len(applied_tags)
+            logger.info(f"Applied {len(applied_tags)} tags to: {self.raw_audio_url}")
+        else:
+            results['errors'].append("Failed to apply tags")
+        # Step 3: Generate speaker script
+        script = self.generate_speaker_script()
+        if script:
+            results['script_generated'] = True
+            logger.info(f"Speaker script generated for: {self.raw_audio_url}")
+        else:
+            results['errors'].append("Failed to generate speaker script")
+        # Step 4: Generate episode summary
+        summary = self.generate_summary()
+        if summary:
+            results['summary_generated'] = True
+            logger.info(f"Episode summary generated for: {self.raw_audio_url}")
+        else:
+            results['errors'].append("Failed to generate episode summary")
+        # Step 5: Extract entities
+        entities = self.extract_entities()
+        if entities:
+            results['entities_extracted'] = len(entities)
+            logger.info(f"Extracted {len(entities)} entities from: {self.raw_audio_url}")
+        else:
+            results['errors'].append("Failed to extract entities")
+        # Step 6: Extract key quotes
+        quotes = self.extract_quotes()
+        if quotes:
+            results['quotes_extracted'] = len(quotes)
+            logger.info(f"Extracted {len(quotes)} quotes from: {self.raw_audio_url}")
+        else:
+            results['errors'].append("Failed to extract quotes")
+        return results
     
     def get_search_document(self):
         """
@@ -366,4 +364,13 @@ class Episode(models.Model, GroqMixin, AwsMixin, TaggableMixin, SummarizableMixi
             "podcast_name": self.podcast.name if self.podcast else None,
             "tags": [tag.name for tag in self.tags.all()]
         }
-    
+
+    def extract_entities(self):
+        """
+        Extract named entities from the episode transcript using Groq and associate them to this episode.
+        Returns a list of Entity instances.
+        """
+        from audio_processing.models.entity import Entity
+        if not self.transcript:
+            return []
+        return Entity.entities_from_text(self.transcript, related_obj=self)
