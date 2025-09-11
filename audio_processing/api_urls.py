@@ -4,7 +4,7 @@ API URL configuration for audio_processing project.
 All API endpoints are versioned and nested under /api/v1/
 """
 
-from django.urls import path, re_path, include
+from django.urls import path
 from .views import EpisodeViewSet, PodcastViewSet, TagsViewSet
 from .views.search_viewsets import SearchViewSet
 
@@ -15,7 +15,6 @@ api_v1_patterns = [
         "tags/", TagsViewSet.as_view({"get": "list"}),
         name="api-v1-tags-list"
     ),
-    
     # Episodes endpoints
     path(
         "episodes/top-by-views/",
@@ -55,12 +54,9 @@ api_v1_patterns = [
         PodcastViewSet.as_view({"get": "retrieve"}),
         name="api-v1-podcasts-retrieve-slug"
     ),
-    
     # Search endpoints
     path(
         "search/", SearchViewSet.as_view({"get": "search"}),
         name="api-v1-search"
     ),
-    # Auth Endpoints
-    re_path(r'^auth/', include('drf_social_oauth2.urls', namespace='v1')),
 ]
