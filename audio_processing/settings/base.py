@@ -19,8 +19,8 @@ INSTALLED_APPS = [
     "drf_yasg",
     "oauth2_provider",
     "social_django",
-    "drf_social_oauth2"
-
+    "drf_social_oauth2",
+    "django_celery_beat",
 ]
 
 MIDDLEWARE = [

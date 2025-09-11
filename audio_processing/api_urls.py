@@ -6,10 +6,23 @@ All API endpoints are versioned and nested under /api/v1/
 
 from django.urls import path
 from .views import EpisodeViewSet, PodcastViewSet, TagsViewSet
+from .views.entity_viewsets import EntityViewSet
 from .views.search_viewsets import SearchViewSet
 
-# API v1 URL patterns
 api_v1_patterns = [
+    # Entities endpoints
+    path(
+        "entities/", EntityViewSet.as_view({"get": "list"}),
+        name="api-v1-entities-list"
+    ),
+    path(
+        "entities/<int:pk>/episodes/", EntityViewSet.as_view({"get": "episodes"}),
+        name="api-v1-entities-episodes"
+    ),
+    path(
+        "entities/<int:pk>/podcasts/", EntityViewSet.as_view({"get": "podcasts"}),
+        name="api-v1-entities-podcasts"
+    ),
     # Tags endpoints
     path(
         "tags/", TagsViewSet.as_view({"get": "list"}),

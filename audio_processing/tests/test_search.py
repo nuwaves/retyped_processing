@@ -18,6 +18,8 @@ class SearchViewSetTest(TestCase):
         self.search_client = Client(settings.MEILISEARCH_URL, settings.MEILISEARCH_API_KEY)
         self.search_client.create_index("episodes", {"primaryKey": "id"})
         self.search_client.create_index("podcasts", {"primaryKey": "id"})
+        self.search_client.create_index("entities", {"primaryKey": "id"})
+        self.search_client.create_index("tags", {"primaryKey": "id"})
 
         self.client = APIClient()
         
