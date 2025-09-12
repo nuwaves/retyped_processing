@@ -8,26 +8,34 @@ from rest_framework import viewsets, mixins
 
 
 
-class TagsViewSet(viewsets.GenericViewSet, mixins.ListModelMixin):
+class TagsViewSet(viewsets.GenericViewSet, mixins.ListModelMixin, mixins.RetrieveModelMixin):
     queryset = Tag.objects.all()
     serializer_class = TagSerializer
+    lookup_field = 'slug'
 
     @action(detail=True, methods=["get"], url_path="episodes")
-    def episodes(self, request, pk=None):
+    def episodes(self, request, slug=None):
         """
         List episodes associated with this tag.
         """
-        tag = self.get_object()
-        episodes = Episode.objects.filter(tags=tag)
+        episodes = self.get_object().episodes.all()
+        page = self.paginate_queryset(episodes)
+        if page is not None:
+          serializer = EpisodeListSerializer(page, many=True)
+          return self.get_paginated_response(serializer.data)
+        
         serializer = EpisodeListSerializer(episodes, many=True)
         return Response(serializer.data)
 
     @action(detail=True, methods=["get"], url_path="podcasts")
-    def podcasts(self, request, pk=None):
+    def podcasts(self, request, slug=None):
         """
         List podcasts associated with this tag.
         """
-        tag = self.get_object()
-        podcasts = Podcast.objects.filter(tags=tag)
+        podcasts = self.get_object().podcasts.all()
+        page = self.paginate_queryset(podcasts)
+        if page is not None:
+          serializer = PodcastListSerializer(page, many=True)
+          return self.get_paginated_response(serializer.data)
         serializer = PodcastListSerializer(podcasts, many=True)
         return Response(serializer.data)
