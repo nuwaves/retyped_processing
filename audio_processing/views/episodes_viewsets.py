@@ -4,6 +4,7 @@ from rest_framework import viewsets, mixins, permissions, filters
 from audio_processing.analytics_utils import get_top_by_views
 from rest_framework.response import Response
 from rest_framework import status
+from audio_processing.api_filters import MultiTagFilterBackend
 
 class EpisodeViewSet(
     viewsets.GenericViewSet, mixins.ListModelMixin, mixins.RetrieveModelMixin
@@ -13,7 +14,7 @@ class EpisodeViewSet(
     permission_classes = [
         permissions.IsAuthenticatedOrReadOnly,
     ]
-    filter_backends = [filters.SearchFilter]
+    filter_backends = [filters.SearchFilter, MultiTagFilterBackend]
     search_fields = [
         "podcast__name",
         "title",
