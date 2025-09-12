@@ -28,8 +28,6 @@ api_v1_patterns = [
         "tags/", TagsViewSet.as_view({"get": "list"}),
         name="api-v1-tags-list"
     ),
-<<<<<<< HEAD
-=======
     path(
         "tags/<str:slug>", TagsViewSet.as_view({"get": "retrieve"}),
         name="api-v1-tags-retrieve"
@@ -43,7 +41,6 @@ api_v1_patterns = [
         name="api-v1-tags-retrieve-podcasts"
     ),
     
->>>>>>> main
     # Episodes endpoints
     path(
         "episodes/top-by-views/",
@@ -75,10 +72,6 @@ api_v1_patterns = [
         PodcastViewSet.as_view({"get": "retrieve"}),
         name="api-v1-podcasts-retrieve-slug"
     ),
-<<<<<<< HEAD
-=======
-
->>>>>>> main
     # Search endpoints
     path(
         "search/", SearchViewSet.as_view({"get": "search"}),
