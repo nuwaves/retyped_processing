@@ -28,6 +28,22 @@ api_v1_patterns = [
         "tags/", TagsViewSet.as_view({"get": "list"}),
         name="api-v1-tags-list"
     ),
+<<<<<<< HEAD
+=======
+    path(
+        "tags/<str:slug>", TagsViewSet.as_view({"get": "retrieve"}),
+        name="api-v1-tags-retrieve"
+    ),
+    path(
+        "tags/<str:slug>/episodes", TagsViewSet.as_view({"get": "episodes"}),
+        name="api-v1-tags-retrieve-episodes"
+    ),
+    path(
+        "tags/<str:slug>/podcasts", TagsViewSet.as_view({"get": "podcasts"}),
+        name="api-v1-tags-retrieve-podcasts"
+    ),
+    
+>>>>>>> main
     # Episodes endpoints
     path(
         "episodes/top-by-views/",
@@ -39,15 +55,11 @@ api_v1_patterns = [
         name="api-v1-episodes-list"
     ),
     path(
-        "episodes/<int:pk>/", EpisodeViewSet.as_view({"get": "retrieve"}),
-        name="api-v1-episodes-retrieve"
-    ),
-    path(
         "episodes/<slug:slug>/",
         EpisodeViewSet.as_view({"get": "retrieve"}),
         name="api-v1-episodes-retrieve-slug"
     ),
-    
+
     # Podcasts endpoints
     path(
         "podcasts/top-by-views/",
@@ -59,14 +71,14 @@ api_v1_patterns = [
         name="api-v1-podcasts-list"
     ),
     path(
-        "podcasts/<int:pk>/", PodcastViewSet.as_view({"get": "retrieve"}),
-        name="api-v1-podcasts-retrieve"
-    ),
-    path(
         "podcasts/<slug:slug>/",
         PodcastViewSet.as_view({"get": "retrieve"}),
         name="api-v1-podcasts-retrieve-slug"
     ),
+<<<<<<< HEAD
+=======
+
+>>>>>>> main
     # Search endpoints
     path(
         "search/", SearchViewSet.as_view({"get": "search"}),
