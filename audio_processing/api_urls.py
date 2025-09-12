@@ -72,7 +72,6 @@ api_v1_patterns = [
         PodcastViewSet.as_view({"get": "retrieve"}),
         name="api-v1-podcasts-retrieve-slug"
     ),
-
     # Search endpoints
     path(
         "search/", SearchViewSet.as_view({"get": "search"}),

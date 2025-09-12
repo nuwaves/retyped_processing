@@ -10,10 +10,14 @@ services:
       - ./.:/app
     ports:
       - "8000:8000"
+    expose:
+      - 8000
     depends_on:
       - db
     env_file:
       - .env.dev
+    networks:
+      - retyped-local
 
   db:
     image: postgres:17
@@ -25,6 +29,8 @@ services:
       - POSTGRES_USER=localuser
       - POSTGRES_PASSWORD=localpassword
       - POSTGRES_DB=audio_processing
+    networks:
+      - retyped-local
 
   meilisearch:
     image: getmeili/meilisearch:v1.16
@@ -38,6 +44,8 @@ services:
       test: set -o pipefail;curl -fsS http://localhost:7700/health | grep -q '{"status":"available"}'
       retries: 3
       timeout: 5s
+    networks:
+      - retyped-local
 
 
   #worker:
@@ -51,3 +59,7 @@ services:
 volumes:
   dbdata:
   meilidata:
+
+networks:
+  retyped-local:
+    external: true
