@@ -134,7 +134,7 @@ class Episode(models.Model, GroqMixin, AwsMixin, TaggableMixin, SummarizableMixi
                 image_url = entry.itunes_image.href
             elif hasattr(entry.itunes_image, 'url'):
                 image_url = entry.itunes_image.url
-        elif 'image' in entry:
+        elif 'image' in entry and getattr(entry, 'image', None):
             image_url = entry.get('image')
 
         # Fallback: check for links that might be audio files

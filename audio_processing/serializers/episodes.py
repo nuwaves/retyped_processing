@@ -19,5 +19,5 @@ class EpisodeListSerializer(EpisodeSerializer):
         fields = [
             "id", "slug", "tags", "title", "subtitle",
             "description", "summary", "release_date",
-            "created_at", "updated_at", "podcast"
+            "created_at", "updated_at", "podcast", "image_url"
         ]

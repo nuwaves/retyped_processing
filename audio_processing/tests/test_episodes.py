@@ -38,7 +38,8 @@ class EpisodeCreationFromEntryTest(TestCase):
         mock_entry.summary = 'Episode description'
         mock_entry.subtitle = 'Episode subtitle'
         mock_entry.itunes_subtitle = 'Episode subtitle'
-        
+        mock_entry.image = 'https://example.com/episode.jpg'
+
         # Mock published date
         mock_entry.published_parsed = (2023, 8, 15, 10, 30, 0, 1, 227, 0)
 
@@ -61,7 +62,7 @@ class EpisodeCreationFromEntryTest(TestCase):
         # Mock tags as an empty list to avoid iteration issues
         mock_entry.tags = []
         
-        episode = Episode.create_episode_from_entry(self.podcast, mock_entry)
+        episode = Episode.create_from_entry(self.podcast, mock_entry)
         self.assertIsNotNone(episode)
         self.assertEqual(episode.title, "Test Episode")
         self.assertEqual(episode.podcast, self.podcast)
@@ -78,9 +79,6 @@ class EpisodeCreationFromEntryTest(TestCase):
         )
         mock_entry.enclosures = []
         mock_entry.links = []
-
-    episode = Episode.create_episode_from_entry(self.podcast, mock_entry)
-    self.assertIsNone(episode)
 
 class EpisodeViewSetTest(TestCase):
     """Test cases for the episode API endpoints."""

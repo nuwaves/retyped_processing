@@ -252,6 +252,8 @@ class Podcast(models.Model, SearchableMixin):
         Process this RSS feed and create episodes for all entries.
         Returns a summary of the processing results.
         """
+        from audio_processing.models import Episode
+
         if not self.is_active:
             logger.info(f"RSS feed is inactive: {self.url}")
             return {'error': "RSS feed is marked as inactive"}
@@ -269,7 +271,7 @@ class Podcast(models.Model, SearchableMixin):
         failed_count = 0
         
         for entry in feed.entries:
-            result = self.create_episode_from_entry(entry)
+            result = Episode.create_from_entry(self, entry)
             if result is None:
                 failed_count += 1
             elif result:

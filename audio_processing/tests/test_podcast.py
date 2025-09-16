@@ -236,11 +236,11 @@ class PodcastFeedProcessingTest(TestCase):
         with patch.object(self.podcast, "fetch_feed") as mock_fetch_feed:
             mock_fetch_feed.return_value = mock_feed
 
-            # Mock the create_episode_from_entry method to return a mock episode
+            # Mock the create_from_entry method to return a mock episode
             mock_episode = Mock()
             mock_episode.created_at = utils.timezone.now()
 
-            with patch("audio_processing.models.episode.Episode.create_episode_from_entry") as mock_create_episode:
+            with patch("audio_processing.models.episode.Episode.create_from_entry") as mock_create_episode:
                 mock_create_episode.return_value = mock_episode
 
                 result = self.podcast.process_feed()
