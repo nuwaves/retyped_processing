@@ -1,3 +1,4 @@
+from .models.user_analytics import UserAnalytics
 from django.contrib import admin
 from .models import Episode, Podcast, Tag, PodcastOwner, Quote, Entity
 from django.contrib.admin import SimpleListFilter
@@ -5,6 +6,23 @@ from audio_processing.tasks.episode_tasks import add_transcript, suggest_and_app
 from import_export.admin import ImportExportModelAdmin
 from audio_processing.tasks.podcast_tasks import process_podcast_by_id
 from django.db import models
+
+@admin.register(UserAnalytics)
+class UserAnalyticsAdmin(admin.ModelAdmin):
+    list_display = ('user', 'entity_type', 'get_entity_display_name', 'views', 'created_at', 'updated_at')
+    list_filter = ('created_at', 'updated_at', 'user')
+    search_fields = ('user__username', 'podcast__name', 'episode__title')
+    readonly_fields = ('created_at', 'updated_at')
+    raw_id_fields = ('user', 'podcast', 'episode')
+    fieldsets = (
+        ('User Analytics', {
+            'fields': ('user', 'podcast', 'episode', 'views')
+        }),
+        ('Timestamps', {
+            'fields': ('created_at', 'updated_at'),
+            'classes': ('collapse',)
+        }),
+    )
 
 @admin.register(Entity)
 class EntityAdmin(admin.ModelAdmin):

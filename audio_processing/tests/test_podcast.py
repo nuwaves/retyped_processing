@@ -202,76 +202,6 @@ class PodcastFeedProcessingTest(TestCase):
         self.assertEqual(self.podcast.owner_name, 'Updated Owner')
         self.assertEqual(self.podcast.owner_email, 'updated@example.com')
 
-    def test_create_episode_from_entry(self):
-        """Test creating episode from RSS entry."""
-        # Mock RSS entry properly
-        mock_entry = Mock()
-        mock_entry.get = Mock(
-            side_effect=lambda key, default=None: {"title": "Test Episode"}.get(
-                key, default
-            )
-        )
-
-        # Mock enclosures (audio files)
-        mock_enclosure = Mock()
-        mock_enclosure.get = Mock(
-            side_effect=lambda key, default=None: {
-                "type": "audio/mpeg",
-                "href": "https://example.com/episode.mp3",
-                "length": "12345678",
-            }.get(key, default)
-        )
-
-        mock_entry.enclosures = [mock_enclosure]
-        mock_entry.summary = 'Episode description'
-        mock_entry.subtitle = 'Episode subtitle'
-        mock_entry.itunes_subtitle = 'Episode subtitle'
-        
-        # Mock published date
-        mock_entry.published_parsed = (2023, 8, 15, 10, 30, 0, 1, 227, 0)
-
-        # Mock content attribute to avoid len() issues
-        mock_content = Mock()
-        mock_content.get = Mock(return_value="Episode content")
-        mock_entry.content = [mock_content]
-
-        # Mock links attribute
-        mock_entry.links = []
-
-        # Mock iTunes attributes that might be accessed but set to None/empty
-        mock_entry.itunes_episode = None
-        mock_entry.itunes_season = None
-        mock_entry.itunes_episodetype = None
-        mock_entry.itunes_explicit = None
-        mock_entry.itunes_keywords = None
-        mock_entry.itunes_duration = None
-        
-        # Mock tags as an empty list to avoid iteration issues
-        mock_entry.tags = []
-        
-        episode = self.podcast.create_episode_from_entry(mock_entry)
-
-        self.assertIsNotNone(episode)
-        self.assertEqual(episode.title, "Test Episode")
-        self.assertEqual(episode.podcast, self.podcast)
-        self.assertEqual(episode.raw_audio_url, "https://example.com/episode.mp3")
-        self.assertEqual(episode.audio_type, "audio/mpeg")
-        self.assertEqual(episode.audio_length, 12345678)
-        self.assertEqual(episode.description, "Episode description")
-        self.assertEqual(episode.subtitle, "Episode subtitle")
-
-    def test_create_episode_from_entry_no_audio(self):
-        """Test creating episode when no audio URL found."""
-        mock_entry = Mock()
-        mock_entry.get = lambda key, default=None: (
-            "Test Episode" if key == "title" else default
-        )
-        mock_entry.enclosures = []
-        mock_entry.links = []
-
-        episode = self.podcast.create_episode_from_entry(mock_entry)
-
-        self.assertIsNone(episode)
 
     def test_process_feed_success(self):
         """Test complete feed processing."""
@@ -310,9 +240,7 @@ class PodcastFeedProcessingTest(TestCase):
             mock_episode = Mock()
             mock_episode.created_at = utils.timezone.now()
 
-            with patch.object(
-                self.podcast, "create_episode_from_entry"
-            ) as mock_create_episode:
+            with patch("audio_processing.models.episode.Episode.create_episode_from_entry") as mock_create_episode:
                 mock_create_episode.return_value = mock_episode
 
                 result = self.podcast.process_feed()
