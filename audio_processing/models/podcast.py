@@ -3,6 +3,8 @@ from django.utils import timezone
 import feedparser
 import logging
 from .searchable_mixin import SearchableMixin
+import time
+from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
@@ -171,8 +173,6 @@ class Podcast(models.Model, SearchableMixin):
         # Dates
         if hasattr(feed_info, 'published_parsed') and feed_info.published_parsed:
             try:
-                import time
-                from datetime import datetime
                 timestamp = time.mktime(feed_info.published_parsed)
                 self.pub_date = datetime.fromtimestamp(timestamp, tz=timezone.get_current_timezone())
             except Exception as e:
@@ -180,8 +180,6 @@ class Podcast(models.Model, SearchableMixin):
         
         if hasattr(feed_info, 'updated_parsed') and feed_info.updated_parsed:
             try:
-                import time
-                from datetime import datetime
                 timestamp = time.mktime(feed_info.updated_parsed)
                 self.last_build_date = datetime.fromtimestamp(timestamp, tz=timezone.get_current_timezone())
             except Exception as e:
@@ -276,8 +274,6 @@ class Podcast(models.Model, SearchableMixin):
         # Fallback: try 'updated_parsed' if 'published_parsed' is not available
         if not release_date and hasattr(entry, 'updated_parsed') and entry.updated_parsed:
             try:
-                import time
-                from datetime import datetime
                 timestamp = time.mktime(entry.updated_parsed)
                 release_date = datetime.fromtimestamp(timestamp, tz=timezone.get_current_timezone())
                 if not pub_date:
@@ -286,7 +282,7 @@ class Podcast(models.Model, SearchableMixin):
                 logger.warning(f"Failed to parse updated date for entry '{title}': {str(e)}")
         
         # Check if episode already exists
-        existing_episode = Episode.objects.filter(raw_audio_url=audio_url).first()
+        existing_episode = Episode.objects.filter(title=title, podcast=self).first()
         if existing_episode:
             # Update missing fields
             updated = self._update_existing_episode(existing_episode, entry, title, audio_type, audio_length, release_date, pub_date)

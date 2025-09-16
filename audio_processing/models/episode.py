@@ -28,12 +28,12 @@ class Episode(models.Model, GroqMixin, AwsMixin, TaggableMixin, SummarizableMixi
     podcast = models.ForeignKey('Podcast', on_delete=models.CASCADE, related_name='episodes', blank=True, null=True, help_text="Podcast this episode belongs to")
     
     # Basic episode info
-    title = models.CharField(max_length=512, blank=True, null=True, help_text="Title of the podcast episode")
+    title = models.CharField(max_length=512, blank=True, null=True, db_index=True, help_text="Title of the podcast episode")
     description = models.TextField(blank=True, null=True, help_text="Episode description")
     subtitle = models.CharField(max_length=500, blank=True, null=True, help_text="Episode subtitle")
     
     # Audio information
-    raw_audio_url = models.URLField(max_length=2000, help_text="URL of the raw audio file")
+    raw_audio_url = models.URLField(max_length=2000, unique=True, help_text="URL of the raw audio file")
     audio_type = models.CharField(max_length=50, blank=True, null=True, help_text="Audio MIME type (e.g., audio/mpeg)")
     audio_length = models.BigIntegerField(blank=True, null=True, help_text="Audio file size in bytes")
     duration = models.DurationField(blank=True, null=True, help_text="Episode duration")
