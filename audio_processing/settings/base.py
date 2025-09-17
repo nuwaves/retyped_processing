@@ -15,6 +15,7 @@ INSTALLED_APPS = [
     "audio_processing",
     "import_export",
     "constance",
+    "corsheaders",
     "rest_framework",
     "drf_yasg",
     "oauth2_provider",
@@ -26,6 +27,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
+    "corsheaders.middleware.CorsMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
@@ -221,6 +223,8 @@ SOCIAL_AUTH_INSTAGRAM_KEY = os.environ.get('SA_INSTAGRAM_AUTH_KEY', '')
 SOCIAL_AUTH_INSTAGRAM_SECRET = os.environ.get('SA_INSTAGRAM_AUTH_SECRET', '')
 #SOCIAL_AUTH_INSTAGRAM_AUTH_EXTRA_ARGUMENTS = {'scope': 'likes comments relationships'}
 
+# CORS Configuration
+CORS_ALLOWED_ORIGINS = os.environ.get('CORS_ALLOWED_ORIGINS').split(',')
 
 AUTHENTICATION_BACKENDS = (
     'social_core.backends.google.GoogleOAuth2',
