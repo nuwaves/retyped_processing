@@ -1,6 +1,5 @@
 import logging
-from django.utils import timezone
-from ..models import Podcast, Episode
+from ..models import Podcast
 from celery import shared_task
 
 logger = logging.getLogger(__name__)

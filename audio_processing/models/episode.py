@@ -17,6 +17,8 @@ import boto3
 import time
 import uuid
 from django.utils.text import slugify
+from django.utils import timezone
+
 logger = logging.getLogger(__name__)
 transcribe_client = boto3.client('transcribe', region_name='us-east-1')
 
