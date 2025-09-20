@@ -33,7 +33,7 @@ class Episode(models.Model, GroqMixin, AwsMixin, TaggableMixin, SummarizableMixi
     # Basic episode info
     title = models.CharField(max_length=512, blank=True, null=True, db_index=True, help_text="Title of the podcast episode")
     description = models.TextField(blank=True, null=True, help_text="Episode description")
-    subtitle = models.CharField(max_length=500, blank=True, null=True, help_text="Episode subtitle")
+    subtitle = models.CharField(max_length=2000, blank=True, null=True, help_text="Episode subtitle")
     
     # Audio information
     raw_audio_url = models.URLField(max_length=2000, unique=True, help_text="URL of the raw audio file")
@@ -201,7 +201,7 @@ class Episode(models.Model, GroqMixin, AwsMixin, TaggableMixin, SummarizableMixi
             episode_data['description'] = entry.summary
 
         if hasattr(entry, 'subtitle') and entry.subtitle:
-            episode_data['subtitle'] = entry.subtitle
+            episode_data['subtitle'] = entry.subtitle[:2000]
 
         if hasattr(entry, 'itunes_episode') and entry.itunes_episode:
             try:
