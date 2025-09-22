@@ -1,3 +1,4 @@
+from audio_processing.models.episode import Episode
 from django.utils import timezone
 from datetime import timedelta
 from celery import shared_task
@@ -6,6 +7,27 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+@shared_task
+def batch_groq_transcribe_task(episode_ids):
+    """
+    Celery task to batch transcribe episodes using Groq Batch API.
+    Args:
+        episode_ids (list): List of episode IDs to transcribe
+    Returns:
+        dict: Groq file upload response
+    """
+    return Episode.groq_batch_transcribe(episode_ids)
+
+@shared_task
+def groq_batch_transcribe(episode_ids):
+    """
+    Celery task to batch transcribe episodes using Groq Batch API.
+    Args:
+        episode_ids (list): List of episode IDs to transcribe
+    Returns:
+        dict: Groq file upload response
+    """
+    return Episode.groq_batch_transcribe(episode_ids)
 
 @shared_task
 def add_transcript(episode_id):

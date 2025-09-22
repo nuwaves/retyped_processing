@@ -2,8 +2,8 @@
 
 import audio_processing.models.mixins.aws_mixin
 import audio_processing.models.mixins.groq_mixin
-import audio_processing.models.summarizable_mixin
-import audio_processing.models.taggable_mixin
+import audio_processing.models.mixins.summarizable_mixin
+import audio_processing.models.mixins.taggable_mixin
 import django.db.models.deletion
 from django.db import migrations, models
 
@@ -68,6 +68,6 @@ class Migration(migrations.Migration):
                 ('podcast', models.ForeignKey(blank=True, help_text='Podcast this episode belongs to', null=True, on_delete=django.db.models.deletion.CASCADE, related_name='episodes', to='audio_processing.podcast')),
                 ('tags', models.ManyToManyField(blank=True, help_text='Tags associated with this episode', related_name='episodes', to='audio_processing.tag')),
             ],
-            bases=(models.Model, audio_processing.models.mixins.groq_mixin.GroqMixin, audio_processing.models.mixins.aws_mixin.AwsMixin, audio_processing.models.taggable_mixin.TaggableMixin, audio_processing.models.summarizable_mixin.SummarizableMixin),
+            bases=(models.Model, audio_processing.models.mixins.groq_mixin.GroqMixin, audio_processing.models.mixins.aws_mixin.AwsMixin, audio_processing.models.mixins.taggable_mixin.TaggableMixin, audio_processing.models.mixins.summarizable_mixin.SummarizableMixin),
         ),
     ]

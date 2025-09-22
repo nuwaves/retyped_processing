@@ -2,7 +2,9 @@ from django.db import models
 from django.utils import timezone
 import feedparser
 import logging
-from .searchable_mixin import SearchableMixin
+from audio_processing.models.mixins import (
+    SearchableMixin,
+)
 import time
 from datetime import datetime
 

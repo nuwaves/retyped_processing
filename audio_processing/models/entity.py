@@ -1,7 +1,7 @@
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 from audio_processing.models.mixins.groq_mixin import GroqMixin
-from audio_processing.models.searchable_mixin import SearchableMixin
+from audio_processing.models.mixins.searchable_mixin import SearchableMixin
 import json
 from audio_processing.prompts import get_entity_extraction_prompt
 import re

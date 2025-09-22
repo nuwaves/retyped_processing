@@ -1,12 +1,38 @@
+from .models.processing_batch import ProcessingBatch
 from .models.user_analytics import UserAnalytics
 from django.contrib import admin
 from .models import Episode, Podcast, Tag, PodcastOwner, Quote, Entity
 from django.contrib.admin import SimpleListFilter
 from audio_processing.tasks.episode_tasks import add_transcript, suggest_and_apply_tags, process_complete_workflow, extract_quotes
 from import_export.admin import ImportExportModelAdmin
+from audio_processing.tasks.batch_tasks import fetch_and_apply_groq_results_task
 from audio_processing.tasks.podcast_tasks import process_podcast_by_id
 from django.db import models
 
+@admin.register(ProcessingBatch)
+class ProcessingBatchAdmin(admin.ModelAdmin):
+    list_display = ('id', 'external_batch_id', 'processing_state', 'record_count', 'created_at', 'updated_at')
+    list_filter = ('processing_state', 'created_at', 'updated_at')
+    search_fields = ('external_batch_id',)
+    readonly_fields = ('created_at', 'updated_at', 'external_batch_id', 'record_count', 'processing_state', 'error')
+    fieldsets = (
+        (None, {
+            'fields': ('external_batch_id', 'processing_state', 'record_count', 'error')
+        }),
+        ('Timestamps', {
+            'fields': ('created_at', 'updated_at'),
+            'classes': ('collapse',)
+        }),
+    )
+    actions = ['fetch_and_apply_groq_results_action']
+
+    def fetch_and_apply_groq_results_action(self, request, queryset):
+        """Trigger async fetch and apply of Groq results for selected batches."""
+        for batch in queryset:
+            async_result = fetch_and_apply_groq_results_task.delay(batch.id)
+            self.message_user(request, f"Batch {batch.id}: Task queued (Celery ID: {async_result.id})")
+    fetch_and_apply_groq_results_action.short_description = "Fetch/apply Groq results for selected batches (async)"
+    
 @admin.register(UserAnalytics)
 class UserAnalyticsAdmin(admin.ModelAdmin):
     list_display = ('user', 'entity_type', 'get_entity_display_name', 'views', 'created_at', 'updated_at')
@@ -239,7 +265,19 @@ class EpisodeAdmin(admin.ModelAdmin):
 
     actions = ['clear_transcript', 'export_transcripts', 'fetch_transcript',
                'suggest_tags', 'generate_speaker_scripts', 'run_complete_workflow', 'add_summary',
-               'extract_quotes_action', 'index_to_search', 'extract_entities_action']
+               'extract_quotes_action', 'index_to_search', 'extract_entities_action', 'batch_groq_transcribe']
+
+    def batch_groq_transcribe(self, request, queryset):
+        """Batch transcribe selected episodes using Groq Batch API (async via Celery)."""
+        from audio_processing.tasks.episode_tasks import groq_batch_transcribe
+        episode_ids = list(queryset.values_list('id', flat=True))
+        try:
+            async_result = groq_batch_transcribe.delay(episode_ids)
+            self.message_user(request, f"Batch transcription task queued. Celery Task ID: {async_result.id}")
+        except Exception as e:
+            self.message_user(request, f"Batch transcription failed: {str(e)}", level='ERROR')
+    batch_groq_transcribe.short_description = "Batch transcribe (Groq) selected episodes (async)"
+
     def extract_entities_action(self, request, queryset):
         """Extract named entities from selected episodes."""
         success_count = 0

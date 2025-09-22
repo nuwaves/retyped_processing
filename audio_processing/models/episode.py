@@ -9,20 +9,28 @@ import time
 import mimetypes
 from .mixins.groq_mixin import GroqMixin
 from .mixins.aws_mixin import AwsMixin
-from .taggable_mixin import TaggableMixin
-from .summarizable_mixin import SummarizableMixin
-from .searchable_mixin import SearchableMixin
-from .quotable_mixin import QuotableMixin
-import boto3
+from audio_processing.models.mixins import (
+    TaggableMixin,
+    SummarizableMixin,
+    SearchableMixin,
+    QuotableMixin,
+)
+from groq import Groq
 import time
 import uuid
 from django.utils.text import slugify
 from django.utils import timezone
+import json
+import os
+import requests
+from django.conf import settings
+import tempfile
 
 logger = logging.getLogger(__name__)
 transcribe_client = boto3.client('transcribe', region_name='us-east-1')
 
 class Episode(models.Model, GroqMixin, AwsMixin, TaggableMixin, SummarizableMixin, SearchableMixin, QuotableMixin):
+
     image_url = models.URLField(max_length=1000, blank=True, null=True, help_text="Episode artwork URL")
     slug = models.SlugField(max_length=512, unique=True, blank=True, help_text="Unique slug for episode, prefixed with podcast slug")
     # Search configuration
@@ -221,8 +229,8 @@ class Episode(models.Model, GroqMixin, AwsMixin, TaggableMixin, SummarizableMixi
         if hasattr(entry, 'itunes_explicit'):
             episode_data['itunes_explicit'] = entry.itunes_explicit == 'yes'
 
-        if hasattr(entry, 'tags') and entry.tags:
-            episode_data['itunes_keywords'] = [tag.term for tag in entry.tags if hasattr(tag, 'term')]
+        # if hasattr(entry, 'tags') and entry.tags:
+        #     episode_data['itunes_keywords'] = [tag.term for tag in entry.tags if hasattr(tag, 'term')]
 
         if hasattr(entry, 'content') and entry.content:
             # Get the first content item (usually HTML)
@@ -535,3 +543,77 @@ class Episode(models.Model, GroqMixin, AwsMixin, TaggableMixin, SummarizableMixi
         if not self.transcript:
             return []
         return Entity.entities_from_text(self.transcript, related_obj=self)
+    
+    @staticmethod
+    def groq_batch_transcribe(episode_ids):
+        """
+        Batch transcribe a list of episode IDs using Groq's Batch API.
+        Generates a JSONL file for batch processing and uploads it to Groq.
+        Args:
+            episode_ids (list): List of Episode IDs to transcribe
+        Returns:
+            dict: Groq file upload response
+        """
+        from audio_processing.models import ProcessingBatch
+
+        # Prepare JSONL lines
+        lines = []
+        for eid in episode_ids:
+            try:
+                episode = Episode.objects.get(pk=eid)
+                line = {
+                    "custom_id": f"episode-{eid}",
+                    "method": "POST",
+                    "url": "/v1/audio/transcriptions",
+                    "body": {
+                        "model": "whisper-large-v3",
+                        "language": "en",
+                        "url": episode.raw_audio_url,
+                        "response_format": "verbose_json",
+                        "timestamp_granularities": ["segment"]
+                    }
+                }
+                lines.append(json.dumps(line))
+            except Episode.DoesNotExist:
+                continue
+
+        # Write JSONL file to a temp file
+        with tempfile.NamedTemporaryFile(mode="w+b", suffix=".jsonl", delete=False) as tmpfile:
+            for line in lines:
+                tmpfile.write((line + "\n").encode("utf-8"))
+            tmpfile.flush()
+            tmpfile_path = tmpfile.name
+
+        # Upload file to Groq Files API
+        groq_api_key = getattr(settings, 'GROQ_API_KEY', os.environ.get("GROQ_API_KEY"))
+        if not groq_api_key:
+            raise Exception("GROQ_API_KEY not configured in settings or environment.")
+
+        files_url = "https://api.groq.com/openai/v1/files"
+        with open(tmpfile_path, "rb") as file_data:
+            response = requests.post(
+                files_url,
+                headers={"Authorization": f"Bearer {groq_api_key}"},
+                files={"file": (os.path.basename(tmpfile_path), file_data)},
+                data={"purpose": "batch"}
+            )
+        response.raise_for_status()
+        # Optionally, clean up the temp file
+        os.remove(tmpfile_path)
+        groq_response = response.json()
+        file_id = groq_response.get('id')
+
+        client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
+
+        batch = client.batches.create(
+            completion_window="24h",
+            endpoint="/v1/chat/completions",
+            input_file_id=file_id,
+        )
+
+        # Create ProcessingBatch record
+        batch = ProcessingBatch.objects.create(
+            external_batch_id=batch.id,
+            record_count=len(episode_ids)
+        )
+        return groq_response
