@@ -107,7 +107,7 @@ class GroqMixin():
             # Single file, send as usual
             with open(tmp_path, 'rb') as f:
                 files = {
-                    "file": (os.path.basename(tmp_path), f),
+                    "url": (None, clean_url),
                     "model": (None, "whisper-large-v3"),
                     "language": (None, "en"),
                     "response_format": (None, "json"),

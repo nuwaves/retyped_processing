@@ -2,7 +2,11 @@ from django.db import models
 from django.utils import timezone
 import feedparser
 import logging
-from .searchable_mixin import SearchableMixin
+from audio_processing.models.mixins import (
+    SearchableMixin,
+)
+import time
+from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
@@ -171,8 +175,6 @@ class Podcast(models.Model, SearchableMixin):
         # Dates
         if hasattr(feed_info, 'published_parsed') and feed_info.published_parsed:
             try:
-                import time
-                from datetime import datetime
                 timestamp = time.mktime(feed_info.published_parsed)
                 self.pub_date = datetime.fromtimestamp(timestamp, tz=timezone.get_current_timezone())
             except Exception as e:
@@ -180,8 +182,6 @@ class Podcast(models.Model, SearchableMixin):
         
         if hasattr(feed_info, 'updated_parsed') and feed_info.updated_parsed:
             try:
-                import time
-                from datetime import datetime
                 timestamp = time.mktime(feed_info.updated_parsed)
                 self.last_build_date = datetime.fromtimestamp(timestamp, tz=timezone.get_current_timezone())
             except Exception as e:
@@ -218,151 +218,6 @@ class Podcast(models.Model, SearchableMixin):
                 for i, tag in enumerate(feed_info.tags[:3]):  # Show first 3 tags
                     logger.debug(f"  Tag {i}: {tag}")
     
-    def create_episode_from_entry(self, entry):
-        """
-        Creates a podcast episode from an RSS entry.
-        Returns the created/existing Episode object or None if failed.
-        """
-        # Import here to avoid circular imports
-        from .episode import Episode
-        
-        title = entry.get('title', 'No Title')
-        logger.info(f"Processing episode entry: {title}")
-        
-        # Extract audio URL and metadata from enclosures
-        audio_url = None
-        audio_type = None
-        audio_length = None
-        
-        if hasattr(entry, 'enclosures') and entry.enclosures:
-            for enclosure in entry.enclosures:
-                if enclosure.get('type', '').startswith('audio/'):
-                    audio_url = enclosure.get('href')
-                    audio_type = enclosure.get('type')
-                    audio_length = enclosure.get('length')
-                    if audio_length:
-                        try:
-                            audio_length = int(audio_length)
-                        except (ValueError, TypeError):
-                            audio_length = None
-                    break
-        
-        # Fallback: check for links that might be audio files
-        if not audio_url and hasattr(entry, 'links'):
-            for link in entry.links:
-                if link.get('type', '').startswith('audio/'):
-                    audio_url = link.get('href')
-                    audio_type = link.get('type')
-                    break
-        
-        if not audio_url:
-            logger.warning(f"No audio URL found for entry: {title}")
-            return None
-        
-        # Extract dates
-        release_date = None
-        pub_date = None
-        
-        if hasattr(entry, 'published_parsed') and entry.published_parsed:
-            try:
-                import time
-                from datetime import datetime
-                timestamp = time.mktime(entry.published_parsed)
-                pub_date = datetime.fromtimestamp(timestamp, tz=timezone.get_current_timezone())
-                release_date = pub_date  # Use pub_date as release_date for backward compatibility
-            except Exception as e:
-                logger.warning(f"Failed to parse published date for entry '{title}': {str(e)}")
-        
-        # Fallback: try 'updated_parsed' if 'published_parsed' is not available
-        if not release_date and hasattr(entry, 'updated_parsed') and entry.updated_parsed:
-            try:
-                import time
-                from datetime import datetime
-                timestamp = time.mktime(entry.updated_parsed)
-                release_date = datetime.fromtimestamp(timestamp, tz=timezone.get_current_timezone())
-                if not pub_date:
-                    pub_date = release_date
-            except Exception as e:
-                logger.warning(f"Failed to parse updated date for entry '{title}': {str(e)}")
-        
-        # Check if episode already exists
-        existing_episode = Episode.objects.filter(raw_audio_url=audio_url).first()
-        if existing_episode:
-            # Update missing fields
-            updated = self._update_existing_episode(existing_episode, entry, title, audio_type, audio_length, release_date, pub_date)
-            if updated:
-                logger.info(f"Updated existing episode: {title}")
-            return existing_episode
-        
-        # Create new episode with all the rich metadata
-        episode_data = {
-            'podcast': self,
-            'title': title,
-            'raw_audio_url': audio_url,
-            'audio_type': audio_type,
-            'audio_length': audio_length,
-            'release_date': release_date,
-            'pub_date': pub_date,
-        }
-        
-        # Add optional fields from entry
-        if hasattr(entry, 'summary') and entry.summary:
-            episode_data['description'] = entry.summary
-        
-        if hasattr(entry, 'subtitle') and entry.subtitle:
-            episode_data['subtitle'] = entry.subtitle
-        
-        if hasattr(entry, 'itunes_episode') and entry.itunes_episode:
-            try:
-                episode_data['episode_number'] = int(entry.itunes_episode)
-            except (ValueError, TypeError):
-                pass
-        
-        if hasattr(entry, 'itunes_season') and entry.itunes_season:
-            try:
-                episode_data['season_number'] = int(entry.itunes_season)
-            except (ValueError, TypeError):
-                pass
-        
-        if hasattr(entry, 'itunes_episodetype') and entry.itunes_episodetype:
-            episode_data['episode_type'] = entry.itunes_episodetype
-        
-        if hasattr(entry, 'itunes_explicit'):
-            episode_data['itunes_explicit'] = entry.itunes_explicit == 'yes'
-        
-        if hasattr(entry, 'tags') and entry.tags:
-            episode_data['itunes_keywords'] = [tag.term for tag in entry.tags if hasattr(tag, 'term')]
-        
-        if hasattr(entry, 'content') and entry.content:
-            # Get the first content item (usually HTML)
-            if len(entry.content) > 0:
-                episode_data['content_encoded'] = entry.content[0].get('value', '')
-
-        if hasattr(entry, 'transcript') and entry.transcript:
-            episode_data['has_public_transcript'] = True
-
-        if hasattr(entry, 'itunes_duration') and entry.itunes_duration:
-            try:
-                # Parse duration (format: HH:MM:SS or MM:SS or seconds)
-                duration_str = entry.itunes_duration
-                parts = duration_str.split(':')
-                if len(parts) == 3:  # HH:MM:SS
-                    hours, minutes, seconds = map(int, parts)
-                    total_seconds = hours * 3600 + minutes * 60 + seconds
-                elif len(parts) == 2:  # MM:SS
-                    minutes, seconds = map(int, parts)
-                    total_seconds = minutes * 60 + seconds
-                else:  # Just seconds
-                    total_seconds = int(duration_str)
-                
-                from datetime import timedelta
-                episode_data['duration'] = timedelta(seconds=total_seconds)
-            except (ValueError, TypeError):
-                pass
-        
-        episode = Episode.objects.create(**episode_data)
-        logger.info(f"Created episode: {title} - {audio_url} (released: {release_date})")
-        return episode
     
     def _update_existing_episode(self, episode, entry, title, audio_type, audio_length, release_date, pub_date):
         """Helper method to update existing episode with missing data"""
@@ -399,6 +254,8 @@ class Podcast(models.Model, SearchableMixin):
         Process this RSS feed and create episodes for all entries.
         Returns a summary of the processing results.
         """
+        from audio_processing.models import Episode
+
         if not self.is_active:
             logger.info(f"RSS feed is inactive: {self.url}")
             return {'error': "RSS feed is marked as inactive"}
@@ -416,7 +273,7 @@ class Podcast(models.Model, SearchableMixin):
         failed_count = 0
         
         for entry in feed.entries:
-            result = self.create_episode_from_entry(entry)
+            result = Episode.create_from_entry(self, entry)
             if result is None:
                 failed_count += 1
             elif result:

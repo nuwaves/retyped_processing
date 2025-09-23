@@ -2,7 +2,7 @@ import logging
 from django.conf import settings
 import requests
 import re
-from ..prompts import get_episode_summary_prompt
+from audio_processing.prompts import get_episode_summary_prompt
 from constance import config
 
 

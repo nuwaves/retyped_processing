@@ -1,9 +1,33 @@
+from audio_processing.models.episode import Episode
+from django.utils import timezone
+from datetime import timedelta
 from celery import shared_task
 from audio_processing.models import Episode
 import logging
 
 logger = logging.getLogger(__name__)
 
+@shared_task
+def batch_groq_transcribe_task(episode_ids):
+    """
+    Celery task to batch transcribe episodes using Groq Batch API.
+    Args:
+        episode_ids (list): List of episode IDs to transcribe
+    Returns:
+        dict: Groq file upload response
+    """
+    return Episode.groq_batch_transcribe(episode_ids)
+
+@shared_task
+def groq_batch_transcribe(episode_ids):
+    """
+    Celery task to batch transcribe episodes using Groq Batch API.
+    Args:
+        episode_ids (list): List of episode IDs to transcribe
+    Returns:
+        dict: Groq file upload response
+    """
+    return Episode.groq_batch_transcribe(episode_ids)
 
 @shared_task
 def add_transcript(episode_id):
@@ -181,3 +205,20 @@ def extract_entities(episode_id):
         except Exception:
             pass
         return {"success": False, "error": error_msg}
+
+@shared_task
+def process_recent_episodes_without_transcript():
+    """
+    Celery task to process the full workflow for all episodes created in the last two days without a transcript.
+    """
+    logger.info("Processing recent episodes without transcript (last 2 days)")
+    now = timezone.now()
+    two_days_ago = now - timedelta(days=2)
+    episodes = Episode.objects.filter(created_at__gte=two_days_ago, transcript__isnull=True)
+    task_results = []
+    for episode in episodes:
+        logger.info(f"Queueing workflow for episode ID: {episode.id} - {episode.title}")
+        async_result = process_complete_workflow.delay(episode.id)
+        task_results.append({"episode_id": episode.id, "task_id": async_result.id})
+    logger.info(f"Queued {len(task_results)} episode workflows.")
+    return task_results

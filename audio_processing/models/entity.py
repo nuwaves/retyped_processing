@@ -1,12 +1,15 @@
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 from audio_processing.models.mixins.groq_mixin import GroqMixin
-from audio_processing.models.searchable_mixin import SearchableMixin
+from audio_processing.models.mixins.searchable_mixin import SearchableMixin
 import json
 from audio_processing.prompts import get_entity_extraction_prompt
 import re
 
 class Entity(models.Model, GroqMixin, SearchableMixin):
+    class Meta:
+        unique_together = ("name", "type")
+
     SEARCH_INDEX_UID = "entities"
 
     def get_search_document(self):
@@ -25,7 +28,7 @@ class Entity(models.Model, GroqMixin, SearchableMixin):
         ORGANIZATION = 'ORGANIZATION', _('Organization')
         PRODUCT = 'PRODUCT', _('Product')
 
-    name = models.CharField(max_length=255, unique=True)
+    name = models.CharField(max_length=255)
     type = models.CharField(max_length=20, choices=EntityType.choices)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
