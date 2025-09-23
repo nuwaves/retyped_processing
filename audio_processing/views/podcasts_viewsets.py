@@ -6,7 +6,7 @@ from rest_framework import viewsets, mixins, permissions, filters
 from audio_processing.analytics_utils import get_top_by_views
 from audio_processing.api_filters import MultiTagFilterBackend
 from ..models import Podcast
-from ..serializers import PodcastSerializer, PodcastListSerializer
+from ..serializers import PodcastSerializer, PodcastListSerializer, PodcastAnalyticsSerializer
 
 
 class PodcastViewSet(
@@ -28,5 +28,10 @@ class PodcastViewSet(
     @action(detail=False, methods=['get'], url_path='top-by-views')
     def top_by_views(self, request):
         timeframe = request.query_params.get('timeframe', 'all')
-        data = get_top_by_views('podcast', Podcast, PodcastListSerializer, request, timeframe)
-        return Response(data, status=status.HTTP_200_OK)
+        tops_queryset = get_top_by_views('podcast', Podcast, request, timeframe)
+        page = self.paginate_queryset(tops_queryset)
+        if page is not None:
+            serialized_data = PodcastAnalyticsSerializer(page, many=True)
+            return self.get_paginated_response(serialized_data.data)
+        serialized_data = PodcastAnalyticsSerializer(tops_queryset, many=True)
+        return Response(serialized_data.data, status=status.HTTP_200_OK)

@@ -34,10 +34,10 @@ class PodcastViewSetAPITest(TestCase):
         response = self.client.get(url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         data = response.json()
-        self.assertEqual(data[0]['name'], 'Podcast 2')
-        self.assertEqual(data[0]['total_views'], 25)
-        self.assertEqual(data[1]['name'], 'Podcast 1')
-        self.assertEqual(data[1]['total_views'], 17)
+        self.assertEqual(data['results'][0]['name'], 'Podcast 2')
+        self.assertEqual(data['results'][0]['total_views'], 25)
+        self.assertEqual(data['results'][1]['name'], 'Podcast 1')
+        self.assertEqual(data['results'][1]['total_views'], 17)
 
     def test_top_by_views_timeframe(self):
         url = reverse('v1:api-v1-podcasts-top-by-views')
@@ -45,8 +45,8 @@ class PodcastViewSetAPITest(TestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         data = response.json()
         # Only the recent analytics for podcast2 should be counted
-        self.assertEqual(data[0]['name'], 'Podcast 2')
-        self.assertEqual(data[0]['total_views'], 25)
+        self.assertEqual(data['results'][0]['name'], 'Podcast 2')
+        self.assertEqual(data['results'][0]['total_views'], 25)
 
     def test_top_by_views_empty(self):
         Podcast.objects.all().delete()
@@ -54,7 +54,7 @@ class PodcastViewSetAPITest(TestCase):
         response = self.client.get(url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         data = response.json()
-        self.assertEqual(data, [])
+        self.assertEqual(data['results'], [])
 
     def test_retrieve_podcast_by_slug(self):
         podcast = self.podcast1
@@ -120,3 +120,26 @@ class PodcastViewSetAPITest(TestCase):
         data = response.json()
         self.assertEqual(len(data['results']), 1)
         self.assertEqual(data['results'][0]['name'], 'Podcast 1')
+
+    def test_top_by_views_pagination_metadata(self):
+        url = reverse('v1:api-v1-podcasts-top-by-views')
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        data = response.json()
+        self.assertIn('count', data)
+        self.assertIn('next', data)
+        self.assertIn('previous', data)
+        self.assertIn('results', data)
+        self.assertEqual(data['count'], 2)
+        self.assertIsNone(data['next'])
+        self.assertIsNone(data['previous'])
+
+    def test_top_by_views_pagination_with_page_size(self):
+        url = reverse('v1:api-v1-podcasts-top-by-views')
+        response = self.client.get(url, {'limit': 1})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        data = response.json()
+        self.assertEqual(len(data['results']), 1)
+        self.assertEqual(data['count'], 2)
+        self.assertIsNotNone(data['next'])
+        self.assertIsNone(data['previous'])
