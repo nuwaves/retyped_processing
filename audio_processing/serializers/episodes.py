@@ -17,7 +17,23 @@ class EpisodeListSerializer(EpisodeSerializer):
     class Meta:
         model = Episode
         fields = [
-            "id", "slug", "tags", "title", "subtitle",
-            "description", "summary", "release_date",
-            "created_at", "updated_at", "podcast", "image_url"
+            "id",
+            "slug",
+            "tags",
+            "title",
+            "subtitle",
+            "description",
+            "summary",
+            "release_date",
+            "created_at",
+            "updated_at",
+            "podcast",
+            "image_url",
         ]
+
+
+class EpisodeAnalyticsSerializer(EpisodeListSerializer):
+    total_views = serializers.IntegerField(read_only=True)
+
+    class Meta(EpisodeListSerializer.Meta):
+        fields = EpisodeListSerializer.Meta.fields + ["total_views"]

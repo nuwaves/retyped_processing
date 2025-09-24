@@ -1,10 +1,17 @@
-from ..models import Episode
-from ..serializers import EpisodeSerializer, EpisodeListSerializer
-from rest_framework import viewsets, mixins, permissions, filters
-from audio_processing.analytics_utils import get_top_by_views
+from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework import status
+from rest_framework import viewsets, mixins, permissions, filters
+
+from ..models import Episode
+from ..serializers import (
+    EpisodeSerializer,
+    EpisodeListSerializer,
+    EpisodeAnalyticsSerializer,
+)
+from audio_processing.analytics_utils import get_top_by_views
 from audio_processing.api_filters import MultiTagFilterBackend
+
 
 class EpisodeViewSet(
     viewsets.GenericViewSet, mixins.ListModelMixin, mixins.RetrieveModelMixin
@@ -19,12 +26,18 @@ class EpisodeViewSet(
         "podcast__name",
         "title",
     ]
-    lookup_field = 'slug'
+    lookup_field = "slug"
 
+    @action(detail=False, methods=["get"], url_path="top-by-views")
     def top_by_views(self, request):
-        timeframe = request.query_params.get('timeframe', 'all')
-        data = get_top_by_views('episode', Episode, EpisodeListSerializer, request, timeframe)
-        return Response(data, status=status.HTTP_200_OK)
+        timeframe = request.query_params.get("timeframe", "all")
+        tops_queryset = get_top_by_views("episode", Episode, request, timeframe)
+        page = self.paginate_queryset(tops_queryset)
+        if page is not None:
+            serialized_data = EpisodeAnalyticsSerializer(page, many=True)
+            return self.get_paginated_response(serialized_data.data)
+        serialized_data = EpisodeAnalyticsSerializer(tops_queryset, many=True)
+        return Response(serialized_data.data, status=status.HTTP_200_OK)
 
     def get_serializer_class(self):
         if self.action in ("list",):

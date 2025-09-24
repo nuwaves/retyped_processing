@@ -19,3 +19,10 @@ class PodcastListSerializer(PodcastSerializer):
             "tags", "created_at", "updated_at",
             "image_url"
         ]
+
+
+class PodcastAnalyticsSerializer(PodcastListSerializer):
+    total_views = serializers.IntegerField(read_only=True)
+
+    class Meta(PodcastListSerializer.Meta):
+        fields = PodcastListSerializer.Meta.fields + ["total_views"]
