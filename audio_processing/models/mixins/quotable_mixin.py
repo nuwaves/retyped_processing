@@ -113,11 +113,7 @@ class QuotableMixin():
             list: List of created Quote objects
         """
         # Import Quote model
-        try:
-            from .quote import Quote
-        except ImportError:
-            logger.error("Quote model not found - cannot create quote objects")
-            return []
+        from audio_processing.models.quote import Quote
         
         created_quotes = []
         
@@ -155,9 +151,5 @@ class QuotableMixin():
         Returns:
             QuerySet: Quote objects related to this instance
         """
-        try:
-            from .quote import Quote
-            return Quote.objects.filter(episode=self).order_by('-created_at')
-        except ImportError:
-            logger.error("Quote model not found")
-            return []
+        from audio_processing.models.quote import Quote
+        return Quote.objects.filter(episode=self).order_by('-created_at')

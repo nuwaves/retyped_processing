@@ -2,8 +2,45 @@ from django.contrib.auth.models import User
 from django.test import TestCase
 from django.urls import reverse
 from rest_framework.test import APIClient
+from django.contrib.auth.models import User
+from audio_processing.models import Podcast, Episode, Tag
+from audio_processing.models.user_analytics import UserAnalytics
 from rest_framework import status
-from audio_processing.models import Podcast, Episode, UserAnalytics, Tag
+
+class EpisodeViewSetAPITest(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.user = User.objects.create_user(username='testuser', password='testpass')
+        self.podcast = Podcast.objects.create(name='Podcast 1', url='https://example.com/1')
+        self.episode1 = Episode.objects.create(title='Episode 1', podcast=self.podcast, raw_audio_url='https://example.com/audio1.mp3', slug='episode-1')
+        self.episode2 = Episode.objects.create(title='Episode 2', podcast=self.podcast, raw_audio_url='https://example.com/audio2.mp3', slug='episode-2')
+        # Create tags
+        self.tag1 = Tag.objects.create(name='Python', slug='python')
+        self.tag2 = Tag.objects.create(name='Django', slug='django')
+        self.tag3 = Tag.objects.create(name='Web Development', slug='web-development')
+        # Associate tags with episodes
+        self.episode1.tags.add(self.tag1, self.tag3)
+        self.episode2.tags.add(self.tag2)
+        # Add analytics
+        UserAnalytics.objects.create(user=None, episode=self.episode1, views=10)
+        UserAnalytics.objects.create(user=None, episode=self.episode2, views=5)
+        UserAnalytics.objects.create(user=self.user, episode=self.episode1, views=7)
+        from django.utils import timezone
+        UserAnalytics.objects.create(user=None, episode=self.episode2, views=20, updated_at=timezone.now())
+
+    def test_retrieve_creates_user_analytics_for_authenticated_user(self):
+        self.client.force_authenticate(user=self.user)
+        url = f'/api/episodes/{self.episode1.slug}/'
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(UserAnalytics.objects.filter(user=self.user, episode=self.episode1).exists())
+
+    def test_retrieve_does_not_create_user_analytics_for_anonymous(self):
+        url = f'/api/episodes/{self.episode2.slug}/'
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        # Should not create a UserAnalytics for anonymous user
+        self.assertFalse(UserAnalytics.objects.filter(user=None, episode=self.episode2, views=0).exists())
 
 class EpisodeViewSetAPITest(TestCase):
     def setUp(self):

@@ -43,3 +43,14 @@ class EpisodeViewSet(
         if self.action in ("list",):
             return EpisodeListSerializer
         return self.serializer_class
+
+    def retrieve(self, request, *args, **kwargs):
+        # Create UserAnalytics instance when episode is retrieved
+        episode = self.get_object()
+        user = request.user if request.user.is_authenticated else None
+        from audio_processing.models.user_analytics import UserAnalytics
+        user_analytics = UserAnalytics.objects.create(user=None, episode=episode, views=1)
+        if user:
+            user_analytics.user = user
+            user_analytics.save(update_fields=["user"])
+        return super().retrieve(request, *args, **kwargs)
