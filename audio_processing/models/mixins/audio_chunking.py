@@ -19,24 +19,25 @@ def preprocess_audio(input_path: Path) -> Path:
     
     with tempfile.NamedTemporaryFile(suffix='.flac', delete=False) as temp_file:
         output_path = Path(temp_file.name)
-        
     print("Converting audio to 16kHz mono FLAC...")
     try:
         subprocess.run([
             'ffmpeg',
             '-hide_banner',
             '-loglevel', 'error',
-            '-i', input_path,
+            '-i', str(input_path),
             '-ar', '16000',
             '-ac', '1',
             '-c:a', 'flac',
             '-y',
-            output_path
-        ], check=True) 
+            str(output_path)
+        ], check=True)
         return output_path
-    # We'll raise an error if our FFmpeg conversion fails
     except subprocess.CalledProcessError as e:
-        output_path.unlink(missing_ok=True)
+        try:
+            output_path.unlink(missing_ok=True)
+        except Exception:
+            pass
         raise RuntimeError(f"FFmpeg conversion failed: {e.stderr}")
     
 def transcribe_single_chunk(client: Groq, chunk: AudioSegment, chunk_num: int, total_chunks: int) -> tuple[dict, float]:
@@ -58,31 +59,34 @@ def transcribe_single_chunk(client: Groq, chunk: AudioSegment, chunk_num: int, t
     total_api_time = 0
     
     while True:
-        with tempfile.NamedTemporaryFile(suffix='.flac') as temp_file:
+        temp_file = tempfile.NamedTemporaryFile(suffix='.flac', delete=False)
+        try:
             chunk.export(temp_file.name, format='flac')
-            
             start_time = time.time()
             try:
-                result = client.audio.transcriptions.create(
-                    file=("chunk.flac", temp_file, "audio/flac"),
-                    model="whisper-large-v3",
-                    language="en",
-                    response_format="verbose_json"
-                )
+                with open(temp_file.name, 'rb') as f:
+                    result = client.audio.transcriptions.create(
+                        file=("chunk.flac", f, "audio/flac"),
+                        model="whisper-large-v3",
+                        language="en",
+                        response_format="verbose_json"
+                    )
                 api_time = time.time() - start_time
                 total_api_time += api_time
-                
                 print(f"Chunk {chunk_num}/{total_chunks} processed in {api_time:.2f}s")
                 return result, total_api_time
-                
             except RateLimitError as e:
                 print(f"\nRate limit hit for chunk {chunk_num} - retrying in 60 seconds...")
-                time.sleep(60)  # default wait time
+                time.sleep(60)
                 continue
-                
             except Exception as e:
                 print(f"Error transcribing chunk {chunk_num}: {str(e)}")
                 raise
+        finally:
+            try:
+                Path(temp_file.name).unlink(missing_ok=True)
+            except Exception:
+                pass
 
 def find_longest_common_sequence(sequences: list[str], match_by_words: bool = True) -> str:
     """
@@ -506,4 +510,7 @@ def transcribe_audio_in_chunks(audio_path: Path, chunk_length: int = 600, overla
     # Clean up temp files regardless of successful creation    
     finally:
         if processed_path:
-            Path(processed_path).unlink(missing_ok=True)
+            try:
+                Path(processed_path).unlink(missing_ok=True)
+            except Exception:
+                pass

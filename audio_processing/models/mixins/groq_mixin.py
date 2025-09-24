@@ -90,40 +90,46 @@ class GroqMixin():
             return None
         headers = {"Authorization": f"Bearer {api_key}"}
         clean_url = self.clean_url(self.raw_audio_url)
-        # Download the file locally to check size
-        with requests.get(clean_url, stream=True, timeout=300) as r:
-            r.raise_for_status()
-            with tempfile.NamedTemporaryFile(delete=False) as tmp:
-                for chunk in r.iter_content(chunk_size=8192):
-                    tmp.write(chunk)
-                tmp_path = tmp.name
-        file_size = os.path.getsize(tmp_path)
-        max_chunk_size = 100 * 1024 * 1024  # 100MB
-        if file_size > max_chunk_size:
-            # Use the mixin to chunk and transcribe
-            result = transcribe_audio_in_chunks(Path(tmp_path))
-            transcript = result.get("text", "")
-        else:
-            # Single file, send as usual
-            with open(tmp_path, 'rb') as f:
-                files = {
-                    "url": (None, clean_url),
-                    "model": (None, config.TEXT_TO_SPEECH_MODEL),
-                    "language": (None, "en"),
-                    "response_format": (None, "json"),
-                }
-                response = requests.post(url, headers=headers, files=files)
-                response.raise_for_status()
-                transcript = response.json().get("text", "")
-        os.remove(tmp_path)
-        if transcript.strip():
-            self.transcript = transcript
-            self.save()
-            logger.info(f"Transcript updated for: {self.raw_audio_url}")
-            return transcript
-        else:
-            logger.warning(f"No transcript returned for: {self.raw_audio_url}")
-            return None
+        tmp_path = None
+        try:
+            with requests.get(clean_url, stream=True, timeout=300) as r:
+                r.raise_for_status()
+                with tempfile.NamedTemporaryFile(delete=False) as tmp:
+                    for chunk in r.iter_content(chunk_size=8192):
+                        tmp.write(chunk)
+                    tmp_path = tmp.name
+            file_size = os.path.getsize(tmp_path)
+            max_chunk_size = 100 * 1024 * 1024  # 100MB
+            if file_size > max_chunk_size:
+                # Use the mixin to chunk and transcribe
+                result = transcribe_audio_in_chunks(Path(tmp_path))
+                transcript = result.get("text", "")
+            else:
+                # Single file, send as usual
+                with open(tmp_path, 'rb') as f:
+                    files = {
+                        "url": (None, clean_url),
+                        "model": (None, config.TEXT_TO_SPEECH_MODEL),
+                        "language": (None, "en"),
+                        "response_format": (None, "json"),
+                    }
+                    response = requests.post(url, headers=headers, files=files)
+                    response.raise_for_status()
+                    transcript = response.json().get("text", "")
+            if transcript.strip():
+                self.transcript = transcript
+                self.save()
+                logger.info(f"Transcript updated for: {self.raw_audio_url}")
+                return transcript
+            else:
+                logger.warning(f"No transcript returned for: {self.raw_audio_url}")
+                return None
+        finally:
+            if tmp_path:
+                try:
+                    os.remove(tmp_path)
+                except Exception:
+                    pass
 
     
     def generate_speaker_script(self):
