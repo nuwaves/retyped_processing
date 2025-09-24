@@ -18,7 +18,7 @@ class TaggableMixin:
     
     def _get_available_tags(self):
         """Get all available tags formatted for LLM processing."""
-        from .tag import Tag
+        from audio_processing.models.tag import Tag
         all_tags = Tag.objects.all()
         
         if not all_tags.exists():
@@ -38,7 +38,7 @@ class TaggableMixin:
     
     def _parse_and_apply_tags(self, llm_response):
         """Parse LLM response and apply valid tags to the model."""
-        from .tag import Tag
+        from audio_processing.models.tag import Tag
         
         try:
             suggested_tag_ids = json.loads(llm_response)
