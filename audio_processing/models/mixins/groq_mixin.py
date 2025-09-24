@@ -108,7 +108,7 @@ class GroqMixin():
             with open(tmp_path, 'rb') as f:
                 files = {
                     "url": (None, clean_url),
-                    "model": (None, "whisper-large-v3"),
+                    "model": (None, config.TEXT_TO_SPEECH_MODEL),
                     "language": (None, "en"),
                     "response_format": (None, "json"),
                 }

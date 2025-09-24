@@ -127,6 +127,7 @@ CONSTANCE_CONFIG = {
     'SUMMARY_MODEL': ("llama-3.1-8b-instant", "Model to use for generating summaries"),
     "TAG_MODEL": ("llama-3.1-8b-instant", "Model to use for generating tags"),
     "SPEAKER_MODEL": ("deepseek-r1-distill-llama-70b", "Model to use for speaker diarization"),
+    "TEXT_TO_SPEECH_MODEL": ("whisper-large-v3-turbo", "Model to use for text-to-speech synthesis"),
 }
 CONSTANCE_BACKEND = 'constance.backends.database.DatabaseBackend'
 

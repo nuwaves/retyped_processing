@@ -25,6 +25,7 @@ import os
 import requests
 from django.conf import settings
 import tempfile
+from constance import config
 
 logger = logging.getLogger(__name__)
 transcribe_client = boto3.client('transcribe', region_name='us-east-1')
@@ -566,7 +567,7 @@ class Episode(models.Model, GroqMixin, AwsMixin, TaggableMixin, SummarizableMixi
                     "method": "POST",
                     "url": "/v1/audio/transcriptions",
                     "body": {
-                        "model": "whisper-large-v3",
+                        "model": config.TEXT_TO_SPEECH_MODEL,
                         "language": "en",
                         "url": episode.raw_audio_url,
                         "response_format": "verbose_json",
