@@ -28,7 +28,7 @@ class Quote(models.Model):
     )
     
     speaker = models.CharField(
-        max_length=200,
+        max_length=2000,
         blank=True,
         null=True,
         help_text="Name or identifier of the person who said this quote"

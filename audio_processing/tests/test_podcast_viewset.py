@@ -6,6 +6,22 @@ from rest_framework import status
 from audio_processing.models import Podcast, UserAnalytics, Tag, Episode
 
 class PodcastViewSetAPITest(TestCase):
+    def test_retrieve_creates_user_analytics_for_authenticated_user(self):
+        self.client.force_authenticate(user=self.user)
+        podcast = self.podcast1
+        url = reverse('v1:api-v1-podcasts-retrieve-slug', kwargs={'slug': podcast.slug})
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(UserAnalytics.objects.filter(user=self.user, podcast=podcast).exists())
+
+    def test_retrieve_does_not_create_user_analytics_for_anonymous(self):
+        podcast = self.podcast2
+        url = reverse('v1:api-v1-podcasts-retrieve-slug', kwargs={'slug': podcast.slug})
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        # Should not create a UserAnalytics for anonymous user with user field set
+        self.assertFalse(UserAnalytics.objects.filter(user__isnull=False, podcast=podcast).exists())
+
     def setUp(self):
         self.client = APIClient()
         self.user = User.objects.create_user(username='testuser', password='testpass')

@@ -24,9 +24,9 @@ class Podcast(models.Model, SearchableMixin):
     # RSS metadata
     subtitle = models.CharField(max_length=5000, blank=True, null=True, help_text="iTunes subtitle")
     summary = models.TextField(blank=True, null=True, help_text="iTunes summary (longer description)")
-    author = models.CharField(max_length=200, blank=True, null=True, help_text="Podcast author/creator")
+    author = models.CharField(max_length=2000, blank=True, null=True, help_text="Podcast author/creator")
     language = models.CharField(max_length=10, blank=True, null=True, help_text="Language code (e.g., 'en')")
-    copyright = models.CharField(max_length=200, blank=True, null=True, help_text="Copyright information")
+    copyright = models.CharField(max_length=2000, blank=True, null=True, help_text="Copyright information")
     
     # iTunes specific fields
     itunes_explicit = models.BooleanField(default=False, help_text="iTunes explicit content flag")
@@ -38,7 +38,7 @@ class Podcast(models.Model, SearchableMixin):
     itunes_image_url = models.URLField(max_length=500, blank=True, null=True, help_text="iTunes specific image URL")
     
     # Owner information
-    owner_name = models.CharField(max_length=200, blank=True, null=True, help_text="Owner name")
+    owner_name = models.CharField(max_length=2000, blank=True, null=True, help_text="Owner name")
     owner_email = models.EmailField(blank=True, null=True, help_text="Owner email")
     
     # Dates
