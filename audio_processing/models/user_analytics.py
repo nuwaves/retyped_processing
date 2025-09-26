@@ -75,8 +75,8 @@ class UserAnalytics(models.Model):
             entity_name = f"Podcast: {self.podcast.name}"
         elif self.episode:
             entity_name = f"Episode: {self.episode.title}"
-        
-        return f"{self.user.username} - {entity_name}"
+
+        return f"{self.user.username if self.user else 'Anonymous'} - {entity_name}"
 
     def clean(self):
         """Validate that exactly one of podcast or episode is set."""
