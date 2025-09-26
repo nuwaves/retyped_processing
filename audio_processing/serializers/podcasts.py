@@ -12,12 +12,24 @@ class PodcastSerializer(serializers.ModelSerializer):
 
 
 class PodcastListSerializer(PodcastSerializer):
+    episode_count = serializers.SerializerMethodField()
+
+    def get_episode_count(self, obj):
+        return obj.episodes.count()
+
     class Meta:
         model = Podcast
         fields = [
-            "id", "slug", "name", "url", "description",
-            "tags", "created_at", "updated_at",
-            "image_url"
+            "id",
+            "slug",
+            "name",
+            "url",
+            "description",
+            "tags",
+            "created_at",
+            "updated_at",
+            "image_url",
+            "episode_count",
         ]
 
 

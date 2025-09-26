@@ -7,6 +7,11 @@ from .podcasts import PodcastListSerializer
 class EpisodeSerializer(serializers.ModelSerializer):
     tags = TagSerializer(many=True)
     podcast = PodcastListSerializer()
+    followers = serializers.SerializerMethodField()
+
+    def get_followers(self, obj):
+        # ToDO: add follower count when we track this field
+        return 0
 
     class Meta:
         model = Episode
@@ -14,6 +19,12 @@ class EpisodeSerializer(serializers.ModelSerializer):
 
 
 class EpisodeListSerializer(EpisodeSerializer):
+    followers = serializers.SerializerMethodField()
+
+    def get_followers(self, obj):
+        # ToDO: add follower count when we track this field
+        return 0
+
     class Meta:
         model = Episode
         fields = [
@@ -29,6 +40,8 @@ class EpisodeListSerializer(EpisodeSerializer):
             "updated_at",
             "podcast",
             "image_url",
+            "episode_number",
+            "followers",
         ]
 
 

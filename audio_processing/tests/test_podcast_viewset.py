@@ -3,7 +3,7 @@ from django.test import TestCase
 from django.urls import reverse
 from rest_framework.test import APIClient
 from rest_framework import status
-from audio_processing.models import Podcast, UserAnalytics, Tag
+from audio_processing.models import Podcast, UserAnalytics, Tag, Episode
 
 class PodcastViewSetAPITest(TestCase):
     def setUp(self):
@@ -20,6 +20,23 @@ class PodcastViewSetAPITest(TestCase):
         # Associate tags with podcasts
         self.podcast1.tags.add(self.tag1, self.tag3)  # Tech, News
         self.podcast2.tags.add(self.tag2)  # Comedy
+
+        # Create episodes for podcasts
+        self.episode1 = Episode.objects.create(
+            title='Episode 1',
+            podcast=self.podcast1,
+            raw_audio_url='https://example.com/audio1.mp3'
+        )
+        self.episode2 = Episode.objects.create(
+            title='Episode 2',
+            podcast=self.podcast1,
+            raw_audio_url='https://example.com/audio2.mp3'
+        )
+        self.episode3 = Episode.objects.create(
+            title='Episode 3',
+            podcast=self.podcast2,
+            raw_audio_url='https://example.com/audio3.mp3'
+        )
         
         # Add analytics
         UserAnalytics.objects.create(user=None, podcast=self.podcast1, views=10)
@@ -143,3 +160,56 @@ class PodcastViewSetAPITest(TestCase):
         self.assertEqual(data['count'], 2)
         self.assertIsNotNone(data['next'])
         self.assertIsNone(data['previous'])
+
+    def test_all_episodes_for_podcast(self):
+        """Test getting all episodes for a specific podcast."""
+        url = reverse('v1:api-v1-podcast-retrieve-episodes', kwargs={'slug': self.podcast1.slug})
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        data = response.json()
+        self.assertIn('results', data)
+        self.assertEqual(len(data['results']), 2)
+        episode_titles = [episode['title'] for episode in data['results']]
+        self.assertIn('Episode 1', episode_titles)
+        self.assertIn('Episode 2', episode_titles)
+
+    def test_all_episodes_pagination_metadata(self):
+        """Test pagination metadata for all episodes endpoint."""
+        url = reverse('v1:api-v1-podcast-retrieve-episodes', kwargs={'slug': self.podcast1.slug})
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        data = response.json()
+        self.assertIn('count', data)
+        self.assertIn('next', data)
+        self.assertIn('previous', data)
+        self.assertIn('results', data)
+        self.assertEqual(data['count'], 2)
+        self.assertIsNone(data['next'])
+        self.assertIsNone(data['previous'])
+
+    def test_all_episodes_with_pagination_limit(self):
+        """Test pagination with limit for all episodes endpoint."""
+        url = reverse('v1:api-v1-podcast-retrieve-episodes', kwargs={'slug': self.podcast1.slug})
+        response = self.client.get(url, {'limit': 1})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        data = response.json()
+        self.assertEqual(len(data['results']), 1)
+        self.assertEqual(data['count'], 2)
+        self.assertIsNotNone(data['next'])
+        self.assertIsNone(data['previous'])
+
+    def test_all_episodes_for_nonexistent_podcast(self):
+        """Test getting episodes for a podcast that doesn't exist."""
+        url = reverse('v1:api-v1-podcast-retrieve-episodes', kwargs={'slug': 'nonexistent-podcast'})
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_all_episodes_for_podcast_with_no_episodes(self):
+        """Test getting episodes for a podcast that has no episodes."""
+        podcast_no_episodes = Podcast.objects.create(name='Empty Podcast', url='https://example.com/empty')
+        url = reverse('v1:api-v1-podcast-retrieve-episodes', kwargs={'slug': podcast_no_episodes.slug})
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        data = response.json()
+        self.assertEqual(data['results'], [])
+        self.assertEqual(data['count'], 0)

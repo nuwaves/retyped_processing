@@ -72,6 +72,10 @@ api_v1_patterns = [
         PodcastViewSet.as_view({"get": "retrieve"}),
         name="api-v1-podcasts-retrieve-slug"
     ),
+    path(
+        "podcasts/<str:slug>/episodes", PodcastViewSet.as_view({"get": "all_episodes"}),
+        name="api-v1-podcast-retrieve-episodes"
+    ),
     # Search endpoints
     path(
         "search/", SearchViewSet.as_view({"get": "search"}),
