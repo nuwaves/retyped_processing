@@ -66,7 +66,6 @@ class SearchViewSetTest(TestCase):
         data = response.json()
         self.assertIn('podcasts', data)
         self.assertIn('episodes', data)
-        breakpoint()
         # Should find our podcast
         self.assertTrue(len(data['podcasts']) > 0)
         self.assertEqual(data['podcasts'][0]['name'], 'Django Podcast')
