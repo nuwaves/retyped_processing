@@ -21,12 +21,21 @@ class EpisodeViewSet(
     permission_classes = [
         permissions.IsAuthenticatedOrReadOnly,
     ]
-    filter_backends = [filters.SearchFilter, MultiTagFilterBackend]
+    filter_backends = [
+        filters.SearchFilter,
+        MultiTagFilterBackend,
+        filters.OrderingFilter,
+    ]
     search_fields = [
         "podcast__name",
         "title",
     ]
     lookup_field = "slug"
+    ordering_fields = [
+        "updated_at",
+        "created_at",
+    ]
+    ordering = ["-updated_at"]
 
     @action(detail=False, methods=["get"], url_path="top-by-views")
     def top_by_views(self, request):
@@ -49,7 +58,10 @@ class EpisodeViewSet(
         episode = self.get_object()
         user = request.user if request.user.is_authenticated else None
         from audio_processing.models.user_analytics import UserAnalytics
-        user_analytics = UserAnalytics.objects.create(user=None, episode=episode, views=1)
+
+        user_analytics = UserAnalytics.objects.create(
+            user=None, episode=episode, views=1
+        )
         if user:
             user_analytics.user = user
             user_analytics.save(update_fields=["user"])
