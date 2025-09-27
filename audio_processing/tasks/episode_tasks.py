@@ -214,7 +214,7 @@ def process_recent_episodes_without_transcript():
     logger.info("Processing recent episodes without transcript (last 2 days)")
     now = timezone.now()
     two_days_ago = now - timedelta(days=2)
-    episodes = Episode.objects.filter(release_date=two_days_ago, transcript__isnull=True)
+    episodes = Episode.objects.filter(release_date__gte=two_days_ago, transcript__isnull=True)
     task_results = []
     for episode in episodes:
         logger.info(f"Queueing workflow for episode ID: {episode.id} - {episode.title}")
