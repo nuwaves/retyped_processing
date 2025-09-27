@@ -2,12 +2,14 @@ from rest_framework import serializers
 from ..models import Episode
 from .tags import TagSerializer
 from .podcasts import PodcastListSerializer
+from .quotes import QuoteSerializer
 
 
 class EpisodeSerializer(serializers.ModelSerializer):
     tags = TagSerializer(many=True)
     podcast = PodcastListSerializer()
     followers = serializers.SerializerMethodField()
+    quotes = QuoteSerializer(many=True)
 
     def get_followers(self, obj):
         # ToDO: add follower count when we track this field

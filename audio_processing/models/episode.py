@@ -31,7 +31,7 @@ logger = logging.getLogger(__name__)
 transcribe_client = boto3.client('transcribe', region_name='us-east-1')
 
 class Episode(models.Model, GroqMixin, AwsMixin, TaggableMixin, SummarizableMixin, SearchableMixin, QuotableMixin):
-
+    processing_completed_at = models.DateTimeField(blank=True, null=True, help_text="Timestamp when episode processing was completed")
     image_url = models.URLField(max_length=1000, blank=True, null=True, help_text="Episode artwork URL")
     slug = models.SlugField(max_length=512, unique=True, blank=True, help_text="Unique slug for episode, prefixed with podcast slug")
     # Search configuration
@@ -507,6 +507,8 @@ class Episode(models.Model, GroqMixin, AwsMixin, TaggableMixin, SummarizableMixi
             logger.info(f"Extracted {len(quotes)} quotes from: {self.raw_audio_url}")
         else:
             results['errors'].append("Failed to extract quotes")
+        self.processing_completed_at = timezone.now()
+        self.save(update_fields=["processing_completed_at"])
         return results
     
     def get_search_document(self):

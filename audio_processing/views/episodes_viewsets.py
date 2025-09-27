@@ -2,6 +2,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework import viewsets, mixins, permissions, filters
+from django_filters.rest_framework import DjangoFilterBackend
 
 from ..models import Episode
 from ..serializers import (
@@ -24,8 +25,13 @@ class EpisodeViewSet(
     filter_backends = [
         filters.SearchFilter,
         MultiTagFilterBackend,
+        DjangoFilterBackend,
         filters.OrderingFilter,
     ]
+    filterset_fields = {
+        'processing_completed_at': ['isnull'],
+    }
+
     search_fields = [
         "podcast__name",
         "title",
@@ -49,7 +55,10 @@ class EpisodeViewSet(
         return Response(serialized_data.data, status=status.HTTP_200_OK)
 
     def get_serializer_class(self):
-        if self.action in ("list",):
+        request = getattr(self, 'request', None)
+        if self.action == "list":
+            if request and request.query_params.get("details", "false").lower() == "true":
+                return EpisodeSerializer
             return EpisodeListSerializer
         return self.serializer_class
 

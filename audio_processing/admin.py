@@ -250,7 +250,7 @@ class EpisodeAdmin(admin.ModelAdmin):
             'classes': ('collapse',)
         }),
         ('Processing Content', {
-            'fields': ('transcript', 'script_transcript', 'summary'),
+            'fields': ('transcript', 'script_transcript', 'summary', 'processing_completed_at'),
             'classes': ('wide',)
         }),
         ('Dates', {
