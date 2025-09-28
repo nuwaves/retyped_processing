@@ -3,6 +3,9 @@ Base Django settings for audio_processing project.
 """
 
 import os
+from pathlib import Path
+
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
 # Application definition
 INSTALLED_APPS = [

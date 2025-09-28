@@ -3,14 +3,10 @@ Development settings for audio_processing project.
 """
 
 from dotenv import load_dotenv
-from pathlib import Path
-
-# Build paths inside the project like this: BASE_DIR / 'subdir'.
-BASE_DIR = Path(__file__).resolve().parent.parent.parent
+from .base import *
 
 # Load environment variables
 load_dotenv(BASE_DIR / ".env.dev")
-from .base import *
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = "django-insecure-5wh5q4v%ak6cyobga4x#ngitaft8w-w_hit*94(#_6+r*auzs*"
