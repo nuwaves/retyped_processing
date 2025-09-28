@@ -420,4 +420,4 @@ class Podcast(models.Model, SearchableMixin):
         }
 
     def get_absolute_url(self):
-        return 'https://www.retyped.xyz/shows/' + self.slug
+        return '/shows/' + self.slug

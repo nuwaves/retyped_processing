@@ -622,4 +622,4 @@ class Episode(models.Model, GroqMixin, AwsMixin, TaggableMixin, SummarizableMixi
         return groq_response
     
     def get_absolute_url(self):
-        return 'https://www.retyped.xyz/shows/' + self.podcast.slug + '/' + self.slug
+        return '/shows/' + self.podcast.slug + '/' + self.slug
