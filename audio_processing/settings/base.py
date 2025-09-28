@@ -22,7 +22,11 @@ INSTALLED_APPS = [
     "social_django",
     "drf_social_oauth2",
     "django_celery_beat",
+    "django.contrib.sites",
+    "django.contrib.sitemaps", 
 ]
+
+SITE_ID = 1
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",

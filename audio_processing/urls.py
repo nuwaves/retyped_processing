@@ -21,6 +21,9 @@ from django.http import JsonResponse
 from .api_urls import api_v1_patterns
 from drf_yasg.views import get_schema_view
 from drf_yasg import openapi
+from django.contrib.sitemaps import GenericSitemap
+from django.contrib.sitemaps.views import sitemap
+from audio_processing.models import Episode, Podcast
 
 
 def health_check(request):
@@ -37,6 +40,15 @@ schema_view = get_schema_view(
     ),
     public=True,
 )
+
+episode_dict = {
+    "queryset": Episode.objects.all(),
+    "date_field": "updated_at",
+}
+podcast_dict = {
+    "queryset": Podcast.objects.all(),
+    "date_field": "updated_at",
+}
 
 urlpatterns = [
     # Documentation endpoints
@@ -56,4 +68,10 @@ urlpatterns = [
     re_path(r"^auth/", include("drf_social_oauth2.urls", namespace="drf")),
     # API v1 endpoints
     path("api/v1/", include((api_v1_patterns, "api_v1"), namespace="v1")),
+     path(
+        "sitemap.xml",
+        sitemap,
+            {"sitemaps": {"episodes": GenericSitemap(episode_dict),
+                          "podcasts": GenericSitemap(podcast_dict)}},
+        ),
 ]

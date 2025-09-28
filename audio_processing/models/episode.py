@@ -620,3 +620,7 @@ class Episode(models.Model, GroqMixin, AwsMixin, TaggableMixin, SummarizableMixi
             record_count=len(episode_ids)
         )
         return groq_response
+    
+    def get_absolute_url(self):
+        from django.urls import reverse
+        return reverse("v1:api-v1-episodes-retrieve-slug", kwargs={"slug": self.slug})

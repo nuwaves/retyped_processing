@@ -418,3 +418,9 @@ class Podcast(models.Model, SearchableMixin):
             "episode_count": self.episodes.count(),
             "tags": [tag.name for tag in self.tags.all()]
         }
+
+    def get_absolute_url(self):
+        from django.urls import reverse
+        if self.slug:
+            return reverse("v1:api-v1-podcasts-retrieve-slug", kwargs={"slug": self.slug})
+        return reverse("v1:api-v1-podcasts-retrieve-id", kwargs={"id": self.id})
