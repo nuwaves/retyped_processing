@@ -3,7 +3,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework import viewsets, mixins, permissions, filters
 
-from audio_processing.analytics_utils import get_top_by_views
+from audio_processing.utils.analytics import get_top_by_views
 from audio_processing.api_filters import MultiTagFilterBackend
 from ..models import Podcast
 from ..serializers import (
