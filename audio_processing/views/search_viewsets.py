@@ -1,5 +1,4 @@
 import meilisearch
-
 from ..models import Podcast, Episode, Tag
 from ..models.entity import Entity
 from ..serializers import (
@@ -45,21 +44,28 @@ class SearchViewSet(viewsets.GenericViewSet):
         # Perform search using MeiliSearch
         search_results = {}
         if search_type in ['episode', 'all']:
-            episode_results = episodes_index.search(query)
-            episode_ids = [hit['id'] for hit in episode_results.get('hits', [])]
-            episodes = Episode.objects.filter(id__in=episode_ids)
-            search_results['episodes'] = [EpisodeSerializer(episode).data for episode in episodes]
-
+            try:
+                episode_results = episodes_index.search(query)
+                episode_ids = [hit['id'] for hit in episode_results.get('hits', [])]
+                episodes = Episode.objects.filter(id__in=episode_ids)
+                search_results['episodes'] = [EpisodeSerializer(episode).data for episode in episodes]
+            except meilisearch.errors.MeilisearchApiError:
+                search_results['episodes'] = []
         if search_type in ['podcast', 'all']:
-            podcast_results = podcasts_index.search(query)
-            podcast_ids = [hit['id'] for hit in podcast_results.get('hits', [])]
-            podcasts = Podcast.objects.filter(id__in=podcast_ids)
-            search_results['podcasts'] = [PodcastListSerializer(podcast).data for podcast in podcasts]
+            try:
+                podcast_results = podcasts_index.search(query)
+                podcast_ids = [hit['id'] for hit in podcast_results.get('hits', [])]
+                podcasts = Podcast.objects.filter(id__in=podcast_ids)
+                search_results['podcasts'] = [PodcastListSerializer(podcast).data for podcast in podcasts]
+            except meilisearch.errors.MeilisearchApiError:
+                search_results['podcasts'] = []
 
         if search_type in ['entity', 'all']:
-            entity_results = entities_index.search(query)
-            entity_ids = [hit['id'] for hit in entity_results.get('hits', [])]
-            entities = Entity.objects.filter(id__in=entity_ids)
-            search_results['entities'] = [EntitySerializer(entity).data for entity in entities]
-
+            try:
+                entity_results = entities_index.search(query)
+                entity_ids = [hit['id'] for hit in entity_results.get('hits', [])]
+                entities = Entity.objects.filter(id__in=entity_ids)
+                search_results['entities'] = [EntitySerializer(entity).data for entity in entities]
+            except meilisearch.errors.MeilisearchApiError:
+                search_results['entities'] = []
         return Response(search_results)
