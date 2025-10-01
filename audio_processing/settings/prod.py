@@ -73,17 +73,17 @@ if not MEILISEARCH_URL:
     MEILISEARCH_URL = 'https://edge.meilisearch.com'
 
 # Cache configuration for production
-CACHES = {
-    'default': {
-        'BACKEND': 'django.core.cache.backends.redis.RedisCache',
-        'LOCATION': os.environ.get('REDIS_URL', 'redis://127.0.0.1:6379/1'),
-        'OPTIONS': {
-            'CLIENT_CLASS': 'django_redis.client.DefaultClient',
-        },
-        'KEY_PREFIX': 'audio_processing',
-        'TIMEOUT': 300,  # 5 minutes
-    }
-}
+# CACHES = {
+#     'default': {
+#         'BACKEND': 'django.core.cache.backends.redis.RedisCache',
+#         'LOCATION': os.environ.get('REDIS_URL', 'redis://127.0.0.1:6379/1'),
+#         'OPTIONS': {
+#             'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+#         },
+#         'KEY_PREFIX': 'audio_processing',
+#         'TIMEOUT': 300,  # 5 minutes
+#     }
+# }
 
 # Production-specific middleware
 MIDDLEWARE.insert(1, 'django.middleware.cache.UpdateCacheMiddleware')
