@@ -45,20 +45,20 @@ LOGGING['loggers']['django']['level'] = 'WARNING'
 LOGGING['loggers']['audio_processing']['level'] = 'INFO'
 
 # Production database settings
-DATABASES['default']['CONN_MAX_AGE'] = 600  # 10 minutes
-DATABASES['default']['OPTIONS'] = {
-    'MAX_CONNS': 20,
-    'connect_timeout': 10,
-}
+# DATABASES['default']['CONN_MAX_AGE'] = 600  # 10 minutes
+# DATABASES['default']['OPTIONS'] = {
+#     'MAX_CONNS': 20,
+#     'connect_timeout': 10,
+# }
 
 # Email backend for production
-EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = os.environ.get('EMAIL_HOST', '')
-EMAIL_PORT = int(os.environ.get('EMAIL_PORT', '587'))
-EMAIL_USE_TLS = os.environ.get('EMAIL_USE_TLS', 'True').lower() == 'true'
-EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', '')
-EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')
-DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'noreply@example.com')
+# EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+# EMAIL_HOST = os.environ.get('EMAIL_HOST', '')
+# EMAIL_PORT = int(os.environ.get('EMAIL_PORT', '587'))
+# EMAIL_USE_TLS = os.environ.get('EMAIL_USE_TLS', 'True').lower() == 'true'
+# EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', '')
+# EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')
+# DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'noreply@example.com')
 
 # Static files for production
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
