@@ -11,7 +11,7 @@ if not SECRET_KEY:
     raise ValueError("SECRET_KEY environment variable must be set in production")
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = False
+DEBUG = True
 
 # Configure ALLOWED_HOSTS based on environment
 ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '').split(',')
@@ -38,10 +38,9 @@ SESSION_EXPIRE_AT_BROWSER_CLOSE = True
 CSRF_COOKIE_SECURE = True
 CSRF_COOKIE_HTTPONLY = True
 
-# Production logging - less verbose, more focused
 LOGGING['handlers']['console']['level'] = 'INFO'
-LOGGING['handlers']['file']['level'] = 'WARNING'
-LOGGING['loggers']['django']['level'] = 'WARNING'
+LOGGING['handlers']['file']['level'] = 'INFO'
+LOGGING['loggers']['django']['level'] = 'INFO'
 LOGGING['loggers']['audio_processing']['level'] = 'INFO'
 
 # Production database settings

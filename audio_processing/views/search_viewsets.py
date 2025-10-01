@@ -4,8 +4,7 @@ from ..models import Podcast, Episode, Tag
 from ..models.entity import Entity
 from ..serializers import (
     PodcastListSerializer,
-    EpisodeSerializer,
-    TagSerializer
+    EpisodeSerializer
 )
 from ..serializers.entities import EntitySerializer
 from django.conf import settings
