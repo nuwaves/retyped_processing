@@ -3,12 +3,23 @@ from ..models import Episode
 from .tags import TagSerializer
 from .podcasts import PodcastListSerializer
 from .quotes import QuoteSerializer
+from audio_processing.utils import sanitize_html_content
+
+
+class HtmlSanitizedField(serializers.CharField):
+    def to_representation(self, value):
+        if isinstance(value, str):
+            return sanitize_html_content(value)
+        return value
 
 
 class EpisodeSerializer(serializers.ModelSerializer):
     tags = TagSerializer(many=True)
     podcast = PodcastListSerializer()
     followers = serializers.SerializerMethodField()
+    description = HtmlSanitizedField()
+    content_encoded = HtmlSanitizedField()
+    summary = HtmlSanitizedField()
     quotes = QuoteSerializer(many=True)
 
     def get_followers(self, obj):

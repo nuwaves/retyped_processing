@@ -10,7 +10,7 @@ from ..serializers import (
     EpisodeListSerializer,
     EpisodeAnalyticsSerializer,
 )
-from audio_processing.analytics_utils import get_top_by_views
+from audio_processing.utils.analytics import get_top_by_views
 from audio_processing.api_filters import MultiTagFilterBackend
 
 
