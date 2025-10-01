@@ -12,6 +12,7 @@ if not SECRET_KEY:
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
+APPEND_SLASH = False
 
 # Configure ALLOWED_HOSTS based on environment
 ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '').split(',')
