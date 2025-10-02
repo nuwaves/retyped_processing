@@ -6,6 +6,8 @@ from .quote import Quote
 from .user_analytics import UserAnalytics
 from .entity import Entity
 from .processing_batch import ProcessingBatch
+from .follow import Follow
+from .bookmark import Bookmark
 
 __all__ = [
     'Episode', 
@@ -21,4 +23,6 @@ __all__ = [
     'SummarizableMixin',
     'Entity',
     'ProcessingBatch',
+    'Follow',
+    'Bookmark',
 ]

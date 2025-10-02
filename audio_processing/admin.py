@@ -1,5 +1,6 @@
 from .models.processing_batch import ProcessingBatch
 from .models.user_analytics import UserAnalytics
+from .models import Follow, Bookmark
 from django.contrib import admin
 from .models import Episode, Podcast, Tag, PodcastOwner, Quote, Entity
 from django.contrib.admin import SimpleListFilter
@@ -8,6 +9,7 @@ from import_export.admin import ImportExportModelAdmin
 from audio_processing.tasks.batch_tasks import fetch_and_apply_groq_results_task
 from audio_processing.tasks.podcast_tasks import process_podcast_by_id
 from django.db import models
+
 
 @admin.register(ProcessingBatch)
 class ProcessingBatchAdmin(admin.ModelAdmin):
@@ -685,3 +687,6 @@ class QuoteAdmin(admin.ModelAdmin):
     )
 
     actions = []
+
+admin.site.register(Follow)
+admin.site.register(Bookmark)
