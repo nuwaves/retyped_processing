@@ -62,7 +62,7 @@ LOGGING['loggers']['audio_processing']['level'] = 'INFO'
 
 # Static files for production
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
-STATICFILES_STORAGE = 'django.contrib.staticfiles.storage.StaticFilesStorage'
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 # Media files for production
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
