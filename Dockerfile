@@ -9,7 +9,7 @@ WORKDIR /app
 # Install system dependencies
 RUN apt-get update \
 	&& apt-get install -y ffmpeg
-
+RUN pip install gunicorn
 COPY requirements.txt /app/
 RUN pip install -r requirements.txt
 
