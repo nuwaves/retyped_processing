@@ -14,6 +14,7 @@ Including another URLconf
     1. Import the include() function: from django.urls import include, path
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
+from django.conf.urls.static import static
 
 from django.contrib import admin
 from django.urls import path, include, re_path
@@ -23,7 +24,7 @@ from drf_yasg.views import get_schema_view
 from drf_yasg import openapi
 from django.contrib.sitemaps.views import sitemap
 from audio_processing.sitemaps import EpisodeSitemap, PodcastSitemap
-
+from django.conf import settings
 
 def health_check(request):
     return JsonResponse({"status": "healthy"})
@@ -61,4 +62,4 @@ urlpatterns = [
     # Separate sitemaps
     path("sitemap-episodes.xml", sitemap, {"sitemaps": {"episodes": EpisodeSitemap}}),
     path("sitemap-podcasts.xml", sitemap, {"sitemaps": {"podcasts": PodcastSitemap}}),
-]
+] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
