@@ -8,77 +8,110 @@ from django.urls import path
 from .views import EpisodeViewSet, PodcastViewSet, TagsViewSet
 from .views.entity_viewsets import EntityViewSet
 from .views.search_viewsets import SearchViewSet
+from .views.bookmarks_viewsets import BookmarkViewSet
+from .views.follows_viewsets import FollowViewSet
 
 api_v1_patterns = [
     # Entities endpoints
     path(
-        "entities/", EntityViewSet.as_view({"get": "list"}),
-        name="api-v1-entities-list"
+        "entities/", EntityViewSet.as_view({"get": "list"}), name="api-v1-entities-list"
     ),
     path(
-        "entities/<int:pk>/episodes/", EntityViewSet.as_view({"get": "episodes"}),
-        name="api-v1-entities-episodes"
+        "entities/<int:pk>/episodes/",
+        EntityViewSet.as_view({"get": "episodes"}),
+        name="api-v1-entities-episodes",
     ),
     path(
-        "entities/<int:pk>/podcasts/", EntityViewSet.as_view({"get": "podcasts"}),
-        name="api-v1-entities-podcasts"
+        "entities/<int:pk>/podcasts/",
+        EntityViewSet.as_view({"get": "podcasts"}),
+        name="api-v1-entities-podcasts",
     ),
     # Tags endpoints
+    path("tags/", TagsViewSet.as_view({"get": "list"}), name="api-v1-tags-list"),
     path(
-        "tags/", TagsViewSet.as_view({"get": "list"}),
-        name="api-v1-tags-list"
+        "tags/<str:slug>",
+        TagsViewSet.as_view({"get": "retrieve"}),
+        name="api-v1-tags-retrieve",
     ),
     path(
-        "tags/<str:slug>", TagsViewSet.as_view({"get": "retrieve"}),
-        name="api-v1-tags-retrieve"
+        "tags/<str:slug>/episodes",
+        TagsViewSet.as_view({"get": "episodes"}),
+        name="api-v1-tags-retrieve-episodes",
     ),
     path(
-        "tags/<str:slug>/episodes", TagsViewSet.as_view({"get": "episodes"}),
-        name="api-v1-tags-retrieve-episodes"
+        "tags/<str:slug>/podcasts",
+        TagsViewSet.as_view({"get": "podcasts"}),
+        name="api-v1-tags-retrieve-podcasts",
     ),
-    path(
-        "tags/<str:slug>/podcasts", TagsViewSet.as_view({"get": "podcasts"}),
-        name="api-v1-tags-retrieve-podcasts"
-    ),
-    
     # Episodes endpoints
     path(
         "episodes/top-by-views/",
         EpisodeViewSet.as_view({"get": "top_by_views"}),
-        name="api-v1-episodes-top-by-views"
+        name="api-v1-episodes-top-by-views",
     ),
     path(
-        "episodes/", EpisodeViewSet.as_view({"get": "list"}),
-        name="api-v1-episodes-list"
+        "episodes/",
+        EpisodeViewSet.as_view({"get": "list"}),
+        name="api-v1-episodes-list",
     ),
     path(
         "episodes/<slug:slug>/",
         EpisodeViewSet.as_view({"get": "retrieve"}),
-        name="api-v1-episodes-retrieve-slug"
+        name="api-v1-episodes-retrieve-slug",
     ),
-
     # Podcasts endpoints
     path(
         "podcasts/top-by-views/",
         PodcastViewSet.as_view({"get": "top_by_views"}),
-        name="api-v1-podcasts-top-by-views"
+        name="api-v1-podcasts-top-by-views",
     ),
     path(
-        "podcasts/", PodcastViewSet.as_view({"get": "list"}),
-        name="api-v1-podcasts-list"
+        "podcasts/",
+        PodcastViewSet.as_view({"get": "list"}),
+        name="api-v1-podcasts-list",
     ),
     path(
         "podcasts/<slug:slug>/",
         PodcastViewSet.as_view({"get": "retrieve"}),
-        name="api-v1-podcasts-retrieve-slug"
+        name="api-v1-podcasts-retrieve-slug",
     ),
     path(
-        "podcasts/<str:slug>/episodes", PodcastViewSet.as_view({"get": "all_episodes"}),
-        name="api-v1-podcast-retrieve-episodes"
+        "podcasts/<str:slug>/episodes",
+        PodcastViewSet.as_view({"get": "all_episodes"}),
+        name="api-v1-podcast-retrieve-episodes",
     ),
     # Search endpoints
+    path("search/", SearchViewSet.as_view({"get": "search"}), name="api-v1-search"),
+    # Bookmark
     path(
-        "search/", SearchViewSet.as_view({"get": "search"}),
-        name="api-v1-search"
+        "bookmarks/",
+        BookmarkViewSet.as_view({"get": "list", "post": "create"}),
+        name="api-v1-bookmarks",
     ),
+    path(
+        "bookmarks/<int:pk>/",
+        BookmarkViewSet.as_view({"delete": "destroy"}),
+        name="api-v1-bookmarks-detail",
+    ),
+    path(
+        "bookmarks/<str:entity_type>/",
+        BookmarkViewSet.as_view({"get": "by_entity_type"}),
+        name="api-v1-bookmarks-by-type",
+    ),
+    path(
+        "follows/",
+        FollowViewSet.as_view({"get": "list", "post": "create"}),
+        name="api-v1-follows",
+    ),
+    path(
+        "follows/<int:pk>/",
+        FollowViewSet.as_view({"delete": "destroy"}),
+        name="api-v1-follows-detail",
+    ),
+    path(
+        "follows/<str:entity_type>/",
+        FollowViewSet.as_view({"get": "by_entity_type"}),
+        name="api-v1-follows-by-type",
+    ),
+
 ]
