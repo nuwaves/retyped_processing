@@ -11,7 +11,7 @@ if not SECRET_KEY:
     raise ValueError("SECRET_KEY environment variable must be set in production")
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 APPEND_SLASH = False
 
 # Configure ALLOWED_HOSTS based on environment
@@ -90,4 +90,4 @@ MIDDLEWARE.insert(1, 'django.middleware.cache.UpdateCacheMiddleware')
 MIDDLEWARE.append('django.middleware.cache.FetchFromCacheMiddleware')
 
 # Admin security
-ADMIN_URL = os.environ.get('ADMIN_URL', 'admin/')  # Allow custom admin URL
+# ADMIN_URL = os.environ.get('ADMIN_URL', 'admin/')  # Allow custom admin URL
