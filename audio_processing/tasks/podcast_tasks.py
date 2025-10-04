@@ -68,3 +68,18 @@ def get_podcast_summary(podcast_id):
         return podcast.get_summary()
     except Podcast.DoesNotExist:
         return {'error': f"Podcast with ID {podcast_id} does not exist"}
+
+@shared_task
+def index_podcast_for_search(podcast_id):
+    """
+    Celery task to index a single podcast for search (e.g., Meilisearch/Elasticsearch).
+    """
+    from audio_processing.models import Podcast
+    try:
+        podcast = Podcast.objects.get(id=podcast_id)
+        podcast.index_to_search()
+        return {'success': f"Podcast {podcast.name} indexed for search"}
+    except Podcast.DoesNotExist:
+        return {'error': f"Podcast with ID {podcast_id} does not exist"}
+    except Exception as e:
+        return {'error': str(e)}

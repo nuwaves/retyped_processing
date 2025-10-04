@@ -509,6 +509,7 @@ class Episode(models.Model, GroqMixin, AwsMixin, TaggableMixin, SummarizableMixi
             results['errors'].append("Failed to extract quotes")
         self.processing_completed_at = timezone.now()
         self.save(update_fields=["processing_completed_at"])
+        self.index_to_search()
         return results
     
     def get_search_document(self):

@@ -145,6 +145,7 @@ def process_complete_workflow(episode_id):
     3. Generate speaker script
     4. Generate summary
     5. Extract quotes
+    6. Index to search
     """
     logger.info(f"Starting complete workflow for episode ID: {episode_id}")
     

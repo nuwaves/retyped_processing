@@ -72,6 +72,7 @@ class Podcast(models.Model, SearchableMixin):
                 counter += 1
             self.slug = slug
         super().save(*args, **kwargs)
+        self.index_to_search()
     
     def fetch_feed(self):
         """
@@ -385,6 +386,7 @@ class Podcast(models.Model, SearchableMixin):
         slug = slug[:50]  # Limit length
         
         return slug
+
     def get_search_document(self):
         """
         Prepare podcast data for search indexing.

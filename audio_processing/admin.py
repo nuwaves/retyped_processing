@@ -7,7 +7,7 @@ from django.contrib.admin import SimpleListFilter
 from audio_processing.tasks.episode_tasks import add_transcript, suggest_and_apply_tags, process_complete_workflow, extract_quotes
 from import_export.admin import ImportExportModelAdmin
 from audio_processing.tasks.batch_tasks import fetch_and_apply_groq_results_task
-from audio_processing.tasks.podcast_tasks import process_podcast_by_id
+from audio_processing.tasks.podcast_tasks import process_podcast_by_id, index_podcast_for_search
 from django.db import models
 
 
@@ -136,13 +136,7 @@ class PodcastAdmin(ImportExportModelAdmin):
         
         for podcast in queryset:
             try:
-                result = podcast.index_to_search()
-                if result:
-                    success_count += 1
-                    self.message_user(request, f"Podcast '{podcast.name}' indexed successfully.")
-                else:
-                    error_count += 1
-                    self.message_user(request, f"Failed to index podcast '{podcast.name}' (no data to index).", level='WARNING')
+                index_podcast_for_search.delay(podcast.id)
             except Exception as e:
                 error_count += 1
                 self.message_user(request, f"Error indexing podcast '{podcast.name}': {str(e)}", level='ERROR')
