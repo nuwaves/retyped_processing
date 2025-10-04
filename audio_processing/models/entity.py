@@ -12,6 +12,14 @@ class Entity(models.Model, GroqMixin, SearchableMixin):
 
     SEARCH_INDEX_UID = "entities"
 
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        try:
+            from audio_processing.tasks.entity_tasks import index_entity_for_search
+            index_entity_for_search.delay(self.id)
+        except Exception:
+            pass
+
     def get_search_document(self):
         """
         Returns a dictionary representing the entity for search indexing.

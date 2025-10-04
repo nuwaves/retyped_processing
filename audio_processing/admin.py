@@ -8,6 +8,7 @@ from audio_processing.tasks.episode_tasks import add_transcript, suggest_and_app
 from import_export.admin import ImportExportModelAdmin
 from audio_processing.tasks.batch_tasks import fetch_and_apply_groq_results_task
 from audio_processing.tasks.podcast_tasks import process_podcast_by_id, index_podcast_for_search
+from audio_processing.tasks.entity_tasks import index_entity_for_search
 from django.db import models
 
 
@@ -67,6 +68,25 @@ class EntityAdmin(admin.ModelAdmin):
             'classes': ('collapse',)
         }),
     )
+
+    actions = ['index_to_search']
+
+    def index_to_search(self, request, queryset):
+        """Index selected entities to Meilisearch."""
+        success_count = 0
+        error_count = 0
+        for entity in queryset:
+            try:
+                index_entity_for_search.delay(entity.id)
+                success_count += 1
+            except Exception as e:
+                error_count += 1
+                self.message_user(request, f"Error indexing entity '{entity.name}': {str(e)}", level='ERROR')
+        if success_count > 0:
+            self.message_user(request, f"Successfully indexed {success_count} entity(ies) to Meilisearch.")
+        if error_count > 0:
+            self.message_user(request, f"{error_count} entity(ies) failed to index.", level='ERROR')
+    index_to_search.short_description = "Index selected entities to Meilisearch"
 
 @admin.register(Podcast)
 class PodcastAdmin(ImportExportModelAdmin):

@@ -519,11 +519,6 @@ class Episode(models.Model, GroqMixin, AwsMixin, TaggableMixin, SummarizableMixi
         Returns:
             dict: Document data to be indexed, or None if not indexable
         """
-        # Check if we have the required data
-        if not self.transcript or not self.transcript.strip():
-            logger.warning(f"No transcript available for search indexing: {self.raw_audio_url}")
-            return None
-        
         # Prepare document data
         return {
             "id": self.id,
