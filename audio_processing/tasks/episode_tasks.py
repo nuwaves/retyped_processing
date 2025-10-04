@@ -223,3 +223,18 @@ def process_recent_episodes_without_transcript():
         task_results.append({"episode_id": episode.id, "task_id": async_result.id})
     logger.info(f"Queued {len(task_results)} episode workflows.")
     return task_results
+
+@shared_task
+def index_episode_for_search(episode_id):
+    """
+    Celery task to index a single episode for search (e.g., Meilisearch/Elasticsearch).
+    """
+    from audio_processing.models import Episode
+    try:
+        episode = Episode.objects.get(id=episode_id)
+        episode.index_to_search()
+        return {'success': f"Episode {episode.title} indexed for search"}
+    except Episode.DoesNotExist:
+        return {'error': f"Episode with ID {episode_id} does not exist"}
+    except Exception as e:
+        return {'error': str(e)}
