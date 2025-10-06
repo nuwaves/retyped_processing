@@ -238,3 +238,24 @@ def index_episode_for_search(episode_id):
         return {'error': f"Episode with ID {episode_id} does not exist"}
     except Exception as e:
         return {'error': str(e)}
+    
+
+@shared_task
+def reindex_all_episodes_for_search(batch_size=100):
+    """
+    Celery task to reindex all episodes for search in batches.
+    """
+    from audio_processing.models import Episode
+    total_episodes = Episode.objects.count()
+    logger.info(f"Starting reindex of {total_episodes} episodes in batches of {batch_size}")
+    for start in range(0, total_episodes, batch_size):
+        end = min(start + batch_size, total_episodes)
+        logger.info(f"Indexing episodes {start + 1} to {end}")
+        episodes = Episode.objects.all()[start:end]
+        for episode in episodes:
+            try:
+                episode.index_to_search()
+            except Exception as e:
+                logger.error(f"Error indexing episode ID {episode.id}: {str(e)}")
+    logger.info("Completed reindexing all episodes.")
+    return {'success': f"Reindexed {total_episodes} episodes for search"}
