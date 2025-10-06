@@ -49,7 +49,6 @@ class SearchViewSet(viewsets.GenericViewSet):
             episode_ids = [hit['id'] for hit in episode_results.get('hits', [])]
             episodes = Episode.objects.filter(id__in=episode_ids)
             search_results['episodes'] = [EpisodeSerializer(episode).data for episode in episodes]
-
         if search_type in ['podcast', 'all']:
             podcast_results = podcasts_index.search(query)
             podcast_ids = [hit['id'] for hit in podcast_results.get('hits', [])]

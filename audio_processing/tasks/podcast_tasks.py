@@ -5,6 +5,7 @@ from celery import shared_task
 logger = logging.getLogger(__name__)
 
 
+@shared_task
 def process_podcast_rss_feed(feed_url):
     """
     Process a podcast feed by URL.
@@ -68,3 +69,37 @@ def get_podcast_summary(podcast_id):
         return podcast.get_summary()
     except Podcast.DoesNotExist:
         return {'error': f"Podcast with ID {podcast_id} does not exist"}
+
+@shared_task
+def index_podcast_for_search(podcast_id):
+    """
+    Celery task to index a single podcast for search (e.g., Meilisearch/Elasticsearch).
+    """
+    from audio_processing.models import Podcast
+    try:
+        podcast = Podcast.objects.get(id=podcast_id)
+        podcast.index_to_search()
+        return {'success': f"Podcast {podcast.name} indexed for search"}
+    except Podcast.DoesNotExist:
+        return {'error': f"Podcast with ID {podcast_id} does not exist"}
+    except Exception as e:
+        return {'error': str(e)}
+    
+@shared_task
+def reindex_all_podcasts_for_search(batch_size=50):
+    """
+    Celery task to reindex all podcasts for search in batches.
+    """
+    from audio_processing.models import Podcast
+    total_podcasts = Podcast.objects.count()
+    logger.info(f"Starting reindex of {total_podcasts} podcasts in batches of {batch_size}")
+    for start in range(0, total_podcasts, batch_size):
+        end = min(start + batch_size, total_podcasts)
+        logger.info(f"Indexing podcasts {start + 1} to {end}")
+        podcasts = Podcast.objects.all()[start:end]
+        for podcast in podcasts:
+            try:
+                podcast.index_to_search()
+            except Exception as e:
+                logger.error(f"Error indexing podcast ID {podcast.id}: {str(e)}")
+    logger.info("Completed reindexing all podcasts.")

@@ -4,11 +4,13 @@ from .models import Follow, Bookmark
 from django.contrib import admin
 from .models import Episode, Podcast, Tag, PodcastOwner, Quote, Entity
 from django.contrib.admin import SimpleListFilter
-from audio_processing.tasks.episode_tasks import add_transcript, suggest_and_apply_tags, process_complete_workflow, extract_quotes
+from audio_processing.tasks.episode_tasks import add_transcript, suggest_and_apply_tags, process_complete_workflow, extract_quotes, index_episode_for_search, reindex_all_episodes_for_search
 from import_export.admin import ImportExportModelAdmin
 from audio_processing.tasks.batch_tasks import fetch_and_apply_groq_results_task
-from audio_processing.tasks.podcast_tasks import process_podcast_by_id
+from audio_processing.tasks.podcast_tasks import process_podcast_by_id, index_podcast_for_search, reindex_all_podcasts_for_search
+from audio_processing.tasks.entity_tasks import index_entity_for_search, reindex_all_entities_for_search
 from django.db import models
+from audio_processing.tasks.search_tasks import notify_google_of_new_sitemap
 
 
 @admin.register(ProcessingBatch)
@@ -68,6 +70,29 @@ class EntityAdmin(admin.ModelAdmin):
         }),
     )
 
+    actions = ['index_to_search', 'reindex_to_search']
+
+    def index_to_search(self, request, queryset):
+        """Index selected entities to Meilisearch."""
+        success_count = 0
+        error_count = 0
+        for entity in queryset:
+            try:
+                index_entity_for_search.delay(entity.id)
+                success_count += 1
+            except Exception as e:
+                error_count += 1
+                self.message_user(request, f"Error indexing entity '{entity.name}': {str(e)}", level='ERROR')
+        if success_count > 0:
+            self.message_user(request, f"Successfully indexed {success_count} entity(ies) to Meilisearch.")
+        if error_count > 0:
+            self.message_user(request, f"{error_count} entity(ies) failed to index.", level='ERROR')
+    index_to_search.short_description = "Index selected entities to Meilisearch"
+
+    def reindex_to_search(self, request, queryset):
+        reindex_all_entities_for_search.delay()
+        self.message_user(request, "Reindexing of all entities has been initiated.")
+
 @admin.register(Podcast)
 class PodcastAdmin(ImportExportModelAdmin):
     list_display = ('name', 'slug', 'author', 'language', 'is_active', 'last_processed', 'episode_count')
@@ -110,8 +135,8 @@ class PodcastAdmin(ImportExportModelAdmin):
         }),
     )
     
-    actions = ['mark_active', 'mark_inactive', 'process_feed', 'index_to_search']
-    
+    actions = ['mark_active', 'mark_inactive', 'process_feed', 'index_to_search', 'reindex_to_search']
+
     def mark_active(self, request, queryset):
         queryset.update(is_active=True)
         self.message_user(request, f"{queryset.count()} Podcasts marked as active.")
@@ -136,13 +161,7 @@ class PodcastAdmin(ImportExportModelAdmin):
         
         for podcast in queryset:
             try:
-                result = podcast.index_to_search()
-                if result:
-                    success_count += 1
-                    self.message_user(request, f"Podcast '{podcast.name}' indexed successfully.")
-                else:
-                    error_count += 1
-                    self.message_user(request, f"Failed to index podcast '{podcast.name}' (no data to index).", level='WARNING')
+                index_podcast_for_search.delay(podcast.id)
             except Exception as e:
                 error_count += 1
                 self.message_user(request, f"Error indexing podcast '{podcast.name}': {str(e)}", level='ERROR')
@@ -153,6 +172,11 @@ class PodcastAdmin(ImportExportModelAdmin):
         if error_count > 0:
             self.message_user(request, f"{error_count} podcast(s) failed to index.", level='ERROR')
     index_to_search.short_description = "Index selected podcasts to Meilisearch"
+
+    def reindex_to_search(self, request, queryset):
+        reindex_all_podcasts_for_search.delay()
+        self.message_user(request, "Reindexing of all podcasts has been initiated.")
+    reindex_to_search.short_description = "Reindex all podcasts to Meilisearch"
 
 
 class HasErrorFilter(SimpleListFilter):
@@ -267,7 +291,7 @@ class EpisodeAdmin(admin.ModelAdmin):
 
     actions = ['clear_transcript', 'export_transcripts', 'fetch_transcript',
                'suggest_tags', 'generate_speaker_scripts', 'run_complete_workflow', 'add_summary',
-               'extract_quotes_action', 'index_to_search', 'extract_entities_action', 'batch_groq_transcribe']
+               'extract_quotes_action', 'index_to_search', 'extract_entities_action', 'batch_groq_transcribe', 'reindex_to_search']
 
     def batch_groq_transcribe(self, request, queryset):
         """Batch transcribe selected episodes using Groq Batch API (async via Celery)."""
@@ -323,11 +347,14 @@ class EpisodeAdmin(admin.ModelAdmin):
         """Index selected episodes to Meilisearch."""
         for episode in queryset:
             try:
-                episode.index_to_search()
-                self.message_user(request, f"Episode {episode.raw_audio_url[:50]}... indexed successfully.")
+                index_episode_for_search.delay(episode.id)
             except Exception as e:
                 self.message_user(request, f"Error indexing {episode.raw_audio_url[:50]}...: {str(e)}", level='ERROR')
         self.message_user(request, f"Indexing initiated for {queryset.count()} episodes.")
+
+        def reindex_to_search(self, request, queryset):
+            reindex_all_episodes_for_search.delay()
+            self.message_user(request, "Reindexing of all episodes has been initiated.")
 
     def clear_transcript(self, request, queryset):
         queryset.update(transcript='')
