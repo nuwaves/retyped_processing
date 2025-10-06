@@ -5,6 +5,7 @@ from celery import shared_task
 logger = logging.getLogger(__name__)
 
 
+@shared_task
 def process_podcast_rss_feed(feed_url):
     """
     Process a podcast feed by URL.
