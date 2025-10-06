@@ -10,7 +10,7 @@ from audio_processing.tasks.batch_tasks import fetch_and_apply_groq_results_task
 from audio_processing.tasks.podcast_tasks import process_podcast_by_id, index_podcast_for_search, reindex_all_podcasts_for_search
 from audio_processing.tasks.entity_tasks import index_entity_for_search, reindex_all_entities_for_search
 from django.db import models
-from audio_processing.tasks.search_tasks import notify_google_of_new_sitemap
+from audio_processing.tasks.core_tasks import notify_google_of_new_sitemap
 
 
 @admin.register(ProcessingBatch)
