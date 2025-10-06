@@ -6,7 +6,6 @@ logger = logging.getLogger(__name__)
 @shared_task
 def notify_google_of_new_sitemap():
     import requests
-    from django.conf import settings
     from django.contrib.sites.models import Site
     current_site = Site.objects.get_current()
     episodes_sitemap_url = f'https://{current_site.domain}/sitemap-episodes.xml'
