@@ -254,7 +254,7 @@ def reindex_all_episodes_for_search(batch_size=100):
         episodes = Episode.objects.all()[start:end]
         for episode in episodes:
             try:
-                episode.index_to_search()
+                index_episode_for_search.delay(episode.id)
             except Exception as e:
                 logger.error(f"Error indexing episode ID {episode.id}: {str(e)}")
     logger.info("Completed reindexing all episodes.")
