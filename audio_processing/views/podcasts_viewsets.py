@@ -43,7 +43,7 @@ class PodcastViewSet(
 
     @action(detail=True, methods=["get"], url_path="podcast-episodes")
     def all_episodes(self, request, slug):
-        episodes = self.get_object().episodes.all()
+        episodes = self.get_object().episodes.order_by('-release_date')
         page = self.paginate_queryset(episodes)
         if page is not None:
             serializer = EpisodeListSerializer(page, many=True)
