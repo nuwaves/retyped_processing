@@ -10,7 +10,15 @@ from audio_processing.tasks.batch_tasks import fetch_and_apply_groq_results_task
 from audio_processing.tasks.podcast_tasks import process_podcast_by_id, index_podcast_for_search, reindex_all_podcasts_for_search
 from audio_processing.tasks.entity_tasks import index_entity_for_search, reindex_all_entities_for_search
 from django.db import models
-from audio_processing.tasks.search_tasks import notify_google_of_new_sitemap
+from audio_processing.tasks.core_tasks import notify_google_of_new_sitemap
+
+def notify_google_of_new_sitemap_action(modeladmin, request, queryset):
+    """Admin action to notify Google of new sitemap via Celery task."""
+    try:
+        async_result = notify_google_of_new_sitemap.delay()
+        modeladmin.message_user(request, f"Google sitemap notification task queued. Celery Task ID: {async_result.id}")
+    except Exception as e:
+        modeladmin.message_user(request, f"Failed to queue sitemap notification: {str(e)}", level='ERROR')
 
 
 @admin.register(ProcessingBatch)
@@ -717,3 +725,6 @@ class QuoteAdmin(admin.ModelAdmin):
 
 admin.site.register(Follow)
 admin.site.register(Bookmark)
+
+# Register the sitemap notification action globally (shows up in the action dropdown for all models)
+admin.site.add_action(notify_google_of_new_sitemap_action, "Notify Google of new sitemap (async)")
