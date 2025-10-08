@@ -352,9 +352,9 @@ class EpisodeAdmin(admin.ModelAdmin):
                 self.message_user(request, f"Error indexing {episode.raw_audio_url[:50]}...: {str(e)}", level='ERROR')
         self.message_user(request, f"Indexing initiated for {queryset.count()} episodes.")
 
-        def reindex_to_search(self, request, queryset):
-            reindex_all_episodes_for_search.delay()
-            self.message_user(request, "Reindexing of all episodes has been initiated.")
+    def reindex_to_search(self, request, queryset):
+        reindex_all_episodes_for_search.delay()
+        self.message_user(request, "Reindexing of all episodes has been initiated.")
 
     def clear_transcript(self, request, queryset):
         queryset.update(transcript='')
