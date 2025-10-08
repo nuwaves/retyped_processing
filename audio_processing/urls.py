@@ -23,7 +23,8 @@ from .api_urls import api_v1_patterns
 from drf_yasg.views import get_schema_view
 from drf_yasg import openapi
 from django.contrib.sitemaps.views import sitemap
-from audio_processing.sitemaps import EpisodeSitemap, PodcastSitemap
+from audio_processing.sitemaps import get_episode_sitemaps, get_podcast_sitemaps
+from audio_processing.sitemaps import sitemap_index_view
 from django.conf import settings
 
 def health_check(request):
@@ -59,7 +60,8 @@ urlpatterns = [
     re_path(r"^auth/", include("drf_social_oauth2.urls", namespace="drf")),
     # API v1 endpoints
     path("api/v1/", include((api_v1_patterns, "api_v1"), namespace="v1")),
-    # Separate sitemaps
-    path("sitemap-episodes.xml", sitemap, {"sitemaps": {"episodes": EpisodeSitemap}}),
-    path("sitemap-podcasts.xml", sitemap, {"sitemaps": {"podcasts": PodcastSitemap}}),
-] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
+    # Sitemap index and paginated sitemaps
+    path("sitemap.xml", sitemap_index_view, name="sitemap-index"),
+    re_path(r"^sitemap-(?P<section>episodes-\d+)\.xml$", sitemap, {"sitemaps": get_episode_sitemaps()}),
+    re_path(r"^sitemap-(?P<section>podcasts-\d+)\.xml$", sitemap, {"sitemaps": get_podcast_sitemaps()}),
+    ] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
