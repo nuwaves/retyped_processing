@@ -186,6 +186,8 @@ class Episode(models.Model, GroqMixin, AwsMixin, TaggableMixin, SummarizableMixi
 
         # Check if episode already exists
         existing_episode = cls.objects.filter(title=title, podcast=podcast).first()
+        if not existing_episode:
+            existing_episode = cls.objects.filter(raw_audio_url=audio_url).first()
         if existing_episode:
             # Update missing fields
             updated = podcast._update_existing_episode(existing_episode, entry, title, audio_type, audio_length, release_date, pub_date)

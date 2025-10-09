@@ -1,3 +1,19 @@
+class ProcessingCompletedFilter(SimpleListFilter):
+    title = 'Processing Completed'
+    parameter_name = 'processing_completed_at'
+
+    def lookups(self, request, model_admin):
+        return (
+            ('yes', 'Yes'),
+            ('no', 'No'),
+        )
+
+    def queryset(self, request, queryset):
+        if self.value() == 'yes':
+            return queryset.exclude(processing_completed_at__isnull=True)
+        if self.value() == 'no':
+            return queryset.filter(processing_completed_at__isnull=True)
+        return queryset
 from .models.processing_batch import ProcessingBatch
 from .models.user_analytics import UserAnalytics
 from .models import Follow, Bookmark
@@ -215,7 +231,7 @@ class EpisodeAdmin(admin.ModelAdmin):
                 return queryset.filter(models.Q(transcript__isnull=True) | models.Q(transcript=''))
             return queryset
 
-    list_filter = ('podcast', 'episode_type', 'itunes_explicit', 'created_at', 'updated_at', 'tags', 'release_date', HasTranscriptFilter, HasErrorFilter)
+    list_filter = ('podcast', 'episode_type', 'itunes_explicit', 'created_at', 'updated_at', 'tags', 'release_date', ProcessingCompletedFilter, HasTranscriptFilter, HasErrorFilter)
     search_fields = ('title', 'slug', 'description', 'raw_audio_url', 'transcript', 'script_transcript', 'podcast__name')
     readonly_fields = ('created_at', 'updated_at', 'audio_length', 'pub_date', 'error')
     raw_id_fields = ('podcast',)

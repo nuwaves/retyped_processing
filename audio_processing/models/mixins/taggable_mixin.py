@@ -1,5 +1,6 @@
 import logging
 import json
+from audio_processing.prompts import get_tag_suggestion_prompt
 
 logger = logging.getLogger(__name__)
 
@@ -71,31 +72,27 @@ class TaggableMixin:
         """
         Use Groq LLM to analyze the transcript and suggest relevant tags.
         Returns a list of applied tag IDs or None if failed.
-        
-        Note: This method requires the model to have a 'tags' ManyToManyField 
-        and access to _call_groq_for_tag_suggestions method (usually from GroqMixin).
         """
         # Validate transcript
         if not self._validate_transcript():
             return None
-        
+
         # Get available tags
         tag_list = self._get_available_tags()
         if tag_list is None:
             return None
-        
+
         logger.info(f"Analyzing transcript for tag suggestions: {getattr(self, 'raw_audio_url', str(self))}")
-        
-        # Get tag suggestions from Groq (this method should be provided by GroqMixin)
-        if not hasattr(self, '_call_groq_for_tag_suggestions'):
-            logger.error(f"Model {self.__class__.__name__} must include GroqMixin to use suggest_and_apply_tags")
-            return None
-            
-        llm_response = self._call_groq_for_tag_suggestions(tag_list)
+
+        # Build the prompt for Groq
+        prompt = get_tag_suggestion_prompt(tag_list, self.transcript)
+
+        # Call Groq LLM for tag suggestions
+        llm_response = self.get_groq_completion(prompt)
         if llm_response is None:
             logger.error(f"Failed to get tag suggestions for {self.__class__.__name__}: {getattr(self, 'raw_audio_url', str(self))}")
             return None
-        
+
         # Parse and apply tags
         applied_tags = self._parse_and_apply_tags(llm_response)
         return applied_tags

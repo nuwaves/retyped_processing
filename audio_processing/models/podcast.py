@@ -274,16 +274,20 @@ class Podcast(models.Model, SearchableMixin):
         failed_count = 0
         
         for entry in feed.entries:
-            result = Episode.create_from_entry(self, entry)
-            if result is None:
+            try:
+                result = Episode.create_from_entry(self, entry)
+                if result is None:
+                    failed_count += 1
+                elif result:
+                    # Check if this was a new creation
+                    if result.created_at >= timezone.now() - timezone.timedelta(seconds=1):
+                        created_count += 1
+                    else:
+                        existing_count += 1
+            except Exception as e:
+                logger.error(f"Error processing entry: {e}")
                 failed_count += 1
-            elif result:
-                # Check if this was a new creation
-                if result.created_at >= timezone.now() - timezone.timedelta(seconds=1):
-                    created_count += 1
-                else:
-                    existing_count += 1
-        
+
         # Update last_processed timestamp
         self.last_processed = timezone.now()
         self.save()
