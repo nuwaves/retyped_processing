@@ -43,7 +43,7 @@ class SummarizableMixin:
                 logger.info(f"Transcript truncated from {len(self.transcript)} to {len(limited_transcript)} characters for summary generation")
             
             # Get the prompt from prompts file
-            prompt = get_episode_summary_prompt(limited_transcript)
+            prompt = get_episode_summary_prompt(limited_transcript, self.podcast.description if hasattr(self, 'podcast') and self.podcast else '', self.description if hasattr(self, 'description') else '')
             
             headers = {
                 "Authorization": f"Bearer {api_key}",

@@ -74,12 +74,14 @@ Podcast summary: {episode.podcast.summary}
 Episode description: {episode.description}
 """
 
-def get_episode_summary_prompt(transcript):
+def get_episode_summary_prompt(transcript, podcast_description, episode_description):
     """
     Generate a prompt for creating an episode summary from a transcript.
     
     Args:
         transcript: The full podcast transcript to summarize
+        podcast_description: Description of the podcast
+        episode_description: Description of the episode
     
     Returns:
         str: Formatted prompt for episode summary generation
@@ -88,7 +90,14 @@ def get_episode_summary_prompt(transcript):
 
 If a clip is played of someone else speaking, do not list them as a participant.
 
-{transcript}"""
+{transcript}
+
+You should also take into account the following description of the podcast:
+{podcast_description}
+
+and description of the episode:
+{episode_description}
+"""
 
 
 def get_quote_extraction_prompt(transcript):
