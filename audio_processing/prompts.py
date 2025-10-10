@@ -88,7 +88,7 @@ def get_episode_summary_prompt(transcript, podcast_description, episode_descript
     """
     return f"""Summarize this podcast episode in 200-400 words. Include the main topic, key points, participants, and takeaways.
 
-If a clip is played of someone else speaking, do not list them as a participant.
+If a clip is played of someone else speaking, do not list them as a participant- only list people who seem to be live on the podcast as participants.
 
 {transcript}
 
