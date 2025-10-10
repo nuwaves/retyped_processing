@@ -8,6 +8,39 @@ import logging
 logger = logging.getLogger(__name__)
 
 @shared_task
+def save_audio_to_s3_task(episode_id):
+    """
+    Celery task to save the episode's audio file to S3.
+    """
+    logger.info(f"Saving audio to S3 for episode ID: {episode_id}")
+    try:
+        episode = Episode.objects.get(pk=episode_id)
+        s3_uri = episode.upload_audio_to_s3(episode.raw_audio_url)
+        if s3_uri:
+            logger.info(f"Audio saved to S3 for episode: {episode.title}")
+            return {"success": True, "s3_uri": s3_uri}
+        else:
+            error_msg = "Failed to save audio to S3"
+            logger.error(f"{error_msg} for episode: {episode.title}")
+            episode.error = error_msg
+            episode.save(update_fields=["error"])
+            return {"success": False, "error": error_msg}
+    except Episode.DoesNotExist:
+        error_msg = "Episode not found"
+        logger.error(f"Episode with ID {episode_id} not found")
+        return {"success": False, "error": error_msg}
+    except Exception as e:
+        error_msg = f"Error saving audio to S3: {str(e)}"
+        logger.error(error_msg)
+        try:
+            episode = Episode.objects.get(pk=episode_id)
+            episode.error = error_msg
+            episode.save(update_fields=["error"])
+        except Exception:
+            pass
+        return {"success": False, "error": error_msg}
+
+@shared_task
 def batch_groq_transcribe_task(episode_ids):
     """
     Celery task to batch transcribe episodes using Groq Batch API.

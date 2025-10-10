@@ -4,7 +4,7 @@ from .models import Follow, Bookmark
 from django.contrib import admin
 from .models import Episode, Podcast, Tag, PodcastOwner, Quote, Entity
 from django.contrib.admin import SimpleListFilter
-from audio_processing.tasks.episode_tasks import add_transcript, suggest_and_apply_tags, process_complete_workflow, extract_quotes, index_episode_for_search, reindex_all_episodes_for_search
+from audio_processing.tasks.episode_tasks import add_transcript, suggest_and_apply_tags, process_complete_workflow, extract_quotes, index_episode_for_search, reindex_all_episodes_for_search, save_audio_to_s3_task
 from import_export.admin import ImportExportModelAdmin
 from audio_processing.tasks.batch_tasks import fetch_and_apply_groq_results_task
 from audio_processing.tasks.podcast_tasks import process_podcast_by_id, index_podcast_for_search, reindex_all_podcasts_for_search
@@ -306,7 +306,24 @@ class EpisodeAdmin(admin.ModelAdmin):
 
     actions = ['clear_transcript', 'export_transcripts', 'fetch_transcript',
                'suggest_tags', 'generate_speaker_scripts', 'run_complete_workflow', 'add_summary',
-               'extract_quotes_action', 'index_to_search', 'extract_entities_action', 'batch_groq_transcribe', 'reindex_to_search']
+               'extract_quotes_action', 'index_to_search', 'extract_entities_action', 'batch_groq_transcribe', 'reindex_to_search', 'save_audio_to_s3_action']
+
+    def save_audio_to_s3_action(self, request, queryset):
+        """Admin action to save audio files to S3 for selected episodes."""
+        success_count = 0
+        error_count = 0
+        for episode in queryset:
+            try:
+                async_result = save_audio_to_s3_task.delay(episode.id)
+                success_count += 1
+            except Exception as e:
+                error_count += 1
+                self.message_user(request, f"Error saving audio to S3 for {episode.title or episode.id}: {str(e)}", level='ERROR')
+        if success_count > 0:
+            self.message_user(request, f"Queued S3 upload for {success_count} episode(s).")
+        if error_count > 0:
+            self.message_user(request, f"{error_count} episode(s) failed to queue for S3 upload.", level='ERROR')
+    save_audio_to_s3_action.short_description = "Save audio file(s) to S3 (async)"
 
     def batch_groq_transcribe(self, request, queryset):
         """Batch transcribe selected episodes using Groq Batch API (async via Celery)."""
