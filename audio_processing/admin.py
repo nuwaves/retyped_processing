@@ -213,7 +213,7 @@ class HasErrorFilter(SimpleListFilter):
 
 @admin.register(Episode)
 class EpisodeAdmin(admin.ModelAdmin):
-    list_display = ('title', 'slug', 'truncated_url', 'podcast', 'episode_number', 'season_number', 'duration_display', 'has_transcript', 'has_script', 'has_summary', 'release_date', 'error')
+    list_display = ('title', 'slug', 'podcast', 'duration_display', 'has_transcript', 'has_script', 'has_summary', 'release_date', 'error')
 
     class HasTranscriptFilter(SimpleListFilter):
         title = 'Has Transcript'
@@ -275,7 +275,7 @@ class EpisodeAdmin(admin.ModelAdmin):
             'fields': ('podcast', 'title', 'slug', 'subtitle', 'description', 'tags', 'entities')
         }),
         ('Audio Information', {
-            'fields': ('raw_audio_url', 'audio_type', 'audio_length', 'duration'),
+            'fields': ('raw_audio_url', 's3_audio_url', 'audio_type', 'audio_length', 'duration'),
             'classes': ('collapse',)
         }),
         ('Episode Metadata', {
