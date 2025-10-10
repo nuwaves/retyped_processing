@@ -468,7 +468,7 @@ class Episode(models.Model, GroqMixin, AwsMixin, TaggableMixin, SummarizableMixi
         }
         # Step 0: Save audio to S3 if not already done
         if not self.s3_audio_url:
-            s3_uri = self.save_audio_to_s3()
+            s3_uri = self.upload_audio_to_s3(self.raw_audio_url)
             if s3_uri:
                 logger.info(f"Audio saved to S3: {s3_uri}")
             else:
