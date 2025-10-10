@@ -1,3 +1,16 @@
+from .models.processing_batch import ProcessingBatch
+from .models.user_analytics import UserAnalytics
+from .models import Follow, Bookmark
+from django.contrib import admin
+from .models import Episode, Podcast, Tag, PodcastOwner, Quote, Entity
+from django.contrib.admin import SimpleListFilter
+from audio_processing.tasks.episode_tasks import add_transcript, suggest_and_apply_tags, process_complete_workflow, extract_quotes, index_episode_for_search, reindex_all_episodes_for_search
+from import_export.admin import ImportExportModelAdmin
+from audio_processing.tasks.batch_tasks import fetch_and_apply_groq_results_task
+from audio_processing.tasks.podcast_tasks import process_podcast_by_id, index_podcast_for_search, reindex_all_podcasts_for_search
+from audio_processing.tasks.entity_tasks import index_entity_for_search, reindex_all_entities_for_search
+from django.db import models
+
 class ProcessingCompletedFilter(SimpleListFilter):
     title = 'Processing Completed'
     parameter_name = 'processing_completed_at'
@@ -14,18 +27,6 @@ class ProcessingCompletedFilter(SimpleListFilter):
         if self.value() == 'no':
             return queryset.filter(processing_completed_at__isnull=True)
         return queryset
-from .models.processing_batch import ProcessingBatch
-from .models.user_analytics import UserAnalytics
-from .models import Follow, Bookmark
-from django.contrib import admin
-from .models import Episode, Podcast, Tag, PodcastOwner, Quote, Entity
-from django.contrib.admin import SimpleListFilter
-from audio_processing.tasks.episode_tasks import add_transcript, suggest_and_apply_tags, process_complete_workflow, extract_quotes, index_episode_for_search, reindex_all_episodes_for_search
-from import_export.admin import ImportExportModelAdmin
-from audio_processing.tasks.batch_tasks import fetch_and_apply_groq_results_task
-from audio_processing.tasks.podcast_tasks import process_podcast_by_id, index_podcast_for_search, reindex_all_podcasts_for_search
-from audio_processing.tasks.entity_tasks import index_entity_for_search, reindex_all_entities_for_search
-from django.db import models
 
 @admin.register(ProcessingBatch)
 class ProcessingBatchAdmin(admin.ModelAdmin):
