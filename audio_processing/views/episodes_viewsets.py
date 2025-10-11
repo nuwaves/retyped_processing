@@ -40,8 +40,9 @@ class EpisodeViewSet(
     ordering_fields = [
         "updated_at",
         "created_at",
+        'release_date',
     ]
-    ordering = ["-updated_at"]
+    ordering = ["-release_date"]
 
     @action(detail=False, methods=["get"], url_path="top-by-views")
     def top_by_views(self, request):
