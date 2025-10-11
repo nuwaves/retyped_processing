@@ -90,6 +90,8 @@ def get_episode_summary_prompt(transcript, podcast_description, episode_descript
 
 If a clip is played of someone else speaking, do not list them as a participant- only list people who seem to be live on the podcast as participants.
 
+You can use the episode description to understand which speakers were actually present. Additionally, use common sense when identifying active participants- dead people or historical figures mentioned should not be listed as participants.
+
 {transcript}
 
 You should also take into account the following description of the podcast:
