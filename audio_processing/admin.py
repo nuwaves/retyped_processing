@@ -274,7 +274,7 @@ class EpisodeAdmin(admin.ModelAdmin):
     fieldsets = (
         ('Basic Information', {
             'fields': ('podcast', 'title', 'slug', 'subtitle',
-                       'description', 'tags', 'entities', 'topics', 'quotes')
+                       'description', 'tags', 'topics', 'quotes')
         }),
         ('Audio Information', {
             'fields': ('raw_audio_url', 's3_audio_url', 'audio_type', 'audio_length', 'duration'),
