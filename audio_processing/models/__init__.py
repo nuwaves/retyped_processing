@@ -8,6 +8,7 @@ from .entity import Entity
 from .processing_batch import ProcessingBatch
 from .follow import Follow
 from .bookmark import Bookmark
+from .topic import Topic
 
 __all__ = [
     'Episode', 
@@ -22,6 +23,7 @@ __all__ = [
     'UserAnalytics',
     'SummarizableMixin',
     'Entity',
+    'Topic',
     'ProcessingBatch',
     'Follow',
     'Bookmark',

@@ -80,6 +80,7 @@ class Episode(models.Model, GroqMixin, AwsMixin, TaggableMixin, SummarizableMixi
     updated_at = models.DateTimeField(auto_now=True)
 
     entities = models.ManyToManyField('Entity', blank=True, related_name='episodes', help_text="Entities associated with this episode")
+    topics = models.ManyToManyField('Topic', blank=True, related_name='episodes', help_text="Topics associated with this episode")
 
     def __str__(self):
         if self.title:

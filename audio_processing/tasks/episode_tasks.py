@@ -292,3 +292,18 @@ def reindex_all_episodes_for_search(batch_size=100):
                 logger.error(f"Error indexing episode ID {episode.id}: {str(e)}")
     logger.info("Completed reindexing all episodes.")
     return {'success': f"Reindexed {total_episodes} episodes for search"}
+
+@shared_task
+def tag_episode_with_topics(episode_id):
+    """
+    Celery task to tag a single episode with topics.
+    """
+    from audio_processing.models import Topic
+    try:
+        episode = Episode.objects.get(id=episode_id)
+        Topic.set_episode_topics(episode)
+        return {'success': f"Episode {episode.title} tagged with topics"}
+    except Episode.DoesNotExist:
+        return {'error': f"Episode with ID {episode_id} does not exist"}
+    except Exception as e:
+        return {'error': str(e)}

@@ -4,7 +4,7 @@ from .tags import TagSerializer
 from .podcasts import PodcastListSerializer
 from .quotes import QuoteSerializer
 from audio_processing.utils import sanitize_html_content
-
+from .topics import TopicSerializer
 
 class HtmlSanitizedField(serializers.CharField):
     def to_representation(self, value):
@@ -21,6 +21,7 @@ class EpisodeSerializer(serializers.ModelSerializer):
     content_encoded = HtmlSanitizedField()
     summary = HtmlSanitizedField()
     quotes = QuoteSerializer(many=True)
+    topics = TopicSerializer(many=True)
 
     def get_followers(self, obj):
         # ToDO: add follower count when we track this field

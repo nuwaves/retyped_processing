@@ -3,6 +3,7 @@ from .models.user_analytics import UserAnalytics
 from .models import Follow, Bookmark
 from django.contrib import admin
 from .models import Episode, Podcast, Tag, PodcastOwner, Quote, Entity
+from .models import Topic
 from django.contrib.admin import SimpleListFilter
 from audio_processing.tasks.episode_tasks import add_transcript, suggest_and_apply_tags, process_complete_workflow, extract_quotes, index_episode_for_search, reindex_all_episodes_for_search, save_audio_to_s3_task
 from import_export.admin import ImportExportModelAdmin
@@ -272,7 +273,8 @@ class EpisodeAdmin(admin.ModelAdmin):
     
     fieldsets = (
         ('Basic Information', {
-            'fields': ('podcast', 'title', 'slug', 'subtitle', 'description', 'tags', 'entities')
+            'fields': ('podcast', 'title', 'slug', 'subtitle',
+                       'description', 'tags', 'entities', 'topics', 'quotes')
         }),
         ('Audio Information', {
             'fields': ('raw_audio_url', 's3_audio_url', 'audio_type', 'audio_length', 'duration'),
@@ -749,3 +751,20 @@ class QuoteAdmin(admin.ModelAdmin):
 
 admin.site.register(Follow)
 admin.site.register(Bookmark)
+
+
+@admin.register(Topic)
+class TopicAdmin(admin.ModelAdmin):
+    list_display = ('name', 'slug', 'created_at', 'updated_at')
+    search_fields = ('name', 'slug', 'description')
+    readonly_fields = ('created_at', 'updated_at')
+    prepopulated_fields = {'slug': ('name',)}
+    fieldsets = (
+        ('Basic Information', {
+            'fields': ('name', 'slug', 'description', 'top_words')
+        }),
+        ('Timestamps', {
+            'fields': ('created_at', 'updated_at'),
+            'classes': ('collapse',)
+        }),
+    )
