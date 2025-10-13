@@ -5,6 +5,7 @@ from rest_framework.test import APIClient
 from rest_framework import status
 from meilisearch import Client
 from django.conf import settings
+import time
 
 from ..models import Podcast, Episode, Tag
 
@@ -16,7 +17,14 @@ class SearchViewSetTest(TestCase):
         """Set up test data."""
 
         self.search_client = Client(settings.MEILISEARCH_URL, settings.MEILISEARCH_API_KEY)
+
+        # Create episodes index with sortable attributes
         self.search_client.create_index("episodes", {"primaryKey": "id"})
+        episodes_index = self.search_client.index("episodes")
+        task = episodes_index.update_sortable_attributes(["release_date"])
+        # Wait for the settings update to complete
+        self.search_client.wait_for_task(task.task_uid)
+
         self.search_client.create_index("podcasts", {"primaryKey": "id"})
         self.search_client.create_index("entities", {"primaryKey": "id"})
         self.search_client.create_index("tags", {"primaryKey": "id"})
@@ -56,6 +64,9 @@ class SearchViewSetTest(TestCase):
         )
         if hasattr(self.tag, 'index_to_search'):
             self.tag.index_to_search()
+
+        # Wait a moment for Meilisearch to make documents searchable
+        time.sleep(1)
 
     def test_search_all_content_types(self):
         """Test searching across all content types."""
