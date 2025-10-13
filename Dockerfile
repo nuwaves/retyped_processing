@@ -15,9 +15,15 @@ RUN pip install -r requirements.txt
 
 COPY . /app/
 
-# Copy and make entrypoint script executable
+# Copy and make entrypoint scripts executable
 COPY entrypoint.sh /app/entrypoint.sh
 RUN chmod +x /app/entrypoint.sh
+
+COPY celery_beat_endpoint.sh /app/celery_beat_endpoint.sh
+RUN chmod +x /app/celery_beat_endpoint.sh
+
+COPY celery_worker_endpoint.sh /app/celery_worker_endpoint.sh
+RUN chmod +x /app/celery_worker_endpoint.sh
 
 EXPOSE 8000
 
