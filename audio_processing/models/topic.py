@@ -7,9 +7,10 @@ from audio_processing.models.mixins import GroqMixin
 import logging
 from huggingface_hub import login
 
-login(settings.HF_API_TOKEN)
-loaded_model = BERTopic.load("itsCody/retyped-topic-model")
-logger = logging.getLogger(__name__)
+if settings.HF_API_TOKEN:
+    login(settings.HF_API_TOKEN)
+    loaded_model = BERTopic.load("itsCody/retyped-topic-model")
+    logger = logging.getLogger(__name__)
 
 
 class Topic(models.Model, GroqMixin):

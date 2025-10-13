@@ -10,6 +10,7 @@ from .views.entity_viewsets import EntityViewSet
 from .views.search_viewsets import SearchViewSet
 from .views.bookmarks_viewsets import BookmarkViewSet
 from .views.follows_viewsets import FollowViewSet
+from .views.user_analytics_viewsets import UserAnalyticsViewSet
 
 api_v1_patterns = [
     # Entities endpoints
@@ -114,4 +115,19 @@ api_v1_patterns = [
         name="api-v1-follows-by-type",
     ),
 
+    path(
+        "user_analytics/",
+        UserAnalyticsViewSet.as_view({"get": "analytics_grouped"}),
+        name="api-v1-user-analytics-grouped",
+    ),
+    path(
+        "user_analytics/episodes",
+        UserAnalyticsViewSet.as_view({"get": "analytics_only_episodes"}),
+        name="api-v1-user-analytics-episodes",
+    ),
+    path(
+        "user_analytics/podcasts",
+        UserAnalyticsViewSet.as_view({"get": "analytics_only_podcasts"}),
+        name="api-v1-user-analytics-podcasts",
+    ),
 ]
