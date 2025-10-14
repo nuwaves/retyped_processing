@@ -8,6 +8,39 @@ import logging
 logger = logging.getLogger(__name__)
 
 @shared_task
+def save_audio_to_s3_task(episode_id):
+    """
+    Celery task to save the episode's audio file to S3.
+    """
+    logger.info(f"Saving audio to S3 for episode ID: {episode_id}")
+    try:
+        episode = Episode.objects.get(pk=episode_id)
+        s3_uri = episode.upload_audio_to_s3(episode.raw_audio_url)
+        if s3_uri:
+            logger.info(f"Audio saved to S3 for episode: {episode.title}")
+            return {"success": True, "s3_uri": s3_uri}
+        else:
+            error_msg = "Failed to save audio to S3"
+            logger.error(f"{error_msg} for episode: {episode.title}")
+            episode.error = error_msg
+            episode.save(update_fields=["error"])
+            return {"success": False, "error": error_msg}
+    except Episode.DoesNotExist:
+        error_msg = "Episode not found"
+        logger.error(f"Episode with ID {episode_id} not found")
+        return {"success": False, "error": error_msg}
+    except Exception as e:
+        error_msg = f"Error saving audio to S3: {str(e)}"
+        logger.error(error_msg)
+        try:
+            episode = Episode.objects.get(pk=episode_id)
+            episode.error = error_msg
+            episode.save(update_fields=["error"])
+        except Exception:
+            pass
+        return {"success": False, "error": error_msg}
+
+@shared_task
 def batch_groq_transcribe_task(episode_ids):
     """
     Celery task to batch transcribe episodes using Groq Batch API.
@@ -254,8 +287,23 @@ def reindex_all_episodes_for_search(batch_size=100):
         episodes = Episode.objects.all()[start:end]
         for episode in episodes:
             try:
-                episode.index_to_search()
+                index_episode_for_search.delay(episode.id)
             except Exception as e:
                 logger.error(f"Error indexing episode ID {episode.id}: {str(e)}")
     logger.info("Completed reindexing all episodes.")
     return {'success': f"Reindexed {total_episodes} episodes for search"}
+
+@shared_task
+def tag_episode_with_topics(episode_id):
+    """
+    Celery task to tag a single episode with topics.
+    """
+    from audio_processing.models import Topic
+    try:
+        episode = Episode.objects.get(id=episode_id)
+        Topic.set_episode_topics(episode)
+        return {'success': f"Episode {episode.title} tagged with topics"}
+    except Episode.DoesNotExist:
+        return {'error': f"Episode with ID {episode_id} does not exist"}
+    except Exception as e:
+        return {'error': str(e)}

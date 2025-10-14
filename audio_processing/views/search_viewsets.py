@@ -45,10 +45,11 @@ class SearchViewSet(viewsets.GenericViewSet):
         # Perform search using MeiliSearch
         search_results = {}
         if search_type in ['episode', 'all']:
-            episode_results = episodes_index.search(query)
+            episode_results = episodes_index.search(query, {"sort": ["release_date:desc"]})
             episode_ids = [hit['id'] for hit in episode_results.get('hits', [])]
-            episodes = Episode.objects.filter(id__in=episode_ids)
+            episodes = Episode.objects.filter(id__in=episode_ids).order_by('-release_date')
             search_results['episodes'] = [EpisodeSerializer(episode).data for episode in episodes]
+
         if search_type in ['podcast', 'all']:
             podcast_results = podcasts_index.search(query)
             podcast_ids = [hit['id'] for hit in podcast_results.get('hits', [])]

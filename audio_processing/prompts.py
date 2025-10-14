@@ -74,19 +74,32 @@ Podcast summary: {episode.podcast.summary}
 Episode description: {episode.description}
 """
 
-def get_episode_summary_prompt(transcript):
+def get_episode_summary_prompt(transcript, podcast_description, episode_description):
     """
     Generate a prompt for creating an episode summary from a transcript.
     
     Args:
         transcript: The full podcast transcript to summarize
+        podcast_description: Description of the podcast
+        episode_description: Description of the episode
     
     Returns:
         str: Formatted prompt for episode summary generation
     """
-    return f"""Summarize this podcast episode in 200-400 words. Include the main topic, key points, participants, and takeaways:
+    return f"""Summarize this podcast episode in 200-400 words. Include the main topic, key points, participants, and takeaways.
 
-{transcript}"""
+If a clip is played of someone else speaking, do not list them as a participant- only list people who seem to be live on the podcast as participants.
+
+You can use the episode description to understand which speakers were actually present. Additionally, use common sense when identifying active participants- dead people or historical figures mentioned should not be listed as participants.
+
+{transcript}
+
+You should also take into account the following description of the podcast:
+{podcast_description}
+
+and description of the episode:
+{episode_description}
+"""
 
 
 def get_quote_extraction_prompt(transcript):

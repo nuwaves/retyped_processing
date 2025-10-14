@@ -31,6 +31,7 @@ logger = logging.getLogger(__name__)
 transcribe_client = boto3.client('transcribe', region_name='us-east-1')
 
 class Episode(models.Model, GroqMixin, AwsMixin, TaggableMixin, SummarizableMixin, SearchableMixin, QuotableMixin):
+    s3_audio_url = models.URLField(max_length=2000, blank=True, null=True, help_text="S3 URI of the uploaded audio file")
     processing_completed_at = models.DateTimeField(blank=True, null=True, help_text="Timestamp when episode processing was completed")
     image_url = models.URLField(max_length=1000, blank=True, null=True, help_text="Episode artwork URL")
     slug = models.SlugField(max_length=512, unique=True, blank=True, help_text="Unique slug for episode, prefixed with podcast slug")
@@ -79,6 +80,7 @@ class Episode(models.Model, GroqMixin, AwsMixin, TaggableMixin, SummarizableMixi
     updated_at = models.DateTimeField(auto_now=True)
 
     entities = models.ManyToManyField('Entity', blank=True, related_name='episodes', help_text="Entities associated with this episode")
+    topics = models.ManyToManyField('Topic', blank=True, related_name='episodes', help_text="Topics associated with this episode")
 
     def __str__(self):
         if self.title:
@@ -186,6 +188,8 @@ class Episode(models.Model, GroqMixin, AwsMixin, TaggableMixin, SummarizableMixi
 
         # Check if episode already exists
         existing_episode = cls.objects.filter(title=title, podcast=podcast).first()
+        if not existing_episode:
+            existing_episode = cls.objects.filter(raw_audio_url=audio_url).first()
         if existing_episode:
             # Update missing fields
             updated = podcast._update_existing_episode(existing_episode, entry, title, audio_type, audio_length, release_date, pub_date)
@@ -392,6 +396,8 @@ class Episode(models.Model, GroqMixin, AwsMixin, TaggableMixin, SummarizableMixi
             # Return S3 URI
             s3_uri = f"s3://{bucket_name}/{s3_key}"
             logger.info(f"Audio file uploaded successfully to: {s3_uri}")
+            self.s3_audio_url = 'https://cdn.retyped.xyz/audio/' + s3_key
+            self.save(update_fields=['s3_audio_url'])
             return s3_uri
             
         except NoCredentialsError:
@@ -463,6 +469,15 @@ class Episode(models.Model, GroqMixin, AwsMixin, TaggableMixin, SummarizableMixi
             'quotes_extracted': 0,
             'errors': []
         }
+        # Step 0: Save audio to S3 if not already done
+        if not self.s3_audio_url:
+            s3_uri = self.upload_audio_to_s3(self.raw_audio_url)
+            if s3_uri:
+                logger.info(f"Audio saved to S3: {s3_uri}")
+            else:
+                results['errors'].append("Failed to save audio to S3")
+                return results
+
         # Step 1: Generate transcript if needed
         if not self.transcript:
             transcript = self.generate_transcript()

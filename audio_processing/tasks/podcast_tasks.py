@@ -78,7 +78,7 @@ def index_podcast_for_search(podcast_id):
     from audio_processing.models import Podcast
     try:
         podcast = Podcast.objects.get(id=podcast_id)
-        podcast.index_to_search()
+        index_podcast_for_search.delay(podcast.id)
         return {'success': f"Podcast {podcast.name} indexed for search"}
     except Podcast.DoesNotExist:
         return {'error': f"Podcast with ID {podcast_id} does not exist"}

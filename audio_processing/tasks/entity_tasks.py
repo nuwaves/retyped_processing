@@ -24,7 +24,7 @@ def reindex_all_entities_for_search():
 	entities = Entity.objects.all()
 	for entity in entities:
 		try:
-			entity.index_to_search()
+			index_entity_for_search.delay(entity.id)
 		except Exception as e:
 			logger.error(f"Error indexing entity {entity.id}: {e}")
 	return {'success': f"Reindexed {entities.count()} entities for search"}
