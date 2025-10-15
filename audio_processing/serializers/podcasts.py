@@ -1,10 +1,30 @@
+from django.contrib.contenttypes.models import ContentType
+
 from rest_framework import serializers
-from ..models import Podcast
+from ..models import Podcast, Follow, Bookmark
 from .tags import TagSerializer
 
 
 class PodcastSerializer(serializers.ModelSerializer):
     tags = TagSerializer(many=True)
+    episode_count = serializers.SerializerMethodField()
+    followers_count = serializers.SerializerMethodField()
+    bookmark_count = serializers.SerializerMethodField()
+
+    def get_bookmark_count(self, obj):
+        content_type = ContentType.objects.get_for_model(Podcast)
+        return Bookmark.objects.filter(
+            content_type=content_type, object_id=obj.id
+        ).count()
+
+    def get_episode_count(self, obj):
+        return obj.episodes.count()
+
+    def get_followers_count(self, obj):
+        content_type = ContentType.objects.get_for_model(Podcast)
+        return Follow.objects.filter(
+            content_type=content_type, object_id=obj.id
+        ).count()
 
     class Meta:
         model = Podcast
@@ -12,10 +32,6 @@ class PodcastSerializer(serializers.ModelSerializer):
 
 
 class PodcastListSerializer(PodcastSerializer):
-    episode_count = serializers.SerializerMethodField()
-
-    def get_episode_count(self, obj):
-        return obj.episodes.count()
 
     class Meta:
         model = Podcast
@@ -26,6 +42,8 @@ class PodcastListSerializer(PodcastSerializer):
             "tags",
             "image_url",
             "episode_count",
+            "followers_count",
+            "bookmark_count",
         ]
 
 
