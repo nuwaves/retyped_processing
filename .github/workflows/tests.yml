@@ -77,7 +77,7 @@ jobs:
 
     - name: Run migrations
       run: |
-        python manage.py migrate --verbosity=2
+        python manage.py migrate --verbosity=2 --skip-checks
 
     - name: Run tests
       run: |
