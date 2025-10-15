@@ -1,16 +1,20 @@
 from django.db import models
 from django.utils.text import slugify
 from django.db.models import JSONField
-from bertopic import BERTopic
 from django.conf import settings
 from audio_processing.models.mixins import GroqMixin
 import logging
 from huggingface_hub import login
 
 if settings.HF_API_TOKEN:
+    from bertopic import BERTopic
     login(settings.HF_API_TOKEN)
     loaded_model = BERTopic.load("itsCody/retyped-topic-model")
     logger = logging.getLogger(__name__)
+else:
+    loaded_model = None
+    logger = logging.getLogger(__name__)
+    logger.warning("Hugging Face API token not found in settings. Topic modeling will be disabled.")
 
 
 class Topic(models.Model, GroqMixin):
