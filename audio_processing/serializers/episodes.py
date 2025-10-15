@@ -1,5 +1,6 @@
 from rest_framework import serializers
-from ..models import Episode
+from django.contrib.contenttypes.models import ContentType
+from ..models import Episode, Bookmark
 from .tags import TagSerializer
 from .podcasts import PodcastListSerializer
 from .quotes import QuoteSerializer
@@ -16,16 +17,25 @@ class HtmlSanitizedField(serializers.CharField):
 class EpisodeSerializer(serializers.ModelSerializer):
     tags = TagSerializer(many=True)
     podcast = PodcastListSerializer()
-    followers = serializers.SerializerMethodField()
+    bookmark_count = serializers.SerializerMethodField()
+    image_url = serializers.SerializerMethodField()
     description = HtmlSanitizedField()
     content_encoded = HtmlSanitizedField()
     summary = HtmlSanitizedField()
     quotes = QuoteSerializer(many=True)
     topics = TopicSerializer(many=True)
 
-    def get_followers(self, obj):
-        # ToDO: add follower count when we track this field
-        return 0
+    def get_bookmark_count(self, obj):
+        content_type = ContentType.objects.get_for_model(Episode)
+        return Bookmark.objects.filter(
+            content_type=content_type,
+            object_id=obj.id
+        ).count()
+
+    def get_image_url(self, obj):
+        if not obj.image_url:
+            return obj.podcast.image_url
+        return obj.image_url
 
     class Meta:
         model = Episode
@@ -33,11 +43,6 @@ class EpisodeSerializer(serializers.ModelSerializer):
 
 
 class EpisodeListSerializer(EpisodeSerializer):
-    followers = serializers.SerializerMethodField()
-
-    def get_followers(self, obj):
-        # ToDO: add follower count when we track this field
-        return 0
 
     class Meta:
         model = Episode
@@ -51,7 +56,8 @@ class EpisodeListSerializer(EpisodeSerializer):
             "release_date",
             "image_url",
             "episode_number",
-            "followers"
+            "bookmark_count",
+            "podcast"
         ]
 
 
