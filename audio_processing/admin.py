@@ -1,5 +1,6 @@
 from .models.processing_batch import ProcessingBatch
 from .models.user_analytics import UserAnalytics
+
 """Admin package loader: import submodules so Django registers admin classes."""
 from .admin import processing_batch_admin  # noqa: F401
 from .admin import user_analytics_admin  # noqa: F401

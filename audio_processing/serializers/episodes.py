@@ -43,19 +43,15 @@ class EpisodeListSerializer(EpisodeSerializer):
         model = Episode
         fields = [
             "id",
-            "slug",
-            "tags",
-            "title",
-            "subtitle",
             "description",
-            "summary",
+            "title",
+            "slug",
+            "subtitle",
+            "duration",
             "release_date",
-            "created_at",
-            "updated_at",
-            "podcast",
             "image_url",
             "episode_number",
-            "followers",
+            "followers"
         ]
 
 
