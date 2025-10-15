@@ -4,9 +4,9 @@ from django.db.models import JSONField
 from django.conf import settings
 from audio_processing.models.mixins import GroqMixin
 import logging
-from huggingface_hub import login
 
 if settings.HF_API_TOKEN:
+    from huggingface_hub import login
     from bertopic import BERTopic
     login(settings.HF_API_TOKEN)
     loaded_model = BERTopic.load("itsCody/retyped-topic-model")
