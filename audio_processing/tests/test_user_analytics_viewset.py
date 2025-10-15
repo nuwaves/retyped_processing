@@ -136,7 +136,7 @@ class UserAnalyticsViewSetAPITest(TestCase):
             # Verify entity_detail contains episode data
             entity_detail = item["entity_detail"]
             self.assertIn("title", entity_detail)
-            self.assertIn("podcast", entity_detail)
+            self.assertIn("slug", entity_detail)
 
     def test_analytics_podcasts_only(self):
         """Test analytics-podcasts returns only podcast analytics."""
@@ -174,7 +174,7 @@ class UserAnalyticsViewSetAPITest(TestCase):
             # Verify entity_detail contains podcast data
             entity_detail = item["entity_detail"]
             self.assertIn("name", entity_detail)
-            self.assertIn("url", entity_detail)
+            self.assertIn("slug", entity_detail)
 
     def test_analytics_episodes_empty(self):
         """Test analytics-episodes returns empty list when no episode analytics exist."""
