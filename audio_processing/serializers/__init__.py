@@ -5,6 +5,7 @@ from .topics import TopicSerializer
 from .follows import FollowSerializer
 from .bookmarks import BookmarkSerializer
 from .user_analytics import AnalyticDetailSerializer, AnalyticSerializer
+from .podcast_claims import PodcastClaimSerializer
 
 __all__ = [
     "EpisodeListSerializer",
@@ -19,4 +20,5 @@ __all__ = [
     "BookmarkSerializer",
     "AnalyticDetailSerializer",
     "AnalyticSerializer",
+    "PodcastClaimSerializer",
 ]
