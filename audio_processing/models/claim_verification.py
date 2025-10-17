@@ -1,5 +1,9 @@
 import uuid
 from django.db import models
+from django.conf import settings
+from django.utils import timezone
+from django.urls import reverse
+from datetime import timedelta
 from .podcast_claim import PodcastClaim
 
 
@@ -23,3 +27,55 @@ class ClaimVerification(models.Model):
 
     def __str__(self):
         return f"{self.claim} - {self.verification_key}"
+
+    def get_verification_url(self):
+        """
+        Generate the verification URL containing the encoded verification key.
+        Uses Django's sites framework to get the absolute URL.
+
+        Returns:
+            str: Full verification URL with the verification key
+        """
+        from django.contrib.sites.models import Site
+
+        current_site = Site.objects.get_current()
+        url = reverse(
+            "v1:api-v1-claims-verify",
+            kwargs={"verification_key": self.verification_key},
+        )
+
+        return f"https://{current_site.domain}{url}"
+
+    def is_expired(self):
+        """
+        Check if the verification token has expired.
+
+        Returns:
+            bool: True if expired, False otherwise
+        """
+        expiry_hours = settings.VERIFICATION_EXPIRY_HOURS or 48
+        expiry_time = self.created_at + timedelta(hours=expiry_hours)
+        return timezone.now() > expiry_time
+
+    def verify(self):
+        """
+        Mark this verification as verified and update the associated claim status.
+
+        Returns:
+            bool: True if verification was successful, False if already verified or expired
+        """
+        if self.is_verified:
+            return False
+
+        if self.is_expired():
+            return False
+
+        # Mark verification as complete
+        self.is_verified = True
+        self.save(update_fields=["is_verified", "updated_at"])
+
+        # Update the claim status to IN_REVIEW
+        self.claim.status = PodcastClaim.ClaimStatus.APPROVED
+        self.claim.save(update_fields=["status", "updated_at"])
+
+        return True

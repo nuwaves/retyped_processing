@@ -1,13 +1,7 @@
-"""
-Django signals for audio_processing app.
-
-This module contains signal handlers that trigger automatic actions
-when certain model events occur.
-"""
 import logging
 from django.db.models.signals import post_save
 from django.dispatch import receiver
-from audio_processing.models import PodcastClaim, ClaimVerification, PodcastOwner
+from ..models import PodcastClaim, ClaimVerification, PodcastOwner
 
 logger = logging.getLogger(__name__)
 
@@ -36,7 +30,9 @@ def create_claim_verification(sender, instance, created, **kwargs):
     podcast = instance.podcast
 
     # Log the claim creation
-    logger.info(f"New PodcastClaim created: User={user.email} claiming Podcast={podcast.name} (ID={podcast.id})")
+    logger.info(
+        f"New PodcastClaim created: User={user.email} claiming Podcast={podcast.name} (ID={podcast.id})"
+    )
 
     # Criterion 1: Check if there is NO PodcastOwner with the user's email
     podcast_owner_exists = PodcastOwner.objects.filter(email=user.email).exists()
@@ -70,6 +66,16 @@ def create_claim_verification(sender, instance, created, **kwargs):
             f"verification_key={verification.verification_key}, "
             f"for PodcastClaim ID={instance.id}"
         )
+
+        # Trigger async email task
+        from audio_processing.tasks.email_tasks import send_claim_verification_email
+
+        send_claim_verification_email.delay(verification.id)
+        logger.info(
+            f"Queued verification email task for ClaimVerification ID={verification.id}, "
+            f"user={user.email}"
+        )
+
     except Exception as e:
         logger.error(
             f"Failed to create ClaimVerification for PodcastClaim ID={instance.id}: {str(e)}"

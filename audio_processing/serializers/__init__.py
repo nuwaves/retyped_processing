@@ -6,6 +6,11 @@ from .follows import FollowSerializer
 from .bookmarks import BookmarkSerializer
 from .user_analytics import AnalyticDetailSerializer, AnalyticSerializer
 from .podcast_claims import PodcastClaimSerializer
+from .claim_verification import (
+    ClaimVerificationStatusSerializer,
+    ClaimVerificationSuccessSerializer,
+    ClaimVerificationErrorSerializer,
+)
 
 __all__ = [
     "EpisodeListSerializer",
@@ -21,4 +26,7 @@ __all__ = [
     "AnalyticDetailSerializer",
     "AnalyticSerializer",
     "PodcastClaimSerializer",
+    "ClaimVerificationStatusSerializer",
+    "ClaimVerificationSuccessSerializer",
+    "ClaimVerificationErrorSerializer",
 ]
