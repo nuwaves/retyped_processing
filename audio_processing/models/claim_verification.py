@@ -39,12 +39,8 @@ class ClaimVerification(models.Model):
         from django.contrib.sites.models import Site
 
         current_site = Site.objects.get_current()
-        url = reverse(
-            "v1:api-v1-claims-verify",
-            kwargs={"verification_key": self.verification_key},
-        )
-
-        return f"https://{current_site.domain}{url}"
+        frontend_url = f"https://{current_site.domain}/account/verify-claim/{self.verification_key}"
+        return frontend_url
 
     def is_expired(self):
         """
