@@ -122,34 +122,3 @@ class ClaimVerificationView(APIView):
                 serializer.validated_data,
                 status=status.HTTP_400_BAD_REQUEST,
             )
-
-    def get(self, request, verification_key):
-        """
-        GET endpoint to check verification status (for frontend to display info).
-
-        Args:
-            request: The HTTP request
-            verification_key (str): UUID verification key
-
-        Returns:
-            Response: JSON response with verification details
-        """
-        logger.info(f"Checking verification status for key: {verification_key}")
-
-        verification = get_object_or_404(
-            ClaimVerification.objects.select_related('claim__user', 'claim__podcast'),
-            verification_key=verification_key
-        )
-
-        serializer = ClaimVerificationStatusSerializer(data={
-            "is_verified": verification.is_verified,
-            "is_expired": verification.is_expired(),
-            "podcast_name": verification.claim.podcast.name,
-            "user_email": verification.claim.user.email,
-            "created_at": verification.created_at,
-        })
-        serializer.is_valid(raise_exception=True)
-        return Response(
-            serializer.validated_data,
-            status=status.HTTP_200_OK,
-        )

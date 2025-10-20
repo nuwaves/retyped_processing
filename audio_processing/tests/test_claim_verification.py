@@ -51,7 +51,7 @@ class ClaimVerificationModelTest(TestCase):
         """Test verification URL generation using Django Sites framework."""
         url = self.verification.get_verification_url()
         self.assertIn(str(self.verification.verification_key), url)
-        self.assertIn('/account/verify-claim/', url)
+        self.assertIn('/verify-claim/', url)
 
         # Should use the current site's domain
         current_site = Site.objects.get_current()
