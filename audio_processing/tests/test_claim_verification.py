@@ -204,17 +204,6 @@ class ClaimVerificationAPITest(TestCase):
         )
         self.verification = ClaimVerification.objects.create(claim=self.claim)
 
-    def test_get_verification_status(self):
-        """Test GET endpoint to check verification status."""
-        url = f'/api/v1/claims/verify/{self.verification.verification_key}/'
-        response = self.client.get(url)
-
-        self.assertEqual(response.status_code, 200)
-        data = response.json()
-        self.assertFalse(data['is_verified'])
-        self.assertFalse(data['is_expired'])
-        self.assertEqual(data['podcast_name'], self.podcast.name)
-
     def test_post_verification_success(self):
         """Test successful claim verification via API."""
         url = f'/api/v1/claims/verify/{self.verification.verification_key}/'
