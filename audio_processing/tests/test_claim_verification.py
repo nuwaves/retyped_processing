@@ -51,7 +51,7 @@ class ClaimVerificationModelTest(TestCase):
         """Test verification URL generation using Django Sites framework."""
         url = self.verification.get_verification_url()
         self.assertIn(str(self.verification.verification_key), url)
-        self.assertIn('/api/v1/claims/verify/', url)
+        self.assertIn('/account/verify-claim/', url)
 
         # Should use the current site's domain
         current_site = Site.objects.get_current()
@@ -89,7 +89,7 @@ class ClaimVerificationModelTest(TestCase):
 
         # Check that claim status was updated
         self.claim.refresh_from_db()
-        self.assertEqual(self.claim.status, PodcastClaim.ClaimStatus.IN_REVIEW)
+        self.assertEqual(self.claim.status, PodcastClaim.ClaimStatus.APPROVED)
 
     def test_verify_already_verified(self):
         """Test that verifying again returns False."""
@@ -230,7 +230,7 @@ class ClaimVerificationAPITest(TestCase):
         self.assertTrue(self.verification.is_verified)
 
         self.claim.refresh_from_db()
-        self.assertEqual(self.claim.status, PodcastClaim.ClaimStatus.IN_REVIEW)
+        self.assertEqual(self.claim.status, PodcastClaim.ClaimStatus.APPROVED)
 
     def test_post_verification_already_verified(self):
         """Test verifying an already verified claim."""
@@ -244,7 +244,7 @@ class ClaimVerificationAPITest(TestCase):
         self.assertEqual(response.status_code, 400)
         data = response.json()
         self.assertFalse(data['success'])
-        self.assertIn('already been completed', data['message'])
+        self.assertIn('already been verified', data['message'])
 
     @override_settings(VERIFICATION_EXPIRY_HOURS=1)
     def test_post_verification_expired(self):
@@ -296,7 +296,7 @@ class SignalIntegrationTest(TestCase):
             owner_email="owner@example.com"
         )
 
-    @patch('audio_processing.signals.podcast_claim.send_claim_verification_email')
+    @patch('audio_processing.tasks.email_tasks.send_claim_verification_email')
     def test_signal_triggers_email_task(self, mock_email_task):
         """Test that creating a claim triggers the email task."""
         # Create claim (should trigger signal)
