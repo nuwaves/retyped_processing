@@ -258,3 +258,122 @@ class SearchViewSetTest(TestCase):
         # Should have empty arrays
         self.assertEqual(aggregations['tags'], [])
         self.assertEqual(aggregations['topics'], [])
+
+    def test_search_filter_by_single_tag(self):
+        """Test filtering search results by a single tag."""
+        url = reverse('v1:api-v1-search')
+        response = self.client.get(url, {'q': 'django', 'tags': 'django'})
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        data = response.json()
+
+        # Should find episodes with 'django' tag
+        self.assertGreater(len(data['episodes']), 0)
+        for episode in data['episodes']:
+            tag_slugs = [tag['slug'] for tag in episode['tags']]
+            self.assertIn('django', tag_slugs)
+
+        # Should find podcasts with 'django' tag
+        self.assertGreater(len(data['podcasts']), 0)
+        for podcast in data['podcasts']:
+            tag_slugs = [tag['slug'] for tag in podcast['tags']]
+            self.assertIn('django', tag_slugs)
+
+    def test_search_filter_by_multiple_tags(self):
+        """Test filtering search results by multiple tags (OR logic)."""
+        url = reverse('v1:api-v1-search')
+        response = self.client.get(url, {'q': 'django', 'tags': 'django,web-development'})
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        data = response.json()
+
+        # Should find episodes with at least one of the specified tags
+        self.assertGreater(len(data['episodes']), 0)
+        for episode in data['episodes']:
+            tag_slugs = [tag['slug'] for tag in episode['tags']]
+            # Episode should have at least one of the specified tags
+            self.assertTrue('django' in tag_slugs or 'web-development' in tag_slugs)
+
+    def test_search_filter_by_single_topic(self):
+        """Test filtering search results by a single topic."""
+        url = reverse('v1:api-v1-search')
+        response = self.client.get(url, {'q': 'django', 'topics': 'web-frameworks'})
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        data = response.json()
+
+        # Should find episodes with 'web-frameworks' topic
+        self.assertGreater(len(data['episodes']), 0)
+        for episode in data['episodes']:
+            topic_slugs = [topic['slug'] for topic in episode['topics']]
+            self.assertIn('web-frameworks', topic_slugs)
+
+    def test_search_filter_by_tags_and_topics(self):
+        """Test filtering by both tags and topics."""
+        url = reverse('v1:api-v1-search')
+        response = self.client.get(url, {
+            'q': 'django',
+            'tags': 'django',
+            'topics': 'web-frameworks'
+        })
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        data = response.json()
+
+        # Episodes should have both the specified tag and topic
+        for episode in data['episodes']:
+            tag_slugs = [tag['slug'] for tag in episode['tags']]
+            topic_slugs = [topic['slug'] for topic in episode['topics']]
+            self.assertIn('django', tag_slugs)
+            self.assertIn('web-frameworks', topic_slugs)
+
+    def test_search_filter_no_matching_tags(self):
+        """Test filtering with tags that don't match any results."""
+        url = reverse('v1:api-v1-search')
+        response = self.client.get(url, {'q': 'django', 'tags': 'nonexistent-tag'})
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        data = response.json()
+
+        # Should return empty results
+        self.assertEqual(len(data['episodes']), 0)
+        self.assertEqual(len(data['podcasts']), 0)
+
+    def test_search_filter_aggregations_reflect_filters(self):
+        """Test that aggregations reflect filtered results, not all results."""
+        # First, search without filters to see all tags
+        url = reverse('v1:api-v1-search')
+        response_unfiltered = self.client.get(url, {'q': 'django'})
+        data_unfiltered = response_unfiltered.json()
+
+        # Now search with a tag filter
+        response_filtered = self.client.get(url, {'q': 'django', 'tags': 'django'})
+        data_filtered = response_filtered.json()
+
+        self.assertEqual(response_filtered.status_code, status.HTTP_200_OK)
+
+        # Aggregations should only show tags/topics from filtered results
+        # The filtered result should have 'django' tag in aggregations
+        filtered_tag_slugs = [tag['slug'] for tag in data_filtered['aggregations']['tags']]
+        self.assertIn('django', filtered_tag_slugs)
+
+    def test_search_filter_episodes_only_with_tags(self):
+        """Test filtering episodes specifically with tags."""
+        url = reverse('v1:api-v1-search')
+        response = self.client.get(url, {
+            'q': 'django',
+            'type': 'episode',
+            'tags': 'django'
+        })
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        data = response.json()
+
+        # Should only have episodes
+        self.assertNotIn('podcasts', data)
+        self.assertGreater(len(data['episodes']), 0)
+
+        # All episodes should have the django tag
+        for episode in data['episodes']:
+            tag_slugs = [tag['slug'] for tag in episode['tags']]
+            self.assertIn('django', tag_slugs)
