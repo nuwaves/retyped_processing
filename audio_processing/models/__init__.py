@@ -9,22 +9,21 @@ from .processing_batch import ProcessingBatch
 from .follow import Follow
 from .bookmark import Bookmark
 from .topic import Topic
+from .podcast_claim import PodcastClaim
+from .claim_verification import ClaimVerification
 
 __all__ = [
-    'Episode', 
-    'Podcast', 
-    'PodcastOwner', 
-    'Quote', 
-    'Tag', 
-    'TaggableMixin', 
-    'SummarizableMixin', 
-    'SearchableMixin',
-    'QuotableMixin',
-    'UserAnalytics',
-    'SummarizableMixin',
-    'Entity',
-    'Topic',
-    'ProcessingBatch',
-    'Follow',
-    'Bookmark',
+    "Episode",
+    "Podcast",
+    "PodcastOwner",
+    "Quote",
+    "Tag",
+    "UserAnalytics",
+    "Entity",
+    "Topic",
+    "ProcessingBatch",
+    "Follow",
+    "Bookmark",
+    "PodcastClaim",
+    "ClaimVerification",
 ]

@@ -100,6 +100,13 @@ TIME_ZONE = "UTC"
 USE_I18N = True
 USE_TZ = True
 
+# Email settings
+DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "noreply@retyped.com")
+SERVER_EMAIL = os.environ.get("SERVER_EMAIL", DEFAULT_FROM_EMAIL)
+
+# Verification settings
+VERIFICATION_EXPIRY_HOURS = int(os.environ.get("VERIFICATION_EXPIRY_HOURS", "48"))
+
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 STATIC_URL = "static/"

@@ -11,6 +11,8 @@ from .views.search_viewsets import SearchViewSet
 from .views.bookmarks_viewsets import BookmarkViewSet
 from .views.follows_viewsets import FollowViewSet
 from .views.user_analytics_viewsets import UserAnalyticsViewSet
+from .views.podcast_claims_viewsets import PodcastClaimViewSet
+from .views.claim_verification_viewsets import ClaimVerificationView
 
 api_v1_patterns = [
     # Entities endpoints
@@ -129,5 +131,16 @@ api_v1_patterns = [
         "user_analytics/podcasts",
         UserAnalyticsViewSet.as_view({"get": "analytics_only_podcasts"}),
         name="api-v1-user-analytics-podcasts",
+    ),
+    path(
+        "podcast_claims/",
+        PodcastClaimViewSet.as_view({"get": "list", "post": "create"}),
+        name="api-v1-podcast-claims",
+    ),
+    # Claim verification endpoint
+    path(
+        "claims/verify/<uuid:verification_key>/",
+        ClaimVerificationView.as_view(),
+        name="api-v1-claims-verify",
     ),
 ]
