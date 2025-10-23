@@ -1,4 +1,5 @@
 from django.contrib.contenttypes.models import ContentType
+from django.db.models import Count
 
 from rest_framework import serializers
 from ..models import Podcast, Follow, Bookmark
@@ -6,10 +7,17 @@ from .tags import TagSerializer
 
 
 class PodcastSerializer(serializers.ModelSerializer):
-    tags = TagSerializer(many=True)
+    tags = serializers.SerializerMethodField()
     episode_count = serializers.SerializerMethodField()
     followers_count = serializers.SerializerMethodField()
     bookmark_count = serializers.SerializerMethodField()
+
+    def get_tags(self, obj):
+        """Return tags ordered by podcast count."""
+        tags = obj.tags.annotate(
+            podcast_count=Count('podcasts', distinct=True)
+        ).order_by('-podcast_count')
+        return TagSerializer(tags, many=True).data
 
     def get_bookmark_count(self, obj):
         content_type = ContentType.objects.get_for_model(Podcast)

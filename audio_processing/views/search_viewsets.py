@@ -7,6 +7,7 @@ from ..serializers import (
     SearchResultsSerializer
 )
 from django.conf import settings
+from django.db.models import Count
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -101,7 +102,10 @@ class SearchViewSet(viewsets.GenericViewSet):
             if podcast_ids:
                 all_tags = all_tags | Tag.objects.filter(podcasts__id__in=podcast_ids)
 
-            all_tags = all_tags.distinct()
+            # Annotate with episode count and order by it (descending)
+            all_tags = all_tags.distinct().annotate(
+                episode_count=Count('episodes', distinct=True)
+            ).order_by('-episode_count')
             aggregations['tags'] = all_tags
 
             # Collect unique topics from episodes
