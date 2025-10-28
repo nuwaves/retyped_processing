@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from django.contrib.contenttypes.models import ContentType
+from django.db.models import Count
 from ..models import Episode, Bookmark
 from .tags import TagSerializer
 from .podcasts import PodcastListSerializer
@@ -15,7 +16,7 @@ class HtmlSanitizedField(serializers.CharField):
 
 
 class EpisodeSerializer(serializers.ModelSerializer):
-    tags = TagSerializer(many=True)
+    tags = serializers.SerializerMethodField()
     podcast = PodcastListSerializer()
     bookmark_count = serializers.SerializerMethodField()
     image_url = serializers.SerializerMethodField()
@@ -24,6 +25,13 @@ class EpisodeSerializer(serializers.ModelSerializer):
     summary = HtmlSanitizedField()
     quotes = QuoteSerializer(many=True)
     topics = TopicSerializer(many=True)
+
+    def get_tags(self, obj):
+        """Return tags ordered by episode count."""
+        tags = obj.tags.annotate(
+            episode_count=Count('episodes', distinct=True)
+        ).order_by('-episode_count')
+        return TagSerializer(tags, many=True).data
 
     def get_bookmark_count(self, obj):
         content_type = ContentType.objects.get_for_model(Episode)

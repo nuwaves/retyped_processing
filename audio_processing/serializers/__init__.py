@@ -5,6 +5,7 @@ from .topics import TopicSerializer
 from .follows import FollowSerializer
 from .bookmarks import BookmarkSerializer
 from .user_analytics import AnalyticDetailSerializer, AnalyticSerializer
+from .search import SearchResultsSerializer, SearchAggregationsSerializer
 from .podcast_claims import PodcastClaimSerializer
 from .claim_verification import (
     ClaimVerificationStatusSerializer,
@@ -25,6 +26,8 @@ __all__ = [
     "BookmarkSerializer",
     "AnalyticDetailSerializer",
     "AnalyticSerializer",
+    "SearchResultsSerializer",
+    "SearchAggregationsSerializer",
     "PodcastClaimSerializer",
     "ClaimVerificationStatusSerializer",
     "ClaimVerificationSuccessSerializer",
