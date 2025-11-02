@@ -30,6 +30,7 @@ class EpisodeViewSet(
     ]
     filterset_fields = {
         'processing_completed_at': ['isnull'],
+        'quotes': ['isnull'],
     }
 
     search_fields = [
