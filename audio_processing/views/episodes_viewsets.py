@@ -3,6 +3,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework import viewsets, mixins, permissions, filters
 from django_filters.rest_framework import DjangoFilterBackend
+from django.utils import timezone
 
 from ..models import Episode
 from ..serializers import (
@@ -12,6 +13,29 @@ from ..serializers import (
 )
 from audio_processing.utils.analytics import get_top_by_views
 from audio_processing.api_filters import MultiTagFilterBackend
+
+
+# Local OrderingFilter that accepts `order_by` and maps `random` to ORDER BY RANDOM()
+class OrderByFilter(filters.OrderingFilter):
+    ordering_param = 'order_by'
+
+    def get_ordering(self, request, queryset, view):
+        """Return ordering fields for this request.
+
+        If the client passes `order_by=random` we return ['?'] so Django
+        will execute ORDER BY RANDOM(). Otherwise fall back to the
+        standard OrderingFilter behavior (respecting view.ordering_fields).
+        """
+        param = request.query_params.get(self.ordering_param)
+        if not param:
+            return super().get_ordering(request, queryset, view)
+
+        # allow comma-separated fields; treat any 'random' token as RANDOM
+        tokens = [t.strip() for t in param.split(',') if t.strip()]
+        if any(t.lower() == 'random' for t in tokens):
+            return ['?']
+
+        return super().get_ordering(request, queryset, view)
 
 
 class EpisodeViewSet(
@@ -26,11 +50,13 @@ class EpisodeViewSet(
         filters.SearchFilter,
         MultiTagFilterBackend,
         DjangoFilterBackend,
-        filters.OrderingFilter,
+        OrderByFilter,
     ]
     filterset_fields = {
         'processing_completed_at': ['isnull'],
         'quotes': ['isnull'],
+        # allow filtering episodes by their podcast's publication date
+        'podcast__pub_date': ['gte', 'lte', 'isnull'],
     }
 
     search_fields = [
@@ -44,6 +70,23 @@ class EpisodeViewSet(
         'release_date',
     ]
     ordering = ["-release_date"]
+
+    def get_queryset(self):
+        """Support extra query params like last_24h to filter by podcast pub_date."""
+        qs = super().get_queryset()
+        req = getattr(self, 'request', None)
+        if not req:
+            return qs
+
+        last_24 = (
+            req.query_params.get('last_24h')
+        )
+        if last_24 and str(last_24).lower() in ('1', 'true', 'yes'):
+            since = timezone.now() - timezone.timedelta(hours=24)
+            qs = qs.filter(podcast__pub_date__gte=since)
+
+        return qs
+
 
     @action(detail=False, methods=["get"], url_path="top-by-views")
     def top_by_views(self, request):

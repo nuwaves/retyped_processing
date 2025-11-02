@@ -2,6 +2,8 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework import viewsets, mixins, permissions, filters
+from django_filters.rest_framework import DjangoFilterBackend
+from django.utils import timezone
 
 from audio_processing.utils.analytics import get_top_by_views
 from audio_processing.api_filters import MultiTagFilterBackend
@@ -22,7 +24,24 @@ class PodcastViewSet(
     permission_classes = [
         permissions.IsAuthenticatedOrReadOnly,
     ]
-    filter_backends = [filters.SearchFilter, MultiTagFilterBackend]
+    filter_backends = [filters.SearchFilter, MultiTagFilterBackend, DjangoFilterBackend]
+    # Allow filtering by pub_date and simple lookups
+    filterset_fields = {
+        'pub_date': ['gte', 'lte', 'isnull'],
+    }
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        req = getattr(self, 'request', None)
+        if not req:
+            return qs
+
+        last_24 = req.query_params.get('last_24h') or req.query_params.get('last_24_hours')
+        if last_24 and last_24.lower() in ('1', 'true', 'yes'):
+            since = timezone.now() - timezone.timedelta(hours=24)
+            qs = qs.filter(pub_date__gte=since)
+
+        return qs
     lookup_field = "slug"
 
     def get_serializer_class(self):
