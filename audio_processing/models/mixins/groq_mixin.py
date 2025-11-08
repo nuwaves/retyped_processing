@@ -89,13 +89,15 @@ class GroqMixin():
             logger.error("GROQ_API_KEY not configured")
             return None
         headers = {"Authorization": f"Bearer {api_key}"}
-        clean_url = self.clean_url(self.raw_audio_url)
+        clean_url = self.s3_audio_url
+        if clean_url is None:
+            clean_url = self.clean_url(self.raw_audio_url)
         tmp_path = None
         try:
             with requests.get(clean_url, stream=True, timeout=300) as r:
                 r.raise_for_status()
                 with tempfile.NamedTemporaryFile(delete=False) as tmp:
-                    for chunk in r.iter_content(chunk_size=8192):
+                    for chunk in r.iter_content(chunk_size=65536):
                         tmp.write(chunk)
                     tmp_path = tmp.name
             file_size = os.path.getsize(tmp_path)

@@ -396,7 +396,7 @@ class Episode(models.Model, GroqMixin, AwsMixin, TaggableMixin, SummarizableMixi
             # Return S3 URI
             s3_uri = f"s3://{bucket_name}/{s3_key}"
             logger.info(f"Audio file uploaded successfully to: {s3_uri}")
-            self.s3_audio_url = 'https://cdn.retyped.xyz/audio/' + s3_key
+            self.s3_audio_url = 'https://cdn.retyped.xyz/' + s3_key
             self.save(update_fields=['s3_audio_url'])
             return s3_uri
             
