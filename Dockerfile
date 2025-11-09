@@ -8,8 +8,8 @@ WORKDIR /app
 
 # Install system dependencies
 RUN apt-get update \
-	&& apt-get install -y ffmpeg
-RUN sudo apt-get install apturl
+	&& apt-get install -y ffmpeg \
+	&& apt-get install -y apturl
 
 RUN pip install gunicorn
 COPY requirements.txt /app/
