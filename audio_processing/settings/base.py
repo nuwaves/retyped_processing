@@ -9,6 +9,9 @@ BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
 # Application definition
 INSTALLED_APPS = [
+    "constance",
+    'admin_tools_stats',
+    'django_nvd3',
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -17,7 +20,6 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "audio_processing",
     "import_export",
-    "constance",
     "corsheaders",
     "rest_framework",
     "drf_yasg",
