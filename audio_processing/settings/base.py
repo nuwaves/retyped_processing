@@ -10,7 +10,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent.parent
 # Application definition
 INSTALLED_APPS = [
     "constance",
-    'admin_tools_stats',
+    # 'admin_tools_stats',
     'django_nvd3',
     "django.contrib.admin",
     "django.contrib.auth",
