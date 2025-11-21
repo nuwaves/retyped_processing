@@ -29,3 +29,4 @@ s3transfer==0.13.1
 whitenoise==6.11.0
 django-admin-tools-stats
 feedparser
+huggingface-hub
