@@ -2,12 +2,10 @@ import logging
 from django.conf import settings
 import requests
 import re
-from ...prompts import get_tag_suggestion_prompt, get_speaker_transcript_prompt
 from constance import config
 import os
 import tempfile
 import os
-import tempfile
 from audio_processing.models.mixins.audio_chunking import transcribe_audio_in_chunks
 from pathlib import Path
 
