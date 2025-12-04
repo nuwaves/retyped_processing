@@ -575,6 +575,10 @@ class Episode(models.Model, GroqMixin, AwsMixin, TaggableMixin, SummarizableMixi
         for eid in episode_ids:
             try:
                 episode = Episode.objects.get(pk=eid)
+                if not episode.s3_audio_url:
+                    s3_uri = episode.upload_audio_to_s3(episode.raw_audio_url)
+                else:
+                    s3_uri = episode.s3_audio_url
                 line = {
                     "custom_id": f"episode-{eid}",
                     "method": "POST",
@@ -582,7 +586,7 @@ class Episode(models.Model, GroqMixin, AwsMixin, TaggableMixin, SummarizableMixi
                     "body": {
                         "model": config.TEXT_TO_SPEECH_MODEL,
                         "language": "en",
-                        "url": episode.raw_audio_url,
+                        "url": s3_uri,
                         "response_format": "verbose_json",
                         "timestamp_granularities": ["segment"]
                     }
