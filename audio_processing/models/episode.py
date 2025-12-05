@@ -398,7 +398,7 @@ class Episode(models.Model, GroqMixin, AwsMixin, TaggableMixin, SummarizableMixi
             logger.info(f"Audio file uploaded successfully to: {s3_uri}")
             self.s3_audio_url = 'https://cdn.retyped.xyz/' + s3_key
             self.save(update_fields=['s3_audio_url'])
-            return s3_uri
+            return self.s3_audio_url
             
         except NoCredentialsError:
             logger.error("AWS credentials not configured for S3 upload")
