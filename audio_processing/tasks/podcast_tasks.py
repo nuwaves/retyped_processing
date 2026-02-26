@@ -1,6 +1,8 @@
 import logging
-from ..models import Podcast
+
 from celery import shared_task
+
+from ..models import Podcast
 
 logger = logging.getLogger(__name__)
 
@@ -18,7 +20,7 @@ def process_podcast_rss_feed(feed_url):
         url=feed_url,
         defaults={'name': f'RSS Feed from {feed_url}', 'is_active': True}
     )
-    
+
     if created:
         logger.info(f"Created new Podcast object for {feed_url}")
 
@@ -50,7 +52,7 @@ def process_all_active_podcasts():
         logger.info(f"Processing podcast: {podcast.name} ({podcast.url})")
         result = podcast.process_feed()
         results.append(result)
-    
+
     summary = {
         'total_feeds_processed': len(results),
         'feeds': results
@@ -84,7 +86,7 @@ def index_podcast_for_search(podcast_id):
         return {'error': f"Podcast with ID {podcast_id} does not exist"}
     except Exception as e:
         return {'error': str(e)}
-    
+
 @shared_task
 def reindex_all_podcasts_for_search(batch_size=50):
     """

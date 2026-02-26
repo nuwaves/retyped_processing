@@ -1,4 +1,5 @@
 from django.contrib import admin
+
 from audio_processing.models import Quote
 
 

@@ -5,14 +5,15 @@ All API endpoints are versioned and nested under /api/v1/
 """
 
 from django.urls import path
+
 from .views import EpisodeViewSet, PodcastViewSet, TagsViewSet
-from .views.entity_viewsets import EntityViewSet
-from .views.search_viewsets import SearchViewSet
 from .views.bookmarks_viewsets import BookmarkViewSet
-from .views.follows_viewsets import FollowViewSet
-from .views.user_analytics_viewsets import UserAnalyticsViewSet
-from .views.podcast_claims_viewsets import PodcastClaimViewSet
 from .views.claim_verification_viewsets import ClaimVerificationView
+from .views.entity_viewsets import EntityViewSet
+from .views.follows_viewsets import FollowViewSet
+from .views.podcast_claims_viewsets import PodcastClaimViewSet
+from .views.search_viewsets import SearchViewSet
+from .views.user_analytics_viewsets import UserAnalyticsViewSet
 
 api_v1_patterns = [
     # Entities endpoints

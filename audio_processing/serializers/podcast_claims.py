@@ -1,6 +1,7 @@
 from rest_framework import serializers
-from ..models import PodcastClaim
 from rest_framework.validators import UniqueTogetherValidator
+
+from ..models import PodcastClaim
 
 
 class PodcastClaimSerializer(serializers.ModelSerializer):

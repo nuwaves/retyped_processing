@@ -1,11 +1,12 @@
 from django.contrib.auth.models import User
 from django.test import TestCase
 from django.urls import reverse
-from rest_framework.test import APIClient
-from django.contrib.auth.models import User
-from audio_processing.models import Podcast, Episode, Tag
-from audio_processing.models.user_analytics import UserAnalytics
 from rest_framework import status
+from rest_framework.test import APIClient
+
+from audio_processing.models import Episode, Podcast, Tag
+from audio_processing.models.user_analytics import UserAnalytics
+
 
 class EpisodeViewSetAPITest(TestCase):
     def setUp(self):
@@ -49,16 +50,16 @@ class EpisodeViewSetAPITest(TestCase):
         self.podcast = Podcast.objects.create(name='Podcast 1', url='https://example.com/1')
         self.episode1 = Episode.objects.create(title='Episode 1', podcast=self.podcast, raw_audio_url='https://example.com/audio1.mp3')
         self.episode2 = Episode.objects.create(title='Episode 2', podcast=self.podcast, raw_audio_url='https://example.com/audio2.mp3')
-        
+
         # Create tags
         self.tag1 = Tag.objects.create(name='Python', slug='python')
         self.tag2 = Tag.objects.create(name='Django', slug='django')
         self.tag3 = Tag.objects.create(name='Web Development', slug='web-development')
-        
+
         # Associate tags with episodes
         self.episode1.tags.add(self.tag1, self.tag3)  # Python, Web Development
         self.episode2.tags.add(self.tag2)  # Django
-        
+
         # Add analytics
         UserAnalytics.objects.create(user=None, episode=self.episode1, views=10)
         UserAnalytics.objects.create(user=None, episode=self.episode2, views=5)

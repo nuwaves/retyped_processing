@@ -1,5 +1,5 @@
-import logging
 import json
+import logging
 import re
 
 from audio_processing.prompts import get_quote_extraction_prompt
@@ -7,7 +7,7 @@ from audio_processing.prompts import get_quote_extraction_prompt
 logger = logging.getLogger(__name__)
 
 
-class QuotableMixin():
+class QuotableMixin:
     """
     Mixin for models that can have quotes extracted from their content.
     
@@ -27,13 +27,13 @@ class QuotableMixin():
         if not hasattr(self, 'transcript') or not self.transcript or not self.transcript.strip():
             logger.warning(f"No transcript available for quote extraction: {getattr(self, 'raw_audio_url', 'Unknown')}")
             return []
-        
-        try:            
+
+        try:
             # Prepare the prompt for quote extraction
             # Limit transcript length to avoid token limits
             transcript_excerpt = self.transcript[:8000]
             prompt = get_quote_extraction_prompt(transcript_excerpt)
-            
+
             response = self.get_groq_completion(prompt, max_tokens=2000)
             if not response:
                 logger.error(f"Failed to get LLM response for quote extraction: {getattr(self, 'raw_audio_url', 'Unknown')}")
@@ -57,10 +57,10 @@ class QuotableMixin():
                 logger.error(f"Failed to parse quote extraction JSON: {str(e)} | Raw: {cleaned_response[:200]}")
                 # Try to extract quotes from a more flexible format
                 quotes_list = self._parse_quotes_fallback(cleaned_response)
-            
+
             # Create Quote objects
             return self._create_quote_objects(quotes_list)
-            
+
         except Exception as e:
             logger.error(f"Error during quote extraction: {str(e)}")
             return []
@@ -84,7 +84,7 @@ class QuotableMixin():
                 r'"([^"]+)".*?(?:Speaker|speaker):\s*([^,\n]+)',  # "quote" speaker: name
                 r'Quote:\s*"([^"]+)".*?(?:Speaker|speaker):\s*([^,\n]+)',  # Quote: "text" speaker: name
             ]
-            
+
             for pattern in quote_patterns:
                 matches = re.findall(pattern, response_text, re.IGNORECASE | re.MULTILINE)
                 for match in matches[:12]:  # Limit to 12
@@ -93,13 +93,13 @@ class QuotableMixin():
                             'text': match[0].strip(),
                             'speaker': match[1].strip() if match[1].strip() else None,
                         })
-                
+
                 if quotes:  # If we found quotes with this pattern, stop trying others
                     break
-                    
+
         except Exception as e:
             logger.error(f"Error in fallback quote parsing: {str(e)}")
-        
+
         return quotes
 
     def _create_quote_objects(self, quotes_list):
@@ -114,18 +114,18 @@ class QuotableMixin():
         """
         # Import Quote model
         from audio_processing.models.quote import Quote
-        
+
         created_quotes = []
-        
+
         for quote_info in quotes_list[:12]:  # Limit to 12 quotes max
             try:
                 # Validate required fields
                 quote_text = quote_info.get('text', '').strip()
                 if not quote_text or len(quote_text) < 10:
                     continue
-                
+
                 speaker = quote_info.get('speaker', '').strip() or None
-                
+
                 # Create the Quote object - assumes the model is an Episode
                 quote = Quote.objects.create(
                     episode=self,
@@ -135,11 +135,11 @@ class QuotableMixin():
 
                 created_quotes.append(quote)
                 logger.info(f"Created quote: {quote_text[:50]}...")
-                
+
             except Exception as e:
                 logger.error(f"Failed to create quote: {str(e)}")
                 continue
-        
+
         model_title = getattr(self, 'title', 'Unknown')
         logger.info(f"Extracted {len(created_quotes)} quotes from: {model_title}")
         return created_quotes

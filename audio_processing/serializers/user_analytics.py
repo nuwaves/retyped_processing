@@ -1,7 +1,8 @@
 from rest_framework import serializers
+
+from ..models import UserAnalytics
 from .episodes import EpisodeListSerializer
 from .podcasts import PodcastListSerializer
-from ..models import UserAnalytics
 
 
 class AnalyticDetailSerializer(serializers.ModelSerializer):

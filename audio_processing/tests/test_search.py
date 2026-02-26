@@ -1,19 +1,20 @@
-from django.test import TestCase
-from django.contrib.auth.models import User
-from django.urls import reverse
-from rest_framework.test import APIClient
-from rest_framework import status
-from meilisearch import Client
-from django.conf import settings
 import time
 
-from ..models import Podcast, Episode, Tag
+from django.conf import settings
+from django.contrib.auth.models import User
+from django.test import TestCase
+from django.urls import reverse
+from meilisearch import Client
+from rest_framework import status
+from rest_framework.test import APIClient
+
+from ..models import Episode, Podcast, Tag
 from ..models.topic import Topic
 
 
 class SearchViewSetTest(TestCase):
     """Test cases for the search functionality."""
-    
+
     def setUp(self):
         """Set up test data."""
 
@@ -31,7 +32,7 @@ class SearchViewSetTest(TestCase):
         self.search_client.create_index("tags", {"primaryKey": "id"})
 
         self.client = APIClient()
-        
+
         # Create test user
         self.user = User.objects.create_user(
             username='testuser',
@@ -39,7 +40,7 @@ class SearchViewSetTest(TestCase):
             password='testpass'
         )
         self.client.force_authenticate(user=self.user)
-        
+
         # Create test data
         self.podcast = Podcast.objects.create(
             name='Django Podcast',
@@ -48,7 +49,7 @@ class SearchViewSetTest(TestCase):
             author='Django Team'
         )
         self.podcast.index_to_search()
-        
+
         self.episode = Episode.objects.create(
             title='Introduction to Django Models',
             podcast=self.podcast,
@@ -57,7 +58,7 @@ class SearchViewSetTest(TestCase):
             transcript='In this episode, we explore Django models and how to use them effectively.'
         )
         self.episode.index_to_search()
-        
+
         self.tag = Tag.objects.create(
             name='python',
             slug='python',
@@ -130,7 +131,7 @@ class SearchViewSetTest(TestCase):
         """Test search without query parameter."""
         url = reverse('v1:api-v1-search')
         response = self.client.get(url)
-        
+
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         data = response.json()
         self.assertIn('error', data)
@@ -140,14 +141,14 @@ class SearchViewSetTest(TestCase):
     #    """Test unified search endpoint."""
     #    url = reverse('v1:api-v1-unified-search')
     #    response = self.client.get(url, {'q': 'django'})
-    #    
+    #
     #    self.assertEqual(response.status_code, status.HTTP_200_OK)
     #    data = response.json()
-    #    
+    #
     #    self.assertEqual(data['query'], 'django')
     #    self.assertIn('results', data)
     #    self.assertIn('total_results', data)
-    #    
+    #
     #    # Results should be sorted by score
     #    results = data['results']
     #    if len(results) > 1:

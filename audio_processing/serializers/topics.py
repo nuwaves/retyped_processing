@@ -1,4 +1,5 @@
 from rest_framework import serializers
+
 from audio_processing.models.topic import Topic
 
 

@@ -1,7 +1,9 @@
 import logging
+
 from django.db.models.signals import post_save
 from django.dispatch import receiver
-from ..models import PodcastClaim, ClaimVerification, PodcastOwner
+
+from ..models import ClaimVerification, PodcastClaim, PodcastOwner
 
 logger = logging.getLogger(__name__)
 

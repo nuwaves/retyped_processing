@@ -1,21 +1,23 @@
 import logging
-from django.conf import settings
-import requests
+import os
 import re
-from constance import config
-import os
 import tempfile
-import os
-from audio_processing.models.mixins.audio_chunking import transcribe_audio_in_chunks
 from pathlib import Path
+
+import requests
+from constance import config
+from django.conf import settings
+
+from audio_processing.models.mixins.audio_chunking import transcribe_audio_in_chunks
+from audio_processing.prompts import get_speaker_transcript_prompt
 
 logger = logging.getLogger(__name__)
 
-class GroqMixin():
+class GroqMixin:
     """
     Mixin providing Groq API integration for various LLM tasks.
     """
-    
+
     def get_groq_completion(self, prompt, model=None, max_tokens=1000, temperature=0.3):
         """
         Generic method to get completions from Groq API.
@@ -34,16 +36,16 @@ class GroqMixin():
         if not api_key:
             logger.error("GROQ_API_KEY not configured")
             return None
-        
+
         # Default model if none specified
         if model is None:
             model = getattr(config, 'DEFAULT_MODEL', 'llama-3.1-8b-instant')
-        
+
         headers = {
             "Authorization": f"Bearer {api_key}",
             "Content-Type": "application/json"
         }
-        
+
         data = {
             "model": model,
             "messages": [
@@ -55,19 +57,19 @@ class GroqMixin():
             "temperature": temperature,
             "max_tokens": max_tokens,
         }
-        
+
         try:
             response = requests.post(url, headers=headers, json=data)
             response.raise_for_status()
-            
+
             result = response.json()
             content = result['choices'][0]['message']['content'].strip()
-            
+
             # Remove any <think> tags that might be present
             content = re.sub(r'<think>.*?</think>', '', content, flags=re.DOTALL).strip()
-            
+
             return content
-            
+
         except requests.exceptions.RequestException as e:
             logger.error(f"Groq API request failed: {str(e)}")
             return None
@@ -131,7 +133,7 @@ class GroqMixin():
                 except Exception:
                     pass
 
-    
+
     def generate_speaker_script(self):
         """
         Use Groq LLM to convert the raw transcript into a formatted script with speaker identification.
@@ -140,13 +142,13 @@ class GroqMixin():
         # Validate transcript
         if not self._validate_transcript():
             return None
-        
+
         logger.info(f"Generating speaker script for: {self.raw_audio_url}")
-        
+
         try:
             # Get the prompt from prompts file
             prompt = get_speaker_transcript_prompt(self)
-            
+
             # Use the generic completion method
             script_content = self.get_groq_completion(
                 prompt=prompt,
@@ -154,7 +156,7 @@ class GroqMixin():
                 max_tokens=8000,
                 temperature=0.3
             )
-            
+
             if script_content:
                 self.script_transcript = script_content
                 self.save()
@@ -163,7 +165,7 @@ class GroqMixin():
             else:
                 logger.warning(f"No script content returned for: {self.raw_audio_url}")
                 return None
-                
+
         except Exception as e:
             logger.error(f"Failed to generate speaker script: {str(e)}")
             return None
@@ -178,9 +180,9 @@ class GroqMixin():
         if not hasattr(self, 'transcript') or not self.transcript:
             logger.warning(f"No transcript available for: {getattr(self, 'raw_audio_url', 'Unknown')}")
             return False
-        
+
         if not self.transcript.strip():
             logger.warning(f"Empty transcript for: {getattr(self, 'raw_audio_url', 'Unknown')}")
             return False
-        
+
         return True

@@ -1,7 +1,12 @@
 from django.contrib import admin
 from import_export.admin import ImportExportModelAdmin
-from audio_processing.models import Podcast, Tag
-from audio_processing.tasks.podcast_tasks import process_podcast_by_id, index_podcast_for_search, reindex_all_podcasts_for_search
+
+from audio_processing.models import Podcast
+from audio_processing.tasks.podcast_tasks import (
+    index_podcast_for_search,
+    process_podcast_by_id,
+    reindex_all_podcasts_for_search,
+)
 
 
 @admin.register(Podcast)

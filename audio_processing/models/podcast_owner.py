@@ -1,5 +1,5 @@
-from django.db import models
 from django.core.validators import EmailValidator
+from django.db import models
 from django.utils import timezone
 
 
@@ -10,7 +10,7 @@ class PodcastOwner(models.Model):
     This model manages the relationship between podcasts and their owners,
     including contact details and approval workflow tracking.
     """
-    
+
     # Relationship to Podcast
     podcast = models.OneToOneField(
         'Podcast',
@@ -18,7 +18,7 @@ class PodcastOwner(models.Model):
         related_name='owner',
         help_text="The podcast this owner is associated with"
     )
-    
+
     # Contact Information
     email = models.EmailField(
         validators=[EmailValidator()],
@@ -32,40 +32,40 @@ class PodcastOwner(models.Model):
         max_length=100,
         help_text="Owner's last name"
     )
-    
+
     # Approval Status Tracking
     APPROVAL_STATUS_CHOICES = [
         ('pending', 'Pending'),
         ('approved', 'Approved'),
         ('rejected', 'Rejected'),
     ]
-    
+
     approval_status = models.CharField(
         max_length=20,
         choices=APPROVAL_STATUS_CHOICES,
         default='pending',
         help_text="Current approval status"
     )
-    
+
     date_approved = models.DateTimeField(
         blank=True,
         null=True,
         help_text="Date when the owner was approved"
     )
-    
+
     date_rejected = models.DateTimeField(
         blank=True,
         null=True,
         help_text="Date when the owner was rejected"
     )
-    
+
     # Additional fields for approval workflow
     approval_notes = models.TextField(
         blank=True,
         null=True,
         help_text="Internal notes about the approval/rejection decision"
     )
-    
+
     approved_by = models.ForeignKey(
         'auth.User',
         on_delete=models.SET_NULL,
@@ -74,7 +74,7 @@ class PodcastOwner(models.Model):
         related_name='approved_podcast_owners',
         help_text="Admin user who approved/rejected this owner"
     )
-    
+
     # System timestamps
     created_at = models.DateTimeField(
         auto_now_add=True,
@@ -163,8 +163,7 @@ class PodcastOwner(models.Model):
 
     def clean(self):
         """Validate the model data."""
-        from django.core.exceptions import ValidationError
-        
+
         # Ensure approval/rejection dates match the status
         if self.approval_status == 'approved' and not self.date_approved:
             self.date_approved = timezone.now()

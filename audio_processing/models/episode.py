@@ -1,31 +1,30 @@
-from django.db import models
-import logging
-from urllib.parse import urlparse, urlunparse
-import boto3
-from django.conf import settings
-import requests
-import uuid
-import time
-import mimetypes
-from .mixins.groq_mixin import GroqMixin
-from .mixins.aws_mixin import AwsMixin
-from audio_processing.models.mixins import (
-    TaggableMixin,
-    SummarizableMixin,
-    SearchableMixin,
-    QuotableMixin,
-)
-from groq import Groq
-import time
-import uuid
-from django.utils.text import slugify
-from django.utils import timezone
 import json
+import logging
+import mimetypes
 import os
-import requests
-from django.conf import settings
 import tempfile
+import time
+import uuid
+from urllib.parse import urlparse, urlunparse
+
+import boto3
+import requests
 from constance import config
+from django.conf import settings
+from django.db import models
+from django.utils import timezone
+from django.utils.text import slugify
+from groq import Groq
+
+from audio_processing.models.mixins import (
+    QuotableMixin,
+    SearchableMixin,
+    SummarizableMixin,
+    TaggableMixin,
+)
+
+from .mixins.aws_mixin import AwsMixin
+from .mixins.groq_mixin import GroqMixin
 
 logger = logging.getLogger(__name__)
 transcribe_client = boto3.client('transcribe', region_name='us-east-1')
@@ -39,18 +38,18 @@ class Episode(models.Model, GroqMixin, AwsMixin, TaggableMixin, SummarizableMixi
     SEARCH_INDEX_UID = 'episodes'
     # Relationship
     podcast = models.ForeignKey('Podcast', on_delete=models.CASCADE, related_name='episodes', blank=True, null=True, help_text="Podcast this episode belongs to")
-    
+
     # Basic episode info
     title = models.CharField(max_length=512, blank=True, null=True, db_index=True, help_text="Title of the podcast episode")
     description = models.TextField(blank=True, null=True, help_text="Episode description")
     subtitle = models.CharField(max_length=2000, blank=True, null=True, help_text="Episode subtitle")
-    
+
     # Audio information
     raw_audio_url = models.URLField(max_length=2000, unique=True, help_text="URL of the raw audio file")
     audio_type = models.CharField(max_length=50, blank=True, null=True, help_text="Audio MIME type (e.g., audio/mpeg)")
     audio_length = models.BigIntegerField(blank=True, null=True, help_text="Audio file size in bytes")
     duration = models.DurationField(blank=True, null=True, help_text="Episode duration")
-    
+
     # Episode metadata
     episode_number = models.IntegerField(blank=True, null=True, help_text="Episode number")
     season_number = models.IntegerField(blank=True, null=True, help_text="Season number")
@@ -60,19 +59,19 @@ class Episode(models.Model, GroqMixin, AwsMixin, TaggableMixin, SummarizableMixi
     # iTunes specific
     itunes_explicit = models.BooleanField(default=False, help_text="iTunes explicit content flag for episode")
     itunes_episode_type = models.CharField(max_length=20, blank=True, null=True, help_text="iTunes episode type")
-    
+
     # Episode content
     content_encoded = models.TextField(blank=True, null=True, help_text="HTML encoded content/show notes")
-    
+
     # Processing fields
     transcript = models.TextField(blank=True, null=True, help_text="Raw transcript from speech-to-text")
     script_transcript = models.TextField(blank=True, null=True, help_text="Formatted transcript with speaker identification")
     summary = models.TextField(blank=True, null=True, help_text="AI-generated summary of the episode")
-    
+
     # Dates
     release_date = models.DateTimeField(blank=True, null=True, help_text="Original release date of the podcast episode")
     pub_date = models.DateTimeField(blank=True, null=True, help_text="Publication date from RSS")
-    
+
     # System fields
     tags = models.ManyToManyField('Tag', blank=True, related_name='episodes', help_text="Tags associated with this episode")
     error = models.TextField(blank=True, null=True, help_text="Error message if processing failed")
@@ -278,7 +277,7 @@ class Episode(models.Model, GroqMixin, AwsMixin, TaggableMixin, SummarizableMixi
         # First check if the episode itself has public transcript enabled
         if self.has_public_transcript:
             return True
-        
+
         # If not, check if the podcast has an approved owner
         if self.podcast and hasattr(self.podcast, 'owner'):
             try:
@@ -286,10 +285,10 @@ class Episode(models.Model, GroqMixin, AwsMixin, TaggableMixin, SummarizableMixi
             except AttributeError:
                 # In case owner doesn't exist or is_approved property is missing
                 pass
-        
+
         # Default to False if neither condition is met
         return False
-    
+
     def clean_url(self, url):
         """
         Remove URL parameters from the given URL.
@@ -297,7 +296,7 @@ class Episode(models.Model, GroqMixin, AwsMixin, TaggableMixin, SummarizableMixi
         """
         if not url:
             return url
-        
+
         try:
             parsed = urlparse(url)
             # Reconstruct URL without query parameters
@@ -313,7 +312,7 @@ class Episode(models.Model, GroqMixin, AwsMixin, TaggableMixin, SummarizableMixi
         except Exception as e:
             logger.warning(f"Failed to clean URL {url}: {str(e)}")
             return url
-    
+
     def upload_audio_to_s3(self, audio_url):
         """
         Upload audio file from URL to S3 and return the S3 URI.
@@ -321,13 +320,13 @@ class Episode(models.Model, GroqMixin, AwsMixin, TaggableMixin, SummarizableMixi
         """
         try:
             from botocore.exceptions import ClientError, NoCredentialsError
-            
+
             # Get S3 configuration
             bucket_name = getattr(settings, 'AWS_S3_BUCKET', None)
             if not bucket_name:
                 logger.error("AWS_S3_BUCKET not configured")
                 return None
-            
+
             # Initialize S3 client
             s3_client = boto3.client(
                 's3',
@@ -335,23 +334,23 @@ class Episode(models.Model, GroqMixin, AwsMixin, TaggableMixin, SummarizableMixi
                 aws_access_key_id=getattr(settings, 'AWS_ACCESS_KEY_ID', None),
                 aws_secret_access_key=getattr(settings, 'AWS_SECRET_ACCESS_KEY', None)
             )
-            
+
             # Download the audio file
             logger.info(f"Downloading audio file from: {audio_url}")
             response = requests.get(audio_url, stream=True, timeout=300)
             response.raise_for_status()
-            
+
             # Determine file extension from URL or Content-Type
             parsed_url = urlparse(audio_url)
             file_extension = None
-            
+
             # Try to get extension from URL path
             if '.' in parsed_url.path:
                 file_extension = parsed_url.path.split('.')[-1].lower()
                 # Clean common query parameters that might be appended
                 if '?' in file_extension:
                     file_extension = file_extension.split('?')[0]
-            
+
             # If no extension from URL, try to determine from Content-Type
             if not file_extension:
                 content_type = response.headers.get('content-type', '')
@@ -359,24 +358,24 @@ class Episode(models.Model, GroqMixin, AwsMixin, TaggableMixin, SummarizableMixi
                     extension = mimetypes.guess_extension(content_type)
                     if extension:
                         file_extension = extension.lstrip('.')
-            
+
             # Default to mp3 if we can't determine the format
             if not file_extension:
                 file_extension = 'mp3'
-            
+
             # Ensure valid audio file extension
             valid_extensions = ['mp3', 'wav', 'm4a', 'flac', 'ogg', 'aac', 'mp4']
             if file_extension not in valid_extensions:
                 logger.warning(f"Unknown audio file extension: {file_extension}, defaulting to mp3")
                 file_extension = 'mp3'
-            
+
             # Generate unique S3 key
             unique_id = uuid.uuid4().hex[:8]
             s3_key = f"audio/episode-{unique_id}.{file_extension}"
-            
+
             # Determine content type for S3 upload
             content_type = response.headers.get('content-type', f'audio/{file_extension}')
-            
+
             # Upload to S3
             logger.info(f"Uploading audio file to S3: s3://{bucket_name}/{s3_key}")
             s3_client.upload_fileobj(
@@ -392,14 +391,14 @@ class Episode(models.Model, GroqMixin, AwsMixin, TaggableMixin, SummarizableMixi
                     }
                 }
             )
-            
+
             # Return S3 URI
             s3_uri = f"s3://{bucket_name}/{s3_key}"
             logger.info(f"Audio file uploaded successfully to: {s3_uri}")
             self.s3_audio_url = 'https://cdn.retyped.xyz/' + s3_key
             self.save(update_fields=['s3_audio_url'])
             return self.s3_audio_url
-            
+
         except NoCredentialsError:
             logger.error("AWS credentials not configured for S3 upload")
             return None
@@ -428,7 +427,7 @@ class Episode(models.Model, GroqMixin, AwsMixin, TaggableMixin, SummarizableMixi
             str: The transcript text or None if failed
         """
         logger.info(f"Generating transcript for: {self.raw_audio_url} using method: {method}")
-        
+
         if method == 'auto':
             # Auto-select based on available configuration
             groq_key = getattr(settings, 'GROQ_API_KEY', None)
@@ -436,7 +435,7 @@ class Episode(models.Model, GroqMixin, AwsMixin, TaggableMixin, SummarizableMixi
                 getattr(settings, 'AWS_ACCESS_KEY_ID', None),
                 getattr(settings, 'AWS_SECRET_ACCESS_KEY', None)
             ])
-            
+
             if groq_key:
                 method = 'groq'
                 logger.info("Auto-selected Groq for transcription")
@@ -446,7 +445,7 @@ class Episode(models.Model, GroqMixin, AwsMixin, TaggableMixin, SummarizableMixi
             else:
                 logger.error("No transcription service configured (GROQ_API_KEY or AWS credentials)")
                 return None
-        
+
         if method == 'groq':
             return self.get_transcript_from_groq()
         elif method == 'aws':
@@ -526,7 +525,7 @@ class Episode(models.Model, GroqMixin, AwsMixin, TaggableMixin, SummarizableMixi
         self.save(update_fields=["processing_completed_at"])
         self.index_to_search()
         return results
-    
+
     def get_search_document(self):
         """
         Prepare episode data for search indexing.
@@ -557,7 +556,7 @@ class Episode(models.Model, GroqMixin, AwsMixin, TaggableMixin, SummarizableMixi
         if not self.transcript:
             return []
         return Entity.entities_from_text(self.transcript, related_obj=self)
-    
+
     @staticmethod
     def groq_batch_transcribe(episode_ids):
         """
@@ -635,6 +634,6 @@ class Episode(models.Model, GroqMixin, AwsMixin, TaggableMixin, SummarizableMixi
             record_count=len(episode_ids)
         )
         return groq_response
-    
+
     def get_absolute_url(self):
         return '/shows/' + self.podcast.slug + '/' + self.slug

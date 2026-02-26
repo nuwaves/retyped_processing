@@ -1,9 +1,11 @@
-from audio_processing.models.episode import Episode
-from django.utils import timezone
-from datetime import timedelta
-from celery import shared_task
-from audio_processing.models import Episode
 import logging
+from datetime import timedelta
+
+from celery import shared_task
+from django.utils import timezone
+
+from audio_processing.models import Episode
+from audio_processing.models.episode import Episode
 
 logger = logging.getLogger(__name__)
 
@@ -68,7 +70,7 @@ def add_transcript(episode_id):
     Celery task to process an episode and generate transcript.
     """
     logger.info(f"Processing transcript for episode ID: {episode_id}")
-    
+
     try:
         episode = Episode.objects.get(pk=episode_id)
         transcript = episode.generate_transcript()
@@ -103,7 +105,7 @@ def suggest_and_apply_tags(episode_id):
     Celery task to suggest and apply tags to an episode.
     """
     logger.info(f"Suggesting tags for episode ID: {episode_id}")
-    
+
     try:
         episode = Episode.objects.get(pk=episode_id)
         applied_tags = episode.suggest_and_apply_tags()
@@ -137,7 +139,7 @@ def extract_quotes(episode_id):
     Celery task to extract quotes from an episode transcript.
     """
     logger.info(f"Extracting quotes for episode ID: {episode_id}")
-    
+
     try:
         episode = Episode.objects.get(pk=episode_id)
         quotes = episode.extract_quotes()
@@ -168,7 +170,7 @@ def extract_quotes(episode_id):
         except Exception:
             pass
         return {"success": False, "error": error_msg}
-    
+
 @shared_task
 def process_complete_workflow(episode_id):
     """
@@ -181,7 +183,7 @@ def process_complete_workflow(episode_id):
     6. Index to search
     """
     logger.info(f"Starting complete workflow for episode ID: {episode_id}")
-    
+
     try:
         episode = Episode.objects.get(pk=episode_id)
         result = episode.process_complete_workflow()
@@ -201,7 +203,7 @@ def process_complete_workflow(episode_id):
         except Exception:
             pass
         return {"success": False, "error": error_msg}
-    
+
 @shared_task
 def extract_entities(episode_id):
     """
@@ -271,7 +273,7 @@ def index_episode_for_search(episode_id):
         return {'error': f"Episode with ID {episode_id} does not exist"}
     except Exception as e:
         return {'error': str(e)}
-    
+
 
 @shared_task
 def reindex_all_episodes_for_search(batch_size=100):

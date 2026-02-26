@@ -1,7 +1,8 @@
-from django.db import models
+import logging
+
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
-import logging
+from django.db import models
 
 logger = logging.getLogger(__name__)
 
@@ -11,7 +12,7 @@ class UserAnalytics(models.Model):
     Analytics model to track user interactions with podcasts or episodes.
     Each record represents analytics for one user with one entity (podcast OR episode).
     """
-    
+
     # User relationship
     user = models.ForeignKey(
         User,
@@ -21,7 +22,7 @@ class UserAnalytics(models.Model):
         blank=True,
         null=True
     )
-    
+
     # Entity relationships (one of these will be set)
     podcast = models.ForeignKey(
         'Podcast',
@@ -56,7 +57,7 @@ class UserAnalytics(models.Model):
             models.Index(fields=['podcast']),
             models.Index(fields=['episode']),
         ]
-        
+
         # Ensure we have analytics for either podcast OR episode, not both
         constraints = [
             models.CheckConstraint(
@@ -81,11 +82,11 @@ class UserAnalytics(models.Model):
     def clean(self):
         """Validate that exactly one of podcast or episode is set."""
         super().clean()
-        
+
         # Check that exactly one entity is set
         if not self.podcast and not self.episode:
             raise ValidationError("Either podcast or episode must be specified.")
-        
+
         if self.podcast and self.episode:
             raise ValidationError("Cannot specify both podcast and episode.")
 

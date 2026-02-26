@@ -4,12 +4,12 @@ Celery tasks for sending emails.
 This module contains async tasks for email operations to prevent
 blocking the main application flow.
 """
-from celery import shared_task
-from django.core.mail import EmailMultiAlternatives
-from django.conf import settings
-from django.template.loader import render_to_string
-from django.utils.html import strip_tags
 import logging
+
+from celery import shared_task
+from django.conf import settings
+from django.core.mail import EmailMultiAlternatives
+from django.template.loader import render_to_string
 
 logger = logging.getLogger(__name__)
 

@@ -4,18 +4,18 @@ ViewSets for claim verification endpoints.
 This module provides API endpoints for verifying podcast ownership claims
 through verification tokens sent via email.
 """
-from rest_framework import status
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework.permissions import AllowAny
-from django.shortcuts import get_object_or_404
 import logging
+
+from django.shortcuts import get_object_or_404
+from rest_framework import status
+from rest_framework.permissions import AllowAny
+from rest_framework.response import Response
+from rest_framework.views import APIView
 
 from audio_processing.models import ClaimVerification
 from audio_processing.serializers import (
-    ClaimVerificationStatusSerializer,
-    ClaimVerificationSuccessSerializer,
     ClaimVerificationErrorSerializer,
+    ClaimVerificationSuccessSerializer,
 )
 
 logger = logging.getLogger(__name__)

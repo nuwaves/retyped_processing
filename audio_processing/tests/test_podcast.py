@@ -1,16 +1,15 @@
+from datetime import UTC, datetime, timedelta, timezone
 from unittest.mock import Mock, patch
-from datetime import datetime, timedelta, timezone
 
 from django import utils
-from django.core.exceptions import ValidationError
 from django.contrib.auth.models import User
+from django.core.exceptions import ValidationError
 from django.test import TestCase
 from django.urls import reverse
-
-from rest_framework.test import APIClient
 from rest_framework import status
+from rest_framework.test import APIClient
 
-from audio_processing.models import Podcast, Episode, Tag, UserAnalytics
+from audio_processing.models import Episode, Podcast, Tag, UserAnalytics
 
 
 class PodcastModelTest(TestCase):
@@ -165,7 +164,7 @@ class PodcastFeedProcessingTest(TestCase):
         mock_feed.feed.itunes_explicit = 'yes'
         mock_feed.feed.itunes_type = 'serial'
         mock_feed.feed.itunes_keywords = 'updated,keywords'
-        
+
         # Mock categories
         mock_tag1 = Mock()
         mock_tag1.term = "Technology"
@@ -273,7 +272,7 @@ class PodcastDateHandlingTest(TestCase):
     def test_update_from_feed_with_dates(self, mock_get_tz, mock_mktime):
         """Test date parsing in update_from_feed."""
         # Mock timezone and mktime
-        mock_get_tz.return_value = timezone.utc
+        mock_get_tz.return_value = UTC
         mock_mktime.return_value = 1692097800.0
 
         mock_feed = Mock()

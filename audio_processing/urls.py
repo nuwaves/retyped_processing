@@ -14,18 +14,24 @@ Including another URLconf
     1. Import the include() function: from django.urls import include, path
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
-from django.conf.urls.static import static
-
-from django.contrib import admin
-from django.urls import path, include, re_path
-from django.http import JsonResponse
-from .api_urls import api_v1_patterns
-from drf_yasg.views import get_schema_view
-from drf_yasg import openapi
-from django.contrib.sitemaps.views import sitemap
-from audio_processing.sitemaps import get_episode_sitemaps, get_podcast_sitemaps
-from audio_processing.sitemaps import sitemap_index_view
 from django.conf import settings
+from django.conf.urls.static import static
+from django.contrib import admin
+from django.contrib.sitemaps.views import sitemap
+from django.http import JsonResponse
+from django.urls import include, path, re_path
+from drf_yasg import openapi
+from drf_yasg.views import get_schema_view
+
+from audio_processing.sitemaps import (
+    StaticPageSitemap,
+    get_episode_sitemaps,
+    get_podcast_sitemaps,
+    sitemap_index_view,
+)
+
+from .api_urls import api_v1_patterns
+
 
 def health_check(request):
     return JsonResponse({"status": "healthy"})
@@ -64,4 +70,5 @@ urlpatterns = [
     path("sitemap.xml", sitemap_index_view, name="sitemap-index"),
     re_path(r"^sitemap-(?P<section>episodes-\d+)\.xml$", sitemap, {"sitemaps": get_episode_sitemaps()}),
     re_path(r"^sitemap-(?P<section>podcasts-\d+)\.xml$", sitemap, {"sitemaps": get_podcast_sitemaps()}),
+    path("sitemap-static.xml", sitemap, {"sitemaps": {"static": StaticPageSitemap()}}, name="sitemap-static"),
     ] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)

@@ -1,5 +1,7 @@
-from audio_processing.models.entity import Entity
 from rest_framework import serializers
+
+from audio_processing.models.entity import Entity
+
 
 class EntitySerializer(serializers.ModelSerializer):
     class Meta:

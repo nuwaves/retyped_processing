@@ -1,16 +1,14 @@
 import meilisearch
-
-from ..models import Podcast, Episode, Tag
-from ..models.entity import Entity
-from ..models.topic import Topic
-from ..serializers import (
-    SearchResultsSerializer
-)
 from django.conf import settings
 from django.db.models import Count
-from rest_framework import viewsets, status
+from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
+
+from ..models import Episode, Podcast, Tag
+from ..models.entity import Entity
+from ..models.topic import Topic
+from ..serializers import SearchResultsSerializer
 
 client = meilisearch.Client(settings.MEILISEARCH_URL, settings.MEILISEARCH_API_KEY)
 episodes_index = client.index('episodes')

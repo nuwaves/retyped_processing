@@ -1,8 +1,8 @@
 from django.contrib.contenttypes.models import ContentType
 from django.db.models import Count
-
 from rest_framework import serializers
-from ..models import Podcast, Follow, Bookmark
+
+from ..models import Bookmark, Follow, Podcast
 from .tags import TagSerializer
 
 

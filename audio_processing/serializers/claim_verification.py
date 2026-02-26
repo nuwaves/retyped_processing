@@ -2,7 +2,6 @@
 Serializers for claim verification endpoints.
 """
 from rest_framework import serializers
-from audio_processing.models import ClaimVerification
 
 
 class ClaimVerificationStatusSerializer(serializers.Serializer):

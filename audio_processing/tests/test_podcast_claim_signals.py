@@ -4,13 +4,14 @@ Tests for PodcastClaim signal handlers.
 These tests verify that ClaimVerification records are automatically
 created when PodcastClaims are created under the correct conditions.
 """
-from django.test import TestCase
 from django.contrib.auth.models import User
+from django.test import TestCase
+
 from audio_processing.models import (
+    ClaimVerification,
     Podcast,
     PodcastClaim,
     PodcastOwner,
-    ClaimVerification,
 )
 
 

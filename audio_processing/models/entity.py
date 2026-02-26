@@ -1,10 +1,13 @@
+import json
+import re
+
 from django.db import models
 from django.utils.translation import gettext_lazy as _
+
 from audio_processing.models.mixins.groq_mixin import GroqMixin
 from audio_processing.models.mixins.searchable_mixin import SearchableMixin
-import json
 from audio_processing.prompts import get_entity_extraction_prompt
-import re
+
 
 class Entity(models.Model, GroqMixin, SearchableMixin):
     class Meta:
@@ -76,4 +79,3 @@ class Entity(models.Model, GroqMixin, SearchableMixin):
         if related_obj and hasattr(related_obj, 'entities'):
             related_obj.entities.add(*entities)
         return entities
-        

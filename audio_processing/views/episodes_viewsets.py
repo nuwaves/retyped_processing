@@ -1,18 +1,18 @@
+from django.utils import timezone
+from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework import filters, mixins, permissions, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from rest_framework import status
-from rest_framework import viewsets, mixins, permissions, filters
-from django_filters.rest_framework import DjangoFilterBackend
-from django.utils import timezone
+
+from audio_processing.api_filters import MultiTagFilterBackend
+from audio_processing.utils.analytics import get_top_by_views
 
 from ..models import Episode
 from ..serializers import (
-    EpisodeSerializer,
-    EpisodeListSerializer,
     EpisodeAnalyticsSerializer,
+    EpisodeListSerializer,
+    EpisodeSerializer,
 )
-from audio_processing.utils.analytics import get_top_by_views
-from audio_processing.api_filters import MultiTagFilterBackend
 
 
 # Local OrderingFilter that accepts `order_by` and maps `random` to ORDER BY RANDOM()

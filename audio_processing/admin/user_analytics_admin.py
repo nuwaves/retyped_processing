@@ -1,4 +1,5 @@
 from django.contrib import admin
+
 from audio_processing.models.user_analytics import UserAnalytics
 
 

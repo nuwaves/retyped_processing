@@ -2,8 +2,9 @@
 Production settings for audio_processing project.
 """
 
-from .base import *
 import os
+
+from .base import *
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY')

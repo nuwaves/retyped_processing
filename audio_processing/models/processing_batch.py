@@ -1,11 +1,14 @@
-from django.db import models
-import os
-import requests
 import json
-from django.conf import settings
-from audio_processing.models.episode import Episode
-from django.utils import timezone
+import os
 from datetime import timedelta
+
+import requests
+from django.conf import settings
+from django.db import models
+from django.utils import timezone
+
+from audio_processing.models.episode import Episode
+
 
 class ProcessingBatch(models.Model):
 
@@ -82,7 +85,7 @@ class ProcessingBatch(models.Model):
 
 		# 4. Parse results and update episodes
 		updated = 0
-		with open(tmpfile_path, "r", encoding="utf-8") as f:
+		with open(tmpfile_path, encoding="utf-8") as f:
 			for line in f:
 				try:
 					data = json.loads(line)

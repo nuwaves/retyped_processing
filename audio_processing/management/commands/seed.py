@@ -1,9 +1,11 @@
 
-from django.core.management.base import BaseCommand
-from django.contrib.auth.models import User
-from django.utils import timezone
 from datetime import timedelta
-from audio_processing.models import Tag, Podcast, Episode
+
+from django.contrib.auth.models import User
+from django.core.management.base import BaseCommand
+from django.utils import timezone
+
+from audio_processing.models import Episode, Podcast, Tag
 
 
 class Command(BaseCommand):
@@ -11,16 +13,16 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         self.stdout.write(self.style.SUCCESS('Starting database seeding...'))
-        
+
         # Create admin user
         self.create_admin_user()
-        
+
         # Create some sample tags
         self.create_sample_tags()
-        
+
         # Create sample RSS feed and podcasts
         self.create_sample_podcasts()
-        
+
         self.stdout.write(self.style.SUCCESS('Database seeding completed!'))
 
     def create_admin_user(self):
@@ -28,20 +30,20 @@ class Command(BaseCommand):
         username = 'admin'
         email = 'admin@example.com'
         password = 'admin123'
-        
+
         if User.objects.filter(username=username).exists():
             self.stdout.write(
                 self.style.WARNING(f'Admin user "{username}" already exists')
             )
             return
-        
+
         # Create superuser
         user = User.objects.create_superuser(
             username=username,
             email=email,
             password=password
         )
-        
+
         self.stdout.write(
             self.style.SUCCESS(f'Created admin user: {username} / {password}')
         )
@@ -60,7 +62,7 @@ class Command(BaseCommand):
             ('News', 'Current events and news'),
             ('Interview', 'Interview format episodes'),
         ]
-        
+
         created_count = 0
         for name, description in sample_tags:
             tag, created = Tag.objects.get_or_create(
@@ -69,7 +71,7 @@ class Command(BaseCommand):
             )
             if created:
                 created_count += 1
-        
+
         self.stdout.write(
             self.style.SUCCESS(f'Created {created_count} new tags')
         )
@@ -85,7 +87,7 @@ class Command(BaseCommand):
                 'is_active': True,
             }
         )
-        
+
         if created:
             self.stdout.write(
                 self.style.SUCCESS(f'Created podcast: {podcast.name}')
@@ -94,7 +96,7 @@ class Command(BaseCommand):
             self.stdout.write(
                 self.style.WARNING(f'Podcast "{podcast.name}" already exists')
             )
-        
+
         # Sample podcast episodes
         sample_episodes = [
             {
@@ -190,13 +192,13 @@ class Command(BaseCommand):
                 'tags': ['Technology', 'Business', 'Interview']
             }
         ]
-        
+
         created_episodes = 0
         for episode_data in sample_episodes:
             # Check if episode already exists
             if Episode.objects.filter(raw_audio_url=episode_data['raw_audio_url']).exists():
                 continue
-                
+
             # Create podcast episode
             episode = Episode.objects.create(
                 podcast=podcast,
@@ -216,7 +218,7 @@ class Command(BaseCommand):
             self.stdout.write(
                 self.style.SUCCESS(f'Created episode: {episode.title}')
             )
-        
+
         if created_episodes > 0:
             self.stdout.write(
                 self.style.SUCCESS(f'Created {created_episodes} sample episodes')

@@ -1,11 +1,18 @@
 from django.contrib import admin
 from django.contrib.admin import SimpleListFilter
+
 from audio_processing.models import Episode
-from audio_processing.tasks.episode_tasks import add_transcript, suggest_and_apply_tags, process_complete_workflow, extract_quotes, index_episode_for_search, reindex_all_episodes_for_search, save_audio_to_s3_task, tag_episode_with_topics
-from audio_processing.tasks.episode_tasks import groq_batch_transcribe, extract_entities
-from audio_processing.tasks.episode_tasks import suggest_and_apply_tags as suggest_and_apply_tags_task
-from audio_processing.tasks.episode_tasks import extract_quotes as extract_quotes_task
 from audio_processing.tasks.episode_tasks import add_transcript as add_transcript_task
+from audio_processing.tasks.episode_tasks import (
+    extract_entities,
+    groq_batch_transcribe,
+    index_episode_for_search,
+    process_complete_workflow,
+    reindex_all_episodes_for_search,
+    save_audio_to_s3_task,
+    tag_episode_with_topics,
+)
+from audio_processing.tasks.episode_tasks import extract_quotes as extract_quotes_task
 
 
 class ProcessingCompletedFilter(SimpleListFilter):
@@ -75,7 +82,7 @@ class EpisodeAdmin(admin.ModelAdmin):
             return obj.raw_audio_url[:47] + "..."
         return obj.raw_audio_url
     truncated_url.short_description = 'Audio URL'
-    
+
     def duration_display(self, obj):
         if obj.duration:
             total_seconds = int(obj.duration.total_seconds())
@@ -87,12 +94,12 @@ class EpisodeAdmin(admin.ModelAdmin):
                 return f"{minutes}:{seconds:02d}"
         return '-'
     duration_display.short_description = 'Duration'
-    
+
     def has_transcript(self, obj):
         return bool(obj.transcript and obj.transcript.strip())
     has_transcript.boolean = True
     has_transcript.short_description = 'Has Transcript'
-    
+
     def has_script(self, obj):
         return bool(obj.script_transcript and obj.script_transcript.strip())
     has_script.boolean = True
@@ -102,7 +109,7 @@ class EpisodeAdmin(admin.ModelAdmin):
         return bool(obj.summary and obj.summary.strip())
     has_summary.boolean = True
     has_summary.short_description = 'Has Summary'
-    
+
     fieldsets = (
         ('Basic Information', {
             'fields': ('podcast', 'title', 'slug', 'subtitle',
@@ -144,7 +151,6 @@ class EpisodeAdmin(admin.ModelAdmin):
                'reindex_to_search', 'save_audio_to_s3_action', 'tag_episode_with_topics']
 
     def tag_episode_with_topics(self, request, queryset):
-        from audio_processing.tasks.episode_tasks import tag_episode_with_topics
         success_count = 0
         error_count = 0
         no_transcript_count = 0
@@ -198,7 +204,6 @@ class EpisodeAdmin(admin.ModelAdmin):
     save_audio_to_s3_action.short_description = "Save audio file(s) to S3 (async)"
 
     def batch_groq_transcribe(self, request, queryset):
-        from audio_processing.tasks.episode_tasks import groq_batch_transcribe
         episode_ids = list(queryset.values_list('id', flat=True))
         try:
             async_result = groq_batch_transcribe.delay(episode_ids)
@@ -208,7 +213,6 @@ class EpisodeAdmin(admin.ModelAdmin):
     batch_groq_transcribe.short_description = "Batch transcribe (Groq) selected episodes (async)"
 
     def extract_entities_action(self, request, queryset):
-        from audio_processing.tasks.episode_tasks import extract_entities
         success_count = 0
         error_count = 0
         no_transcript_count = 0
@@ -285,21 +289,21 @@ class EpisodeAdmin(admin.ModelAdmin):
             except Exception as e:
                 error_count += 1
                 self.message_user(
-                    request, 
-                    f"Error generating summary for {episode.raw_audio_url[:50]}...: {str(e)}", 
+                    request,
+                    f"Error generating summary for {episode.raw_audio_url[:50]}...: {str(e)}",
                     level='ERROR'
                 )
-        
+
         if success_count > 0:
             self.message_user(
-                request, 
+                request,
                 f"Successfully generated summaries for {success_count} podcasts."
             )
-        
+
         if error_count > 0:
             self.message_user(
-                request, 
-                f"{error_count} podcasts failed to generate summaries.", 
+                request,
+                f"{error_count} podcasts failed to generate summaries.",
                 level='ERROR'
             )
 
@@ -317,41 +321,41 @@ class EpisodeAdmin(admin.ModelAdmin):
             if episode.script_transcript and episode.script_transcript.strip():
                 already_has_script_count += 1
                 continue
-                
+
             try:
                 script = episode.generate_speaker_script()
             except Exception as e:
                 error_count += 1
                 self.message_user(
-                    request, 
-                    f"Error generating speaker script for {episode.raw_audio_url[:50]}...: {str(e)}", 
+                    request,
+                    f"Error generating speaker script for {episode.raw_audio_url[:50]}...: {str(e)}",
                     level='ERROR'
                 )
-        
+
         if success_count > 0:
             self.message_user(
-                request, 
+                request,
                 f"Successfully generated speaker scripts for {success_count} podcasts."
             )
-        
+
         if no_transcript_count > 0:
             self.message_user(
-                request, 
-                f"{no_transcript_count} episodes skipped (no transcript available).", 
+                request,
+                f"{no_transcript_count} episodes skipped (no transcript available).",
                 level='WARNING'
             )
-        
+
         if already_has_script_count > 0:
             self.message_user(
-                request, 
-                f"{already_has_script_count} episodes skipped (already have speaker scripts).", 
+                request,
+                f"{already_has_script_count} episodes skipped (already have speaker scripts).",
                 level='WARNING'
             )
-        
+
         if error_count > 0:
             self.message_user(
-                request, 
-                f"{error_count} episodes failed to generate speaker scripts.", 
+                request,
+                f"{error_count} episodes failed to generate speaker scripts.",
                 level='ERROR'
             )
 
@@ -360,71 +364,71 @@ class EpisodeAdmin(admin.ModelAdmin):
     def run_complete_workflow(self, request, queryset):
         total_processed = 0
         total_errors = []
-        
+
         for episode in queryset:
             try:
                 process_complete_workflow.delay(episode.id)
                 total_processed += 1
             except Exception as e:
                 total_errors.append(f"{episode.raw_audio_url[:30]}...: {str(e)}")
-        
+
         self.message_user(
             request,
             f"Processed {total_processed} episodes. "
         )
-        
+
         if total_errors:
             for error in total_errors[:5]:  # Show first 5 errors
                 self.message_user(request, f"Error: {error}", level='ERROR')
-            
+
             if len(total_errors) > 5:
                 self.message_user(
-                    request, 
-                    f"...and {len(total_errors) - 5} more errors. Check logs for details.", 
+                    request,
+                    f"...and {len(total_errors) - 5} more errors. Check logs for details.",
                     level='ERROR'
                 )
-    
+
     run_complete_workflow.short_description = "Run complete workflow (transcript + tags + speaker script)"
 
     def extract_quotes_action(self, request, queryset):
         success_count = 0
         error_count = 0
         no_transcript_count = 0
-        
+
         for episode in queryset:
             if not episode.transcript or not episode.transcript.strip():
                 no_transcript_count += 1
                 continue
-            
+
             try:
                 extract_quotes_task.delay(episode.id)
                 success_count += 1
             except Exception as e:
                 error_count += 1
                 self.message_user(
-                    request, 
-                    f"Error initiating quote extraction for {episode.title or 'Untitled'}: {str(e)}", 
+                    request,
+                    f"Error initiating quote extraction for {episode.title or 'Untitled'}: {str(e)}",
                     level='ERROR'
                 )
-        
+
         if success_count > 0:
             self.message_user(
-                request, 
+                request,
                 f"Quote extraction initiated for {success_count} episode(s)."
             )
-        
+
         if no_transcript_count > 0:
             self.message_user(
-                request, 
-                f"{no_transcript_count} episode(s) skipped (no transcript available).", 
+                request,
+                f"{no_transcript_count} episode(s) skipped (no transcript available).",
                 level='WARNING'
             )
-        
+
         if error_count > 0:
             self.message_user(
-                request, 
-                f"{error_count} episode(s) failed to start quote extraction.", 
+                request,
+                f"{error_count} episode(s) failed to start quote extraction.",
                 level='ERROR'
             )
-    
+
     extract_quotes_action.short_description = "Extract quotes from selected episodes"

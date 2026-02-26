@@ -28,7 +28,7 @@ INSTALLED_APPS = [
     "drf_social_oauth2",
     "django_celery_beat",
     "django.contrib.sites",
-    "django.contrib.sitemaps", 
+    "django.contrib.sitemaps",
 ]
 
 SITE_ID = 1
@@ -129,9 +129,7 @@ AWS_S3_BUCKET = os.environ.get("AWS_S3_BUCKET", None)
 AWS_TRANSCRIBE_OUTPUT_BUCKET = os.environ.get("AWS_TRANSCRIBE_OUTPUT_BUCKET", None)
 
 # Celery settings
-CELERY_BROKER_URL = "sqs://{aws_access_key}:{aws_secret_key}@".format(
-    aws_access_key=AWS_ACCESS_KEY_ID, aws_secret_key=AWS_SECRET_ACCESS_KEY,
-)
+CELERY_BROKER_URL = f"sqs://{AWS_ACCESS_KEY_ID}:{AWS_SECRET_ACCESS_KEY}@"
 CELERY_QUEUE_NAME_PREFIX = ''
 
 # Meilisearch settings

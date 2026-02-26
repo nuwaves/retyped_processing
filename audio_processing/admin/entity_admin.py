@@ -1,6 +1,10 @@
 from django.contrib import admin
+
 from audio_processing.models import Entity
-from audio_processing.tasks.entity_tasks import index_entity_for_search, reindex_all_entities_for_search
+from audio_processing.tasks.entity_tasks import (
+    index_entity_for_search,
+    reindex_all_entities_for_search,
+)
 
 
 @admin.register(Entity)

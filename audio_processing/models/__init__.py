@@ -1,16 +1,16 @@
-from .podcast import Podcast
-from .episode import Episode
-from .tag import Tag
-from .podcast_owner import PodcastOwner
-from .quote import Quote
-from .user_analytics import UserAnalytics
-from .entity import Entity
-from .processing_batch import ProcessingBatch
-from .follow import Follow
 from .bookmark import Bookmark
-from .topic import Topic
-from .podcast_claim import PodcastClaim
 from .claim_verification import ClaimVerification
+from .entity import Entity
+from .episode import Episode
+from .follow import Follow
+from .podcast import Podcast
+from .podcast_claim import PodcastClaim
+from .podcast_owner import PodcastOwner
+from .processing_batch import ProcessingBatch
+from .quote import Quote
+from .tag import Tag
+from .topic import Topic
+from .user_analytics import UserAnalytics
 
 __all__ = [
     "Episode",

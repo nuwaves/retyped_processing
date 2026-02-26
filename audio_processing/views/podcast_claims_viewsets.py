@@ -1,4 +1,4 @@
-from rest_framework import viewsets, mixins, permissions
+from rest_framework import mixins, permissions, viewsets
 
 from ..models import PodcastClaim
 from ..serializers import PodcastClaimSerializer

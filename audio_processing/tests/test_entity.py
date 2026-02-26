@@ -1,6 +1,8 @@
 import pytest
-from audio_processing.models.entity import Entity
 from django.db import IntegrityError
+
+from audio_processing.models.entity import Entity
+
 
 @pytest.mark.django_db
 def test_entity_creation():

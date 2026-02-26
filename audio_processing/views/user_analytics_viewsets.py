@@ -1,12 +1,9 @@
+from rest_framework import permissions, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from rest_framework import viewsets, permissions
 
 from ..models import UserAnalytics
-from ..serializers import (
-    AnalyticSerializer,
-    AnalyticDetailSerializer
-)
+from ..serializers import AnalyticDetailSerializer, AnalyticSerializer
 
 
 class UserAnalyticsViewSet(viewsets.GenericViewSet):

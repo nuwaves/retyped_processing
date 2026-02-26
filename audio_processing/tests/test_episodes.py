@@ -1,12 +1,14 @@
 
 from unittest.mock import Mock
-from django.test import TestCase
-from django.contrib.auth.models import User
-from django.urls import reverse
-from rest_framework.test import APIClient
-from rest_framework import status
 
-from ..models import Podcast, Episode
+from django.contrib.auth.models import User
+from django.test import TestCase
+from django.urls import reverse
+from rest_framework import status
+from rest_framework.test import APIClient
+
+from ..models import Episode, Podcast
+
 
 class EpisodeCreationFromEntryTest(TestCase):
     """Test creating episodes from RSS entry."""
@@ -58,10 +60,10 @@ class EpisodeCreationFromEntryTest(TestCase):
         mock_entry.itunes_explicit = None
         mock_entry.itunes_keywords = None
         mock_entry.itunes_duration = None
-        
+
         # Mock tags as an empty list to avoid iteration issues
         mock_entry.tags = []
-        
+
         episode = Episode.create_from_entry(self.podcast, mock_entry)
         self.assertIsNotNone(episode)
         self.assertEqual(episode.title, "Test Episode")

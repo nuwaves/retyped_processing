@@ -1,5 +1,7 @@
-from audio_processing.models.processing_batch import ProcessingBatch
 from celery import shared_task
+
+from audio_processing.models.processing_batch import ProcessingBatch
+
 
 @shared_task
 def fetch_and_apply_groq_results_task(batch_id):

@@ -1,5 +1,6 @@
 from django.db import migrations, models
 
+
 class Migration(migrations.Migration):
     dependencies = [
         ('audio_processing', '0010_episode_slug'),

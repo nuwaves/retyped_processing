@@ -3,6 +3,7 @@ Development settings for audio_processing project.
 """
 
 from dotenv import load_dotenv
+
 from .base import *
 
 # Load environment variables

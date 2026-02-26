@@ -1,5 +1,6 @@
 import json
 
+
 def get_entity_extraction_prompt(text):
     """
     Generate a prompt for extracting named entities from text.
@@ -12,7 +13,7 @@ def get_entity_extraction_prompt(text):
 
 
 def get_tag_suggestion_prompt(tag_list, transcript_excerpt):
-    
+
     return f"""You are an AI assistant that analyzes podcast transcripts and suggests relevant tags.
 
 Available tags:
@@ -28,7 +29,9 @@ Example: [1, 3, 7]
 Consider the topic, genre, subject matter, and themes discussed in the podcast.
 
 Again, you should respond only with a JSON array of tag IDs.
-Do not include any additional text or explanations."""
+Do not include any additional text or explanations.
+
+Use only the provided tags ids and do not select more than 10 tags."""
 
 def get_speaker_transcript_prompt(episode):
     """

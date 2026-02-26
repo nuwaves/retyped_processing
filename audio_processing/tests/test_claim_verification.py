@@ -7,19 +7,20 @@ This module tests the complete verification workflow including:
 - API endpoint verification
 - Token expiration handling
 """
-from django.test import TestCase, override_settings
+import uuid
+from datetime import timedelta
+from unittest.mock import patch
+
 from django.contrib.auth.models import User
 from django.contrib.sites.models import Site
 from django.core import mail
+from django.test import TestCase, override_settings
 from django.utils import timezone
-from datetime import timedelta
-from unittest.mock import patch
-import uuid
 
 from audio_processing.models import (
+    ClaimVerification,
     Podcast,
     PodcastClaim,
-    ClaimVerification,
 )
 from audio_processing.tasks.email_tasks import send_claim_verification_email
 

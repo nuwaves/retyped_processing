@@ -1,5 +1,5 @@
+from django.db.models import OuterRef, Subquery, Sum
 from django.utils import timezone
-from django.db.models import Sum, Subquery, OuterRef
 
 
 def get_top_by_views(

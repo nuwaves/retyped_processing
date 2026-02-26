@@ -1,12 +1,15 @@
-from rest_framework import serializers
 from django.contrib.contenttypes.models import ContentType
 from django.db.models import Count
-from ..models import Episode, Bookmark
-from .tags import TagSerializer
+from rest_framework import serializers
+
+from audio_processing.utils import sanitize_html_content
+
+from ..models import Bookmark, Episode
 from .podcasts import PodcastListSerializer
 from .quotes import QuoteSerializer
-from audio_processing.utils import sanitize_html_content
+from .tags import TagSerializer
 from .topics import TopicSerializer
+
 
 class HtmlSanitizedField(serializers.CharField):
     def to_representation(self, value):

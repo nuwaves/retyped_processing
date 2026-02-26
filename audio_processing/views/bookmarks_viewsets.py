@@ -1,7 +1,7 @@
-from rest_framework import viewsets, mixins, permissions
+from django.contrib.contenttypes.models import ContentType
+from rest_framework import mixins, permissions, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from django.contrib.contenttypes.models import ContentType
 
 from ..models import Bookmark
 from ..serializers.bookmarks import BookmarkSerializer

@@ -1,17 +1,25 @@
-from .episodes import EpisodeListSerializer, EpisodeSerializer, EpisodeAnalyticsSerializer
-from .podcasts import PodcastListSerializer, PodcastSerializer, PodcastAnalyticsSerializer
-from .tags import TagSerializer
-from .topics import TopicSerializer
-from .follows import FollowSerializer
 from .bookmarks import BookmarkSerializer
-from .user_analytics import AnalyticDetailSerializer, AnalyticSerializer
-from .search import SearchResultsSerializer, SearchAggregationsSerializer
-from .podcast_claims import PodcastClaimSerializer
 from .claim_verification import (
+    ClaimVerificationErrorSerializer,
     ClaimVerificationStatusSerializer,
     ClaimVerificationSuccessSerializer,
-    ClaimVerificationErrorSerializer,
 )
+from .episodes import (
+    EpisodeAnalyticsSerializer,
+    EpisodeListSerializer,
+    EpisodeSerializer,
+)
+from .follows import FollowSerializer
+from .podcast_claims import PodcastClaimSerializer
+from .podcasts import (
+    PodcastAnalyticsSerializer,
+    PodcastListSerializer,
+    PodcastSerializer,
+)
+from .search import SearchAggregationsSerializer, SearchResultsSerializer
+from .tags import TagSerializer
+from .topics import TopicSerializer
+from .user_analytics import AnalyticDetailSerializer, AnalyticSerializer
 
 __all__ = [
     "EpisodeListSerializer",

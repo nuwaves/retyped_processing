@@ -1,13 +1,15 @@
-from django.db import models
-from django.utils.text import slugify
-from django.db.models import JSONField
-from django.conf import settings
-from audio_processing.models.mixins import GroqMixin
 import logging
 
+from django.conf import settings
+from django.db import models
+from django.db.models import JSONField
+from django.utils.text import slugify
+
+from audio_processing.models.mixins import GroqMixin
+
 if settings.HF_API_TOKEN:
-    from huggingface_hub import login
     from bertopic import BERTopic
+    from huggingface_hub import login
     login(settings.HF_API_TOKEN)
     loaded_model = BERTopic.load("itsCody/retyped-topic-model")
     logger = logging.getLogger(__name__)
@@ -57,7 +59,7 @@ class Topic(models.Model, GroqMixin):
             except Exception as e:
                 logger.error(f"Failed to create topic for ID {topic_id}: {str(e)} with top words {top_words}")
         return
-    
+
     @classmethod
     def set_episodes_topics(cls):
         from audio_processing.models import Episode
@@ -66,14 +68,13 @@ class Topic(models.Model, GroqMixin):
         if not topics.exists():
             logger.info("No topics available to tag episodes")
             return []
-        
+
         for episode in episodes:
             cls.set_episode_topics(episode)
         return
-    
+
     @classmethod
     def set_episode_topics(cls, episode):
-        from audio_processing.models import Episode
         if not episode.title and not episode.description and not episode.content_encoded:
             return  # Skip episodes with no text content
         episode_text = f"{episode.title}\n\n{episode.description}\n\n{episode.content_encoded}"

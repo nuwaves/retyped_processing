@@ -1,6 +1,7 @@
-from django.db import models
-from django.core.validators import MinLengthValidator
 import logging
+
+from django.core.validators import MinLengthValidator
+from django.db import models
 
 logger = logging.getLogger(__name__)
 
@@ -12,7 +13,7 @@ class Quote(models.Model):
     This model captures specific quotes or segments from episodes,
     including the speaker and the exact text content.
     """
-    
+
     # Relationship to Episode
     episode = models.ForeignKey(
         'Episode',
@@ -20,27 +21,27 @@ class Quote(models.Model):
         related_name='quotes',
         help_text="The episode this quote is from"
     )
-    
+
     # Quote content
     text = models.TextField(
         validators=[MinLengthValidator(10)],
         help_text="The actual quote text content"
     )
-    
+
     speaker = models.CharField(
         max_length=2000,
         blank=True,
         null=True,
         help_text="Name or identifier of the person who said this quote"
     )
-    
+
     # Metadata
     timestamp = models.DurationField(
         blank=True,
         null=True,
         help_text="Timestamp in the episode where this quote appears (e.g., 00:15:30)"
     )
-    
+
     # System fields
     created_at = models.DateTimeField(
         auto_now_add=True,
@@ -50,7 +51,7 @@ class Quote(models.Model):
         auto_now=True,
         help_text="When this quote was last updated"
     )
-    
+
     class Meta:
         verbose_name = "Quote"
         verbose_name_plural = "Quotes"

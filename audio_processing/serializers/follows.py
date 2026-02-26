@@ -1,8 +1,9 @@
-from rest_framework import serializers
 from django.contrib.contenttypes.models import ContentType
+from rest_framework import serializers
+
 from audio_processing.models import Follow
-from audio_processing.serializers.tags import TagSerializer
 from audio_processing.serializers.podcasts import PodcastListSerializer
+from audio_processing.serializers.tags import TagSerializer
 
 
 class FollowSerializer(serializers.ModelSerializer):

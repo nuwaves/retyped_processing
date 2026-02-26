@@ -1,7 +1,8 @@
 from rest_framework import serializers
+
+from .entities import EntitySerializer
 from .episodes import EpisodeSerializer
 from .podcasts import PodcastListSerializer
-from .entities import EntitySerializer
 from .tags import TagSerializer
 from .topics import TopicSerializer
 

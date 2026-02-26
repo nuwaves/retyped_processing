@@ -1,5 +1,6 @@
 from django.contrib import admin
 from import_export.admin import ImportExportModelAdmin
+
 from audio_processing.models import Tag
 
 
@@ -10,14 +11,14 @@ class TagAdmin(ImportExportModelAdmin):
     search_fields = ('name', 'slug', 'description')
     readonly_fields = ('created_at', 'updated_at')
     prepopulated_fields = {'slug': ('name',)}
-    
+
     def color_display(self, obj):
         if obj.color:
             return f'<span style="background-color: {obj.color}; padding: 3px 8px; border-radius: 3px; color: white;">{obj.color}</span>'
         return '-'
     color_display.allow_tags = True
     color_display.short_description = 'Color'
-    
+
     def episode_count(self, obj):
         return obj.episodes.count()
     episode_count.short_description = 'Episodes'
