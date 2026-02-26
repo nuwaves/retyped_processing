@@ -40,6 +40,24 @@ def sitemap_index_view(request):
     xml_bytes = tostring(sitemapindex, encoding='utf-8', method='xml')
     return HttpResponse(xml_bytes, content_type='application/xml')
 
+
+def dynamic_sitemap_view(request, section):
+    """Dynamically handle episode, podcast, and static sitemap requests."""
+    from django.contrib.sitemaps.views import sitemap as sitemap_view
+    
+    if section == 'static':
+        sitemaps = {'static': StaticPageSitemap()}
+        return sitemap_view(request, section='static', sitemaps=sitemaps)
+    elif section.startswith('episodes-'):
+        sitemaps = get_episode_sitemaps()
+        return sitemap_view(request, section=section, sitemaps=sitemaps)
+    elif section.startswith('podcasts-'):
+        sitemaps = get_podcast_sitemaps()
+        return sitemap_view(request, section=section, sitemaps=sitemaps)
+    else:
+        return HttpResponse('Not Found', status=404)
+
+
 class EpisodeSitemap(Sitemap):
     changefreq = "weekly"
     priority = 0.8

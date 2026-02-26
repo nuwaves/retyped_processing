@@ -17,7 +17,6 @@ Including another URLconf
 from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
-from django.contrib.sitemaps.views import sitemap
 from django.http import JsonResponse
 from django.urls import include, path, re_path
 from drf_yasg import openapi
@@ -25,8 +24,7 @@ from drf_yasg.views import get_schema_view
 
 from audio_processing.sitemaps import (
     StaticPageSitemap,
-    get_episode_sitemaps,
-    get_podcast_sitemaps,
+    dynamic_sitemap_view,
     sitemap_index_view,
 )
 
@@ -68,7 +66,5 @@ urlpatterns = [
     path("api/v1/", include((api_v1_patterns, "api_v1"), namespace="v1")),
     # Sitemap index and paginated sitemaps
     path("sitemap.xml", sitemap_index_view, name="sitemap-index"),
-    re_path(r"^sitemap-(?P<section>episodes-\d+)\.xml$", sitemap, {"sitemaps": get_episode_sitemaps()}),
-    re_path(r"^sitemap-(?P<section>podcasts-\d+)\.xml$", sitemap, {"sitemaps": get_podcast_sitemaps()}),
-    path("sitemap-static.xml", sitemap, {"sitemaps": {"static": StaticPageSitemap()}}, name="sitemap-static"),
+    re_path(r"^sitemap-(?P<section>.+)\.xml$", dynamic_sitemap_view, name="django.contrib.sitemaps.views.sitemap"),
     ] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
