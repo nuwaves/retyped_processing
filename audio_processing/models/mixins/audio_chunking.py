@@ -503,7 +503,6 @@ def transcribe_audio_in_chunks(audio_path: Path, chunk_length: int = 600, overla
             results.append((result, start))
 
         final_result = merge_transcripts(results)
-        save_results(final_result, audio_path)
 
         print(f"\nTotal Groq API transcription time: {total_transcription_time:.2f}s")
 
