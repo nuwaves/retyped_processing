@@ -76,7 +76,7 @@ class Episode(models.Model, GroqMixin, AwsMixin, TaggableMixin, SummarizableMixi
     tags = models.ManyToManyField('Tag', blank=True, related_name='episodes', help_text="Tags associated with this episode")
     error = models.TextField(blank=True, null=True, help_text="Error message if processing failed")
     created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
+    updated_at = models.DateTimeField(auto_now=True, db_index=True)
 
     entities = models.ManyToManyField('Entity', blank=True, related_name='episodes', help_text="Entities associated with this episode")
     topics = models.ManyToManyField('Topic', blank=True, related_name='episodes', help_text="Topics associated with this episode")
