@@ -29,44 +29,41 @@ def sitemap_index_view(request):
     protocol = 'https' if request.is_secure() else 'http'
     sitemapindex = Element('sitemapindex', xmlns="http://www.sitemaps.org/schemas/sitemap/0.9")
 
-    # Get counts and max updated_at with minimal queries
-    episode_count = Episode.objects.count()
+    # Use cached counts to avoid hitting database on every index request
+    episode_count = cache.get_or_set('episode_count', lambda: Episode.objects.count(), 3600)
+    podcast_count = cache.get_or_set('podcast_count', lambda: Podcast.objects.count(), 3600)
+    
     episode_num_pages = min(
         (episode_count + EPISODE_SITEMAP_PAGE_SIZE - 1) // EPISODE_SITEMAP_PAGE_SIZE,
         MAX_SITEMAP_PAGES
     )
-    # Limit to first 1 result with index
-    episode_max_updated = Episode.objects.only('updated_at').order_by('-updated_at').values_list('updated_at', flat=True)[:1]
-    episode_max_updated = episode_max_updated[0] if episode_max_updated else None
-
-    podcast_count = Podcast.objects.count()
     podcast_num_pages = min(
         (podcast_count + PODCAST_SITEMAP_PAGE_SIZE - 1) // PODCAST_SITEMAP_PAGE_SIZE,
         MAX_SITEMAP_PAGES
     )
-    # Limit to first 1 result with index  
-    podcast_max_updated = Podcast.objects.only('updated_at').order_by('-updated_at').values_list('updated_at', flat=True)[:1]
-    podcast_max_updated = podcast_max_updated[0] if podcast_max_updated else None
+
+    # Skip lastmod to avoid slow queries - search engines don't require it
+    now_iso = timezone.now().isoformat()
 
     # Add episode sitemap pages
     for i in range(episode_num_pages):
         loc = f"{protocol}://{domain}/sitemap-episodes-{i+1}.xml"
         sitemap = SubElement(sitemapindex, 'sitemap')
         SubElement(sitemap, 'loc').text = loc
-        SubElement(sitemap, 'lastmod').text = (episode_max_updated or timezone.now()).isoformat()
+        SubElement(sitemap, 'lastmod').text = now_iso
 
     # Add podcast sitemap pages
     for i in range(podcast_num_pages):
         loc = f"{protocol}://{domain}/sitemap-podcasts-{i+1}.xml"
         sitemap = SubElement(sitemapindex, 'sitemap')
         SubElement(sitemap, 'loc').text = loc
-        SubElement(sitemap, 'lastmod').text = (podcast_max_updated or timezone.now()).isoformat()
+        SubElement(sitemap, 'lastmod').text = now_iso
 
     # Add static pages sitemap
     loc = f"{protocol}://{domain}/sitemap-static.xml"
     sitemap = SubElement(sitemapindex, 'sitemap')
     SubElement(sitemap, 'loc').text = loc
-    SubElement(sitemap, 'lastmod').text = timezone.now().isoformat()
+    SubElement(sitemap, 'lastmod').text = now_iso
 
     xml_bytes = tostring(sitemapindex, encoding='utf-8', method='xml')
     
