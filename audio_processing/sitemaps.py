@@ -2,6 +2,7 @@ from xml.etree.ElementTree import Element, SubElement, tostring
 
 from django.conf import settings
 from django.contrib.sitemaps import Sitemap
+from django.core.cache import cache
 from django.http import HttpResponse
 from django.utils import timezone
 
@@ -9,6 +10,7 @@ from audio_processing.models import Episode, Podcast
 
 EPISODE_SITEMAP_PAGE_SIZE = 100
 PODCAST_SITEMAP_PAGE_SIZE = 100
+MAX_SITEMAP_PAGES = 500  # Limit total pages to prevent timeout
 
 # Static pages to include in sitemap
 STATIC_PAGES = [
@@ -17,18 +19,34 @@ STATIC_PAGES = [
 
 def sitemap_index_view(request):
     """Return a sitemap index XML linking to all paginated sitemaps."""
+    # Cache the sitemap index for 1 hour to avoid expensive queries on every request
+    cache_key = 'sitemap_index_xml'
+    cached_response = cache.get(cache_key)
+    if cached_response:
+        return HttpResponse(cached_response, content_type='application/xml')
+    
     domain = getattr(settings, 'SITE_DOMAIN', request.get_host())
     protocol = 'https' if request.is_secure() else 'http'
     sitemapindex = Element('sitemapindex', xmlns="http://www.sitemaps.org/schemas/sitemap/0.9")
 
     # Get counts and max updated_at with minimal queries
     episode_count = Episode.objects.count()
-    episode_num_pages = (episode_count + EPISODE_SITEMAP_PAGE_SIZE - 1) // EPISODE_SITEMAP_PAGE_SIZE
-    episode_max_updated = Episode.objects.order_by('-updated_at').values_list('updated_at', flat=True).first()
+    episode_num_pages = min(
+        (episode_count + EPISODE_SITEMAP_PAGE_SIZE - 1) // EPISODE_SITEMAP_PAGE_SIZE,
+        MAX_SITEMAP_PAGES
+    )
+    # Limit to first 1 result with index
+    episode_max_updated = Episode.objects.only('updated_at').order_by('-updated_at').values_list('updated_at', flat=True)[:1]
+    episode_max_updated = episode_max_updated[0] if episode_max_updated else None
 
     podcast_count = Podcast.objects.count()
-    podcast_num_pages = (podcast_count + PODCAST_SITEMAP_PAGE_SIZE - 1) // PODCAST_SITEMAP_PAGE_SIZE
-    podcast_max_updated = Podcast.objects.order_by('-updated_at').values_list('updated_at', flat=True).first()
+    podcast_num_pages = min(
+        (podcast_count + PODCAST_SITEMAP_PAGE_SIZE - 1) // PODCAST_SITEMAP_PAGE_SIZE,
+        MAX_SITEMAP_PAGES
+    )
+    # Limit to first 1 result with index  
+    podcast_max_updated = Podcast.objects.only('updated_at').order_by('-updated_at').values_list('updated_at', flat=True)[:1]
+    podcast_max_updated = podcast_max_updated[0] if podcast_max_updated else None
 
     # Add episode sitemap pages
     for i in range(episode_num_pages):
@@ -51,6 +69,10 @@ def sitemap_index_view(request):
     SubElement(sitemap, 'lastmod').text = timezone.now().isoformat()
 
     xml_bytes = tostring(sitemapindex, encoding='utf-8', method='xml')
+    
+    # Cache for 1 hour (3600 seconds)
+    cache.set(cache_key, xml_bytes, 3600)
+    
     return HttpResponse(xml_bytes, content_type='application/xml')
 
 
