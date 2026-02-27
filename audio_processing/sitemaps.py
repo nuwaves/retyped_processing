@@ -7,8 +7,8 @@ from django.utils import timezone
 
 from audio_processing.models import Episode, Podcast
 
-EPISODE_SITEMAP_PAGE_SIZE = 500
-PODCAST_SITEMAP_PAGE_SIZE = 500
+EPISODE_SITEMAP_PAGE_SIZE = 100
+PODCAST_SITEMAP_PAGE_SIZE = 100
 
 # Static pages to include in sitemap
 STATIC_PAGES = [
@@ -90,7 +90,11 @@ class EpisodeSitemap(Sitemap):
 
     def items(self):
         offset = (self.page - 1) * EPISODE_SITEMAP_PAGE_SIZE
-        return Episode.objects.order_by('-updated_at')[offset:offset + EPISODE_SITEMAP_PAGE_SIZE]
+        # Only load essential fields to reduce memory usage
+        return Episode.objects.only('id', 'slug', 'updated_at').order_by('-updated_at')[offset:offset + EPISODE_SITEMAP_PAGE_SIZE].iterator()
+
+    def location(self, obj):
+        return f'/episodes/{obj.slug}' if obj.slug else f'/episodes/{obj.id}'
 
     def lastmod(self, obj):
         return obj.updated_at
@@ -104,7 +108,11 @@ class PodcastSitemap(Sitemap):
 
     def items(self):
         offset = (self.page - 1) * PODCAST_SITEMAP_PAGE_SIZE
-        return Podcast.objects.order_by('-updated_at')[offset:offset + PODCAST_SITEMAP_PAGE_SIZE]
+        # Only load essential fields to reduce memory usage
+        return Podcast.objects.only('id', 'slug', 'updated_at').order_by('-updated_at')[offset:offset + PODCAST_SITEMAP_PAGE_SIZE].iterator()
+
+    def location(self, obj):
+        return f'/podcasts/{obj.slug}' if obj.slug else f'/podcasts/{obj.id}'
 
     def lastmod(self, obj):
         return obj.updated_at
