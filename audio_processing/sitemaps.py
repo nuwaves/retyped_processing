@@ -17,26 +17,39 @@ STATIC_PAGES = [
 
 def sitemap_index_view(request):
     """Return a sitemap index XML linking to all paginated sitemaps."""
-    episode_pages = get_episode_sitemaps_with_lastmod()
-    podcast_pages = get_podcast_sitemaps_with_lastmod()
     domain = getattr(settings, 'SITE_DOMAIN', request.get_host())
     protocol = 'https' if request.is_secure() else 'http'
     sitemapindex = Element('sitemapindex', xmlns="http://www.sitemaps.org/schemas/sitemap/0.9")
-    for key, sitemap_obj, lastmod in episode_pages:
-        loc = f"{protocol}://{domain}/sitemap-{key}.xml"
+
+    # Get counts and max updated_at with minimal queries
+    episode_count = Episode.objects.count()
+    episode_num_pages = (episode_count + EPISODE_SITEMAP_PAGE_SIZE - 1) // EPISODE_SITEMAP_PAGE_SIZE
+    episode_max_updated = Episode.objects.order_by('-updated_at').values_list('updated_at', flat=True).first()
+
+    podcast_count = Podcast.objects.count()
+    podcast_num_pages = (podcast_count + PODCAST_SITEMAP_PAGE_SIZE - 1) // PODCAST_SITEMAP_PAGE_SIZE
+    podcast_max_updated = Podcast.objects.order_by('-updated_at').values_list('updated_at', flat=True).first()
+
+    # Add episode sitemap pages
+    for i in range(episode_num_pages):
+        loc = f"{protocol}://{domain}/sitemap-episodes-{i+1}.xml"
         sitemap = SubElement(sitemapindex, 'sitemap')
         SubElement(sitemap, 'loc').text = loc
-        SubElement(sitemap, 'lastmod').text = (lastmod or timezone.now()).isoformat()
-    for key, sitemap_obj, lastmod in podcast_pages:
-        loc = f"{protocol}://{domain}/sitemap-{key}.xml"
+        SubElement(sitemap, 'lastmod').text = (episode_max_updated or timezone.now()).isoformat()
+
+    # Add podcast sitemap pages
+    for i in range(podcast_num_pages):
+        loc = f"{protocol}://{domain}/sitemap-podcasts-{i+1}.xml"
         sitemap = SubElement(sitemapindex, 'sitemap')
         SubElement(sitemap, 'loc').text = loc
-        SubElement(sitemap, 'lastmod').text = (lastmod or timezone.now()).isoformat()
+        SubElement(sitemap, 'lastmod').text = (podcast_max_updated or timezone.now()).isoformat()
+
     # Add static pages sitemap
     loc = f"{protocol}://{domain}/sitemap-static.xml"
     sitemap = SubElement(sitemapindex, 'sitemap')
     SubElement(sitemap, 'loc').text = loc
     SubElement(sitemap, 'lastmod').text = timezone.now().isoformat()
+
     xml_bytes = tostring(sitemapindex, encoding='utf-8', method='xml')
     return HttpResponse(xml_bytes, content_type='application/xml')
 
@@ -49,11 +62,21 @@ def dynamic_sitemap_view(request, section):
         sitemaps = {'static': StaticPageSitemap()}
         return sitemap_view(request, section='static', sitemaps=sitemaps)
     elif section.startswith('episodes-'):
-        sitemaps = get_episode_sitemaps()
-        return sitemap_view(request, section=section, sitemaps=sitemaps)
+        # Extract page number from section (e.g., 'episodes-1' -> 1)
+        try:
+            page = int(section.split('-')[1])
+            sitemaps = {section: EpisodeSitemap(page=page)}
+            return sitemap_view(request, section=section, sitemaps=sitemaps)
+        except (ValueError, IndexError):
+            return HttpResponse('Not Found', status=404)
     elif section.startswith('podcasts-'):
-        sitemaps = get_podcast_sitemaps()
-        return sitemap_view(request, section=section, sitemaps=sitemaps)
+        # Extract page number from section (e.g., 'podcasts-1' -> 1)
+        try:
+            page = int(section.split('-')[1])
+            sitemaps = {section: PodcastSitemap(page=page)}
+            return sitemap_view(request, section=section, sitemaps=sitemaps)
+        except (ValueError, IndexError):
+            return HttpResponse('Not Found', status=404)
     else:
         return HttpResponse('Not Found', status=404)
 
@@ -96,45 +119,3 @@ class StaticPageSitemap(Sitemap):
 
     def location(self, item):
         return f'/{item}'
-
-def get_episode_sitemaps_with_lastmod():
-    """Return list of (key, sitemap, max_updated_at) tuples for episodes."""
-    total = Episode.objects.count()
-    num_pages = (total + EPISODE_SITEMAP_PAGE_SIZE - 1) // EPISODE_SITEMAP_PAGE_SIZE
-    results = []
-    for i in range(num_pages):
-        page = i + 1
-        key = f'episodes-{page}'
-        sitemap_obj = EpisodeSitemap(page=page)
-        offset = (page - 1) * EPISODE_SITEMAP_PAGE_SIZE
-        page_qs = Episode.objects.order_by('-updated_at')[offset:offset + EPISODE_SITEMAP_PAGE_SIZE]
-        latest = page_qs.first()
-        max_updated_at = latest.updated_at if latest else None
-        results.append((key, sitemap_obj, max_updated_at))
-    return results
-
-
-def get_episode_sitemaps():
-    """Return dict of sitemaps for URL configuration."""
-    return {key: sitemap_obj for key, sitemap_obj, _ in get_episode_sitemaps_with_lastmod()}
-
-def get_podcast_sitemaps_with_lastmod():
-    """Return list of (key, sitemap, max_updated_at) tuples for podcasts."""
-    total = Podcast.objects.count()
-    num_pages = (total + PODCAST_SITEMAP_PAGE_SIZE - 1) // PODCAST_SITEMAP_PAGE_SIZE
-    results = []
-    for i in range(num_pages):
-        page = i + 1
-        key = f'podcasts-{page}'
-        sitemap_obj = PodcastSitemap(page=page)
-        offset = (page - 1) * PODCAST_SITEMAP_PAGE_SIZE
-        page_qs = Podcast.objects.order_by('-updated_at')[offset:offset + PODCAST_SITEMAP_PAGE_SIZE]
-        latest = page_qs.first()
-        max_updated_at = latest.updated_at if latest else None
-        results.append((key, sitemap_obj, max_updated_at))
-    return results
-
-
-def get_podcast_sitemaps():
-    """Return dict of sitemaps for URL configuration."""
-    return {key: sitemap_obj for key, sitemap_obj, _ in get_podcast_sitemaps_with_lastmod()}
