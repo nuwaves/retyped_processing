@@ -4,15 +4,16 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('audio_processing', '0013_alter_entity_name_alter_entity_unique_together'),
+        ("audio_processing", "0013_alter_entity_name_alter_entity_unique_together"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='episode',
-            name='raw_audio_url',
-            field=models.URLField(help_text='URL of the raw audio file', max_length=2000, unique=True),
+            model_name="episode",
+            name="raw_audio_url",
+            field=models.URLField(
+                help_text="URL of the raw audio file", max_length=2000, unique=True
+            ),
         ),
     ]

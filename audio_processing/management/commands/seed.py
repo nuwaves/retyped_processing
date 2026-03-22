@@ -1,4 +1,3 @@
-
 from datetime import timedelta
 
 from django.contrib.auth.models import User
@@ -12,7 +11,7 @@ class Command(BaseCommand):
     help = "Seed database for testing and development."
 
     def handle(self, *args, **options):
-        self.stdout.write(self.style.SUCCESS('Starting database seeding...'))
+        self.stdout.write(self.style.SUCCESS("Starting database seeding..."))
 
         # Create admin user
         self.create_admin_user()
@@ -23,13 +22,13 @@ class Command(BaseCommand):
         # Create sample RSS feed and podcasts
         self.create_sample_podcasts()
 
-        self.stdout.write(self.style.SUCCESS('Database seeding completed!'))
+        self.stdout.write(self.style.SUCCESS("Database seeding completed!"))
 
     def create_admin_user(self):
         """Create a default admin user for development"""
-        username = 'admin'
-        email = 'admin@example.com'
-        password = 'admin123'
+        username = "admin"
+        email = "admin@example.com"
+        password = "admin123"
 
         if User.objects.filter(username=username).exists():
             self.stdout.write(
@@ -38,60 +37,53 @@ class Command(BaseCommand):
             return
 
         # Create superuser
-        user = User.objects.create_superuser(
-            username=username,
-            email=email,
-            password=password
+        User.objects.create_superuser(
+            username=username, email=email, password=password
         )
 
         self.stdout.write(
-            self.style.SUCCESS(f'Created admin user: {username} / {password}')
+            self.style.SUCCESS(f"Created admin user: {username} / {password}")
         )
 
     def create_sample_tags(self):
         """Create some sample tags for testing"""
         sample_tags = [
-            ('Technology', 'Tech-related content'),
-            ('Politics', 'Political discussions and news'),
-            ('Business', 'Business and entrepreneurship'),
-            ('Science', 'Scientific topics and research'),
-            ('Health', 'Health and wellness'),
-            ('Education', 'Educational content'),
-            ('Entertainment', 'Entertainment and media'),
-            ('Sports', 'Sports and athletics'),
-            ('News', 'Current events and news'),
-            ('Interview', 'Interview format episodes'),
+            ("Technology", "Tech-related content"),
+            ("Politics", "Political discussions and news"),
+            ("Business", "Business and entrepreneurship"),
+            ("Science", "Scientific topics and research"),
+            ("Health", "Health and wellness"),
+            ("Education", "Educational content"),
+            ("Entertainment", "Entertainment and media"),
+            ("Sports", "Sports and athletics"),
+            ("News", "Current events and news"),
+            ("Interview", "Interview format episodes"),
         ]
 
         created_count = 0
         for name, description in sample_tags:
             tag, created = Tag.objects.get_or_create(
-                name=name,
-                defaults={'description': description}
+                name=name, defaults={"description": description}
             )
             if created:
                 created_count += 1
 
-        self.stdout.write(
-            self.style.SUCCESS(f'Created {created_count} new tags')
-        )
+        self.stdout.write(self.style.SUCCESS(f"Created {created_count} new tags"))
 
     def create_sample_podcasts(self):
         """Create a sample RSS feed with podcast episodes"""
         # Create RSS feed
         podcast, created = Podcast.objects.get_or_create(
-            url='https://example.com/tech-talk-rss.xml',
+            url="https://example.com/tech-talk-rss.xml",
             defaults={
-                'name': 'Tech Talk Weekly',
-                'description': 'Weekly discussions about technology trends and innovations',
-                'is_active': True,
-            }
+                "name": "Tech Talk Weekly",
+                "description": "Weekly discussions about technology trends and innovations",
+                "is_active": True,
+            },
         )
 
         if created:
-            self.stdout.write(
-                self.style.SUCCESS(f'Created podcast: {podcast.name}')
-            )
+            self.stdout.write(self.style.SUCCESS(f"Created podcast: {podcast.name}"))
         else:
             self.stdout.write(
                 self.style.WARNING(f'Podcast "{podcast.name}" already exists')
@@ -100,9 +92,9 @@ class Command(BaseCommand):
         # Sample podcast episodes
         sample_episodes = [
             {
-                'title': 'The Future of AI in Software Development',
-                'raw_audio_url': 'https://example.com/audio/episode-001-ai-development.mp3',
-                'transcript': '''
+                "title": "The Future of AI in Software Development",
+                "raw_audio_url": "https://example.com/audio/episode-001-ai-development.mp3",
+                "transcript": """
                 Welcome to Tech Talk Weekly. I'm your host, Sarah Chen, and today we're diving deep into the rapidly evolving world of artificial intelligence in software development.
                 
                 Our guest today is Dr. Michael Rodriguez, a leading researcher in AI-assisted programming at MIT. Dr. Rodriguez, thanks for joining us.
@@ -138,15 +130,15 @@ class Command(BaseCommand):
                 Dr. Rodriguez: My pleasure, Sarah.
                 
                 Sarah: That's all for today's episode of Tech Talk Weekly. Don't forget to subscribe and leave us a review. Until next time, keep coding!
-                ''',
-                'summary': 'In this episode, Sarah Chen interviews Dr. Michael Rodriguez from MIT about the impact of AI on software development. They discuss how AI tools are changing developer workflows, the benefits and challenges of AI-assisted programming, and predictions for the future of the profession.',
-                'release_date': timezone.now() - timedelta(days=7),
-                'tags': ['Technology', 'Interview']
+                """,
+                "summary": "In this episode, Sarah Chen interviews Dr. Michael Rodriguez from MIT about the impact of AI on software development. They discuss how AI tools are changing developer workflows, the benefits and challenges of AI-assisted programming, and predictions for the future of the profession.",
+                "release_date": timezone.now() - timedelta(days=7),
+                "tags": ["Technology", "Interview"],
             },
             {
-                'title': 'Building Scalable Microservices: Lessons Learned',
-                'raw_audio_url': 'https://example.com/audio/episode-002-microservices.mp3',
-                'transcript': '''
+                "title": "Building Scalable Microservices: Lessons Learned",
+                "raw_audio_url": "https://example.com/audio/episode-002-microservices.mp3",
+                "transcript": """
                 Hello and welcome back to Tech Talk Weekly. I'm Sarah Chen, and today we're exploring the world of microservices architecture.
                 
                 Joining me is Emma Thompson, Senior Architect at CloudScale Solutions, who has been instrumental in migrating several large-scale applications from monoliths to microservices.
@@ -186,44 +178,42 @@ class Command(BaseCommand):
                 Emma: Thanks for having me, Sarah.
                 
                 Sarah: That's a wrap for today's episode. Next week, we'll be discussing the latest trends in cloud-native security. Until then, happy coding!
-                ''',
-                'summary': 'Sarah Chen talks with Emma Thompson, Senior Architect at CloudScale Solutions, about the challenges and best practices of migrating from monolithic to microservices architecture. They cover topics including when to make the transition, data consistency patterns, monitoring strategies, and common pitfalls to avoid.',
-                'release_date': timezone.now() - timedelta(days=14),
-                'tags': ['Technology', 'Business', 'Interview']
-            }
+                """,
+                "summary": "Sarah Chen talks with Emma Thompson, Senior Architect at CloudScale Solutions, about the challenges and best practices of migrating from monolithic to microservices architecture. They cover topics including when to make the transition, data consistency patterns, monitoring strategies, and common pitfalls to avoid.",
+                "release_date": timezone.now() - timedelta(days=14),
+                "tags": ["Technology", "Business", "Interview"],
+            },
         ]
 
         created_episodes = 0
         for episode_data in sample_episodes:
             # Check if episode already exists
-            if Episode.objects.filter(raw_audio_url=episode_data['raw_audio_url']).exists():
+            if Episode.objects.filter(
+                raw_audio_url=episode_data["raw_audio_url"]
+            ).exists():
                 continue
 
             # Create podcast episode
             episode = Episode.objects.create(
                 podcast=podcast,
-                title=episode_data['title'],
-                raw_audio_url=episode_data['raw_audio_url'],
-                transcript=episode_data['transcript'],
-                summary=episode_data['summary'],
-                release_date=episode_data['release_date']
+                title=episode_data["title"],
+                raw_audio_url=episode_data["raw_audio_url"],
+                transcript=episode_data["transcript"],
+                summary=episode_data["summary"],
+                release_date=episode_data["release_date"],
             )
 
             # Add tags
-            for tag_name in episode_data['tags']:
+            for tag_name in episode_data["tags"]:
                 tag = Tag.objects.get(name=tag_name)
                 episode.tags.add(tag)
 
             created_episodes += 1
-            self.stdout.write(
-                self.style.SUCCESS(f'Created episode: {episode.title}')
-            )
+            self.stdout.write(self.style.SUCCESS(f"Created episode: {episode.title}"))
 
         if created_episodes > 0:
             self.stdout.write(
-                self.style.SUCCESS(f'Created {created_episodes} sample episodes')
+                self.style.SUCCESS(f"Created {created_episodes} sample episodes")
             )
         else:
-            self.stdout.write(
-                self.style.WARNING('Sample episodes already exist')
-            )
+            self.stdout.write(self.style.WARNING("Sample episodes already exist"))

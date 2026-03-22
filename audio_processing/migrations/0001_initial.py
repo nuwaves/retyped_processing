@@ -10,65 +10,213 @@ import audio_processing.models.mixins.taggable_mixin
 
 
 class Migration(migrations.Migration):
-
     initial = True
 
-    dependencies = [
-    ]
+    dependencies = []
 
     operations = [
         migrations.CreateModel(
-            name='Tag',
+            name="Tag",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('name', models.CharField(help_text='Tag name', max_length=100, unique=True)),
-                ('slug', models.SlugField(help_text='URL-friendly tag name', max_length=100, unique=True)),
-                ('description', models.TextField(blank=True, help_text='Optional description of the tag', null=True)),
-                ('color', models.CharField(blank=True, help_text='Hex color code for the tag (e.g., #FF5733)', max_length=7, null=True)),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('updated_at', models.DateTimeField(auto_now=True)),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "name",
+                    models.CharField(help_text="Tag name", max_length=100, unique=True),
+                ),
+                (
+                    "slug",
+                    models.SlugField(
+                        help_text="URL-friendly tag name", max_length=100, unique=True
+                    ),
+                ),
+                (
+                    "description",
+                    models.TextField(
+                        blank=True,
+                        help_text="Optional description of the tag",
+                        null=True,
+                    ),
+                ),
+                (
+                    "color",
+                    models.CharField(
+                        blank=True,
+                        help_text="Hex color code for the tag (e.g., #FF5733)",
+                        max_length=7,
+                        null=True,
+                    ),
+                ),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                ("updated_at", models.DateTimeField(auto_now=True)),
             ],
             options={
-                'verbose_name': 'Tag',
-                'verbose_name_plural': 'Tags',
-                'ordering': ['name'],
+                "verbose_name": "Tag",
+                "verbose_name_plural": "Tags",
+                "ordering": ["name"],
             },
         ),
         migrations.CreateModel(
-            name='Podcast',
+            name="Podcast",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('name', models.CharField(help_text='Friendly name for the podcast', max_length=1000)),
-                ('url', models.URLField(help_text='Podcast URL', unique=True)),
-                ('description', models.TextField(blank=True, help_text='Description of the podcast', null=True)),
-                ('is_active', models.BooleanField(default=True, help_text='Whether to actively process this podcast')),
-                ('last_processed', models.DateTimeField(blank=True, help_text='Last time this podcast was processed', null=True)),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('updated_at', models.DateTimeField(auto_now=True)),
-                ('tags', models.ManyToManyField(blank=True, help_text='Tags associated with this RSS feed', related_name='rss_feeds', to='audio_processing.tag')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "name",
+                    models.CharField(
+                        help_text="Friendly name for the podcast", max_length=1000
+                    ),
+                ),
+                ("url", models.URLField(help_text="Podcast URL", unique=True)),
+                (
+                    "description",
+                    models.TextField(
+                        blank=True, help_text="Description of the podcast", null=True
+                    ),
+                ),
+                (
+                    "is_active",
+                    models.BooleanField(
+                        default=True,
+                        help_text="Whether to actively process this podcast",
+                    ),
+                ),
+                (
+                    "last_processed",
+                    models.DateTimeField(
+                        blank=True,
+                        help_text="Last time this podcast was processed",
+                        null=True,
+                    ),
+                ),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                ("updated_at", models.DateTimeField(auto_now=True)),
+                (
+                    "tags",
+                    models.ManyToManyField(
+                        blank=True,
+                        help_text="Tags associated with this RSS feed",
+                        related_name="rss_feeds",
+                        to="audio_processing.tag",
+                    ),
+                ),
             ],
             options={
-                'verbose_name': 'Podcast',
-                'verbose_name_plural': 'Podcasts',
-                'ordering': ['-created_at'],
+                "verbose_name": "Podcast",
+                "verbose_name_plural": "Podcasts",
+                "ordering": ["-created_at"],
             },
         ),
         migrations.CreateModel(
-            name='Episode',
+            name="Episode",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('raw_audio_url', models.URLField(help_text='URL of the raw audio file', max_length=2000)),
-                ('transcript', models.TextField(blank=True, help_text='Raw transcript from speech-to-text', null=True)),
-                ('script_transcript', models.TextField(blank=True, help_text='Formatted transcript with speaker identification', null=True)),
-                ('summary', models.TextField(blank=True, help_text='AI-generated summary of the episode', null=True)),
-                ('title', models.CharField(blank=True, help_text='Title of the podcast episode', max_length=512, null=True)),
-                ('release_date', models.DateTimeField(blank=True, help_text='Original release date of the podcast episode', null=True)),
-                ('error', models.TextField(blank=True, help_text='Error message if processing failed', null=True)),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('updated_at', models.DateTimeField(auto_now=True)),
-                ('podcast', models.ForeignKey(blank=True, help_text='Podcast this episode belongs to', null=True, on_delete=django.db.models.deletion.CASCADE, related_name='episodes', to='audio_processing.podcast')),
-                ('tags', models.ManyToManyField(blank=True, help_text='Tags associated with this episode', related_name='episodes', to='audio_processing.tag')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "raw_audio_url",
+                    models.URLField(
+                        help_text="URL of the raw audio file", max_length=2000
+                    ),
+                ),
+                (
+                    "transcript",
+                    models.TextField(
+                        blank=True,
+                        help_text="Raw transcript from speech-to-text",
+                        null=True,
+                    ),
+                ),
+                (
+                    "script_transcript",
+                    models.TextField(
+                        blank=True,
+                        help_text="Formatted transcript with speaker identification",
+                        null=True,
+                    ),
+                ),
+                (
+                    "summary",
+                    models.TextField(
+                        blank=True,
+                        help_text="AI-generated summary of the episode",
+                        null=True,
+                    ),
+                ),
+                (
+                    "title",
+                    models.CharField(
+                        blank=True,
+                        help_text="Title of the podcast episode",
+                        max_length=512,
+                        null=True,
+                    ),
+                ),
+                (
+                    "release_date",
+                    models.DateTimeField(
+                        blank=True,
+                        help_text="Original release date of the podcast episode",
+                        null=True,
+                    ),
+                ),
+                (
+                    "error",
+                    models.TextField(
+                        blank=True,
+                        help_text="Error message if processing failed",
+                        null=True,
+                    ),
+                ),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                ("updated_at", models.DateTimeField(auto_now=True)),
+                (
+                    "podcast",
+                    models.ForeignKey(
+                        blank=True,
+                        help_text="Podcast this episode belongs to",
+                        null=True,
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="episodes",
+                        to="audio_processing.podcast",
+                    ),
+                ),
+                (
+                    "tags",
+                    models.ManyToManyField(
+                        blank=True,
+                        help_text="Tags associated with this episode",
+                        related_name="episodes",
+                        to="audio_processing.tag",
+                    ),
+                ),
             ],
-            bases=(models.Model, audio_processing.models.mixins.groq_mixin.GroqMixin, audio_processing.models.mixins.aws_mixin.AwsMixin, audio_processing.models.mixins.taggable_mixin.TaggableMixin, audio_processing.models.mixins.summarizable_mixin.SummarizableMixin),
+            bases=(
+                models.Model,
+                audio_processing.models.mixins.groq_mixin.GroqMixin,
+                audio_processing.models.mixins.aws_mixin.AwsMixin,
+                audio_processing.models.mixins.taggable_mixin.TaggableMixin,
+                audio_processing.models.mixins.summarizable_mixin.SummarizableMixin,
+            ),
         ),
     ]

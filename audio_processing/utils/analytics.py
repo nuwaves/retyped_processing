@@ -2,9 +2,7 @@ from django.db.models import OuterRef, Subquery, Sum
 from django.utils import timezone
 
 
-def get_top_by_views(
-    entity_field, entity_model, request, timeframe="all"
-):
+def get_top_by_views(entity_field, entity_model, request, timeframe="all"):
     """
     Shared utility to aggregate views for Podcast or Episode.
     Args:
@@ -32,7 +30,9 @@ def get_top_by_views(
         entity_model.objects.filter(id__in=entity_views.values(entity_field))
         .annotate(
             total_views=Subquery(
-                entity_views.filter(**{entity_field: OuterRef("id")}).values("total_views")
+                entity_views.filter(**{entity_field: OuterRef("id")}).values(
+                    "total_views"
+                )
             )
         )
         .order_by("-total_views")

@@ -12,21 +12,17 @@ class UserAnalyticsViewSet(viewsets.GenericViewSet):
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        return UserAnalytics.objects.filter(
-            user=self.request.user
-        ).select_related('episode', 'podcast')
+        return UserAnalytics.objects.filter(user=self.request.user).select_related(
+            "episode", "podcast"
+        )
 
     def _get_episodes_queryset(self):
         """Helper method to get episodes analytics."""
-        return self.get_queryset().filter(
-            episode__isnull=False
-        ).order_by("-updated_at")
+        return self.get_queryset().filter(episode__isnull=False).order_by("-updated_at")
 
     def _get_podcasts_queryset(self):
         """Helper method to get podcasts analytics."""
-        return self.get_queryset().filter(
-            podcast__isnull=False
-        ).order_by("-updated_at")
+        return self.get_queryset().filter(podcast__isnull=False).order_by("-updated_at")
 
     @action(detail=False, methods=["get"], url_path="analytics-grouped")
     def analytics_grouped(self, request):

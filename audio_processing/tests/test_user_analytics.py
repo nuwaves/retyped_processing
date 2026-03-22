@@ -13,39 +13,33 @@ class UserAnalyticsModelTest(TestCase):
         """Set up test data."""
         # Create test user
         self.user = User.objects.create_user(
-            username='testuser',
-            email='test@example.com',
-            password='testpass123'
+            username="testuser", email="test@example.com", password="testpass123"
         )
 
         # Create another user for multi-user tests
         self.user2 = User.objects.create_user(
-            username='testuser2',
-            email='test2@example.com',
-            password='testpass123'
+            username="testuser2", email="test2@example.com", password="testpass123"
         )
 
         # Create test podcast
         self.podcast = Podcast.objects.create(
-            name='Test Podcast',
-            url='https://example.com/test-feed.xml',
-            description='A test podcast'
+            name="Test Podcast",
+            url="https://example.com/test-feed.xml",
+            description="A test podcast",
         )
 
         # Create test episode
         self.episode = Episode.objects.create(
             podcast=self.podcast,
-            title='Test Episode',
-            raw_audio_url='https://example.com/episode.mp3',
-            description='A test episode'
+            title="Test Episode",
+            raw_audio_url="https://example.com/episode.mp3",
+            description="A test episode",
         )
 
     def test_create_podcast_analytics(self):
         """Test creating analytics for a podcast."""
         analytics = UserAnalytics.objects.create(
-            user=self.user,
-            podcast=self.podcast,
-            views=5
+            user=self.user, podcast=self.podcast, views=5
         )
 
         self.assertEqual(analytics.user, self.user)
@@ -53,14 +47,12 @@ class UserAnalyticsModelTest(TestCase):
         self.assertIsNone(analytics.episode)
         self.assertEqual(analytics.views, 5)
         self.assertEqual(analytics.entity, self.podcast)
-        self.assertEqual(analytics.entity_type, 'podcast')
+        self.assertEqual(analytics.entity_type, "podcast")
 
     def test_create_episode_analytics(self):
         """Test creating analytics for an episode."""
         analytics = UserAnalytics.objects.create(
-            user=self.user,
-            episode=self.episode,
-            views=3
+            user=self.user, episode=self.episode, views=3
         )
 
         self.assertEqual(analytics.user, self.user)
@@ -68,23 +60,18 @@ class UserAnalyticsModelTest(TestCase):
         self.assertIsNone(analytics.podcast)
         self.assertEqual(analytics.views, 3)
         self.assertEqual(analytics.entity, self.episode)
-        self.assertEqual(analytics.entity_type, 'episode')
+        self.assertEqual(analytics.entity_type, "episode")
 
     def test_default_views_value(self):
         """Test that views defaults to 0."""
-        analytics = UserAnalytics.objects.create(
-            user=self.user,
-            podcast=self.podcast
-        )
+        analytics = UserAnalytics.objects.create(user=self.user, podcast=self.podcast)
 
         self.assertEqual(analytics.views, 0)
 
     def test_str_method_podcast(self):
         """Test string representation for podcast analytics."""
         analytics = UserAnalytics.objects.create(
-            user=self.user,
-            podcast=self.podcast,
-            views=2
+            user=self.user, podcast=self.podcast, views=2
         )
 
         # Note: The __str__ method references get_analytics_type_display() which doesn't exist
@@ -98,9 +85,7 @@ class UserAnalyticsModelTest(TestCase):
     def test_str_method_episode(self):
         """Test string representation for episode analytics."""
         analytics = UserAnalytics.objects.create(
-            user=self.user,
-            episode=self.episode,
-            views=1
+            user=self.user, episode=self.episode, views=1
         )
 
         expected_parts = [self.user.username, self.episode.title]
@@ -113,15 +98,13 @@ class UserAnalyticsModelTest(TestCase):
         """Test the entity property returns the correct entity."""
         # Test with podcast
         podcast_analytics = UserAnalytics.objects.create(
-            user=self.user,
-            podcast=self.podcast
+            user=self.user, podcast=self.podcast
         )
         self.assertEqual(podcast_analytics.entity, self.podcast)
 
         # Test with episode
         episode_analytics = UserAnalytics.objects.create(
-            user=self.user,
-            episode=self.episode
+            user=self.user, episode=self.episode
         )
         self.assertEqual(episode_analytics.entity, self.episode)
 
@@ -129,33 +112,31 @@ class UserAnalyticsModelTest(TestCase):
         """Test the entity_type property returns correct type."""
         # Test with podcast
         podcast_analytics = UserAnalytics.objects.create(
-            user=self.user,
-            podcast=self.podcast
+            user=self.user, podcast=self.podcast
         )
-        self.assertEqual(podcast_analytics.entity_type, 'podcast')
+        self.assertEqual(podcast_analytics.entity_type, "podcast")
 
         # Test with episode
         episode_analytics = UserAnalytics.objects.create(
-            user=self.user,
-            episode=self.episode
+            user=self.user, episode=self.episode
         )
-        self.assertEqual(episode_analytics.entity_type, 'episode')
+        self.assertEqual(episode_analytics.entity_type, "episode")
 
     def test_get_entity_display_name(self):
         """Test getting display name of associated entity."""
         # Test with podcast
         podcast_analytics = UserAnalytics.objects.create(
-            user=self.user,
-            podcast=self.podcast
+            user=self.user, podcast=self.podcast
         )
         self.assertEqual(podcast_analytics.get_entity_display_name(), self.podcast.name)
 
         # Test with episode
         episode_analytics = UserAnalytics.objects.create(
-            user=self.user,
-            episode=self.episode
+            user=self.user, episode=self.episode
         )
-        self.assertEqual(episode_analytics.get_entity_display_name(), self.episode.title)
+        self.assertEqual(
+            episode_analytics.get_entity_display_name(), self.episode.title
+        )
 
     def test_validation_no_entity(self):
         """Test validation fails when neither podcast nor episode is specified."""
@@ -164,15 +145,14 @@ class UserAnalyticsModelTest(TestCase):
         with self.assertRaises(ValidationError) as context:
             analytics.full_clean()
 
-        self.assertIn("Either podcast or episode must be specified", str(context.exception))
+        self.assertIn(
+            "Either podcast or episode must be specified", str(context.exception)
+        )
 
     def test_validation_both_entities(self):
         """Test validation fails when both podcast and episode are specified."""
         analytics = UserAnalytics(
-            user=self.user,
-            podcast=self.podcast,
-            episode=self.episode,
-            views=1
+            user=self.user, podcast=self.podcast, episode=self.episode, views=1
         )
 
         with self.assertRaises(ValidationError) as context:
@@ -189,24 +169,17 @@ class UserAnalyticsModelTest(TestCase):
         # Test with both entities
         with self.assertRaises(ValidationError):
             UserAnalytics.objects.create(
-                user=self.user,
-                podcast=self.podcast,
-                episode=self.episode,
-                views=1
+                user=self.user, podcast=self.podcast, episode=self.episode, views=1
             )
 
     def test_user_relationship(self):
         """Test the user relationship works correctly."""
         analytics1 = UserAnalytics.objects.create(
-            user=self.user,
-            podcast=self.podcast,
-            views=2
+            user=self.user, podcast=self.podcast, views=2
         )
 
         analytics2 = UserAnalytics.objects.create(
-            user=self.user,
-            episode=self.episode,
-            views=3
+            user=self.user, episode=self.episode, views=3
         )
 
         # Test reverse relationship
@@ -218,15 +191,11 @@ class UserAnalyticsModelTest(TestCase):
     def test_podcast_relationship(self):
         """Test the podcast relationship works correctly."""
         analytics1 = UserAnalytics.objects.create(
-            user=self.user,
-            podcast=self.podcast,
-            views=1
+            user=self.user, podcast=self.podcast, views=1
         )
 
         analytics2 = UserAnalytics.objects.create(
-            user=self.user2,
-            podcast=self.podcast,
-            views=2
+            user=self.user2, podcast=self.podcast, views=2
         )
 
         # Test reverse relationship
@@ -238,15 +207,11 @@ class UserAnalyticsModelTest(TestCase):
     def test_episode_relationship(self):
         """Test the episode relationship works correctly."""
         analytics1 = UserAnalytics.objects.create(
-            user=self.user,
-            episode=self.episode,
-            views=3
+            user=self.user, episode=self.episode, views=3
         )
 
         analytics2 = UserAnalytics.objects.create(
-            user=self.user2,
-            episode=self.episode,
-            views=4
+            user=self.user2, episode=self.episode, views=4
         )
 
         # Test reverse relationship
@@ -258,9 +223,7 @@ class UserAnalyticsModelTest(TestCase):
     def test_cascade_delete_user(self):
         """Test that analytics are deleted when user is deleted."""
         analytics = UserAnalytics.objects.create(
-            user=self.user,
-            podcast=self.podcast,
-            views=1
+            user=self.user, podcast=self.podcast, views=1
         )
 
         analytics_id = analytics.id
@@ -273,9 +236,7 @@ class UserAnalyticsModelTest(TestCase):
     def test_cascade_delete_podcast(self):
         """Test that analytics are deleted when podcast is deleted."""
         analytics = UserAnalytics.objects.create(
-            user=self.user,
-            podcast=self.podcast,
-            views=1
+            user=self.user, podcast=self.podcast, views=1
         )
 
         analytics_id = analytics.id
@@ -288,9 +249,7 @@ class UserAnalyticsModelTest(TestCase):
     def test_cascade_delete_episode(self):
         """Test that analytics are deleted when episode is deleted."""
         analytics = UserAnalytics.objects.create(
-            user=self.user,
-            episode=self.episode,
-            views=1
+            user=self.user, episode=self.episode, views=1
         )
 
         analytics_id = analytics.id
@@ -307,7 +266,7 @@ class UserAnalyticsModelTest(TestCase):
 
         # Test ordering (though updated_at field doesn't exist in current model)
         # This test might fail if updated_at field is not added
-        expected_ordering = ['-updated_at']
+        expected_ordering = ["-updated_at"]
         # Only test if ordering is set
         if UserAnalytics._meta.ordering:
             self.assertEqual(UserAnalytics._meta.ordering, expected_ordering)
@@ -316,16 +275,12 @@ class UserAnalyticsModelTest(TestCase):
         """Test that multiple analytics records can exist for same user-entity pair."""
         # This might not be allowed depending on business logic, but testing current model
         analytics1 = UserAnalytics.objects.create(
-            user=self.user,
-            podcast=self.podcast,
-            views=1
+            user=self.user, podcast=self.podcast, views=1
         )
 
         # Should be able to create another record
         analytics2 = UserAnalytics.objects.create(
-            user=self.user,
-            podcast=self.podcast,
-            views=2
+            user=self.user, podcast=self.podcast, views=2
         )
 
         self.assertNotEqual(analytics1.id, analytics2.id)
@@ -338,22 +293,20 @@ class UserAnalyticsQueryTest(TestCase):
 
     def setUp(self):
         """Set up test data."""
-        self.user1 = User.objects.create_user(username='user1', password='pass123')
-        self.user2 = User.objects.create_user(username='user2', password='pass123')
+        self.user1 = User.objects.create_user(username="user1", password="pass123")
+        self.user2 = User.objects.create_user(username="user2", password="pass123")
 
         self.podcast1 = Podcast.objects.create(
-            name='Podcast 1',
-            url='https://example.com/feed1.xml'
+            name="Podcast 1", url="https://example.com/feed1.xml"
         )
         self.podcast2 = Podcast.objects.create(
-            name='Podcast 2',
-            url='https://example.com/feed2.xml'
+            name="Podcast 2", url="https://example.com/feed2.xml"
         )
 
         self.episode1 = Episode.objects.create(
             podcast=self.podcast1,
-            title='Episode 1',
-            raw_audio_url='https://example.com/episode1.mp3'
+            title="Episode 1",
+            raw_audio_url="https://example.com/episode1.mp3",
         )
 
         # Create test analytics
@@ -387,10 +340,10 @@ class UserAnalyticsQueryTest(TestCase):
         """Test aggregating views."""
         from django.db.models import Sum
 
-        total_views = UserAnalytics.objects.aggregate(total=Sum('views'))['total']
+        total_views = UserAnalytics.objects.aggregate(total=Sum("views"))["total"]
         self.assertEqual(total_views, 11)  # 5 + 3 + 2 + 1
 
-        podcast1_views = UserAnalytics.objects.filter(
-            podcast=self.podcast1
-        ).aggregate(total=Sum('views'))['total']
+        podcast1_views = UserAnalytics.objects.filter(podcast=self.podcast1).aggregate(
+            total=Sum("views")
+        )["total"]
         self.assertEqual(podcast1_views, 7)  # 5 + 2

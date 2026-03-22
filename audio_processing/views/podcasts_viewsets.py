@@ -27,21 +27,24 @@ class PodcastViewSet(
     filter_backends = [filters.SearchFilter, MultiTagFilterBackend, DjangoFilterBackend]
     # Allow filtering by pub_date and simple lookups
     filterset_fields = {
-        'pub_date': ['gte', 'lte', 'isnull'],
+        "pub_date": ["gte", "lte", "isnull"],
     }
 
     def get_queryset(self):
         qs = super().get_queryset()
-        req = getattr(self, 'request', None)
+        req = getattr(self, "request", None)
         if not req:
             return qs
 
-        last_24 = req.query_params.get('last_24h') or req.query_params.get('last_24_hours')
-        if last_24 and last_24.lower() in ('1', 'true', 'yes'):
+        last_24 = req.query_params.get("last_24h") or req.query_params.get(
+            "last_24_hours"
+        )
+        if last_24 and last_24.lower() in ("1", "true", "yes"):
             since = timezone.now() - timezone.timedelta(hours=24)
             qs = qs.filter(pub_date__gte=since)
 
         return qs
+
     lookup_field = "slug"
 
     def get_serializer_class(self):
@@ -62,7 +65,7 @@ class PodcastViewSet(
 
     @action(detail=True, methods=["get"], url_path="podcast-episodes")
     def all_episodes(self, request, slug):
-        episodes = self.get_object().episodes.order_by('-release_date')
+        episodes = self.get_object().episodes.order_by("-release_date")
         page = self.paginate_queryset(episodes)
         if page is not None:
             serializer = EpisodeListSerializer(page, many=True)
@@ -76,7 +79,10 @@ class PodcastViewSet(
         podcast = self.get_object()
         user = request.user if request.user.is_authenticated else None
         from audio_processing.models.user_analytics import UserAnalytics
-        user_analytics = UserAnalytics.objects.create(user=None, podcast=podcast, views=1)
+
+        user_analytics = UserAnalytics.objects.create(
+            user=None, podcast=podcast, views=1
+        )
         if user:
             user_analytics.user = user
             user_analytics.save(update_fields=["user"])

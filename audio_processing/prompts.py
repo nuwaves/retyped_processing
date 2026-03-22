@@ -8,7 +8,8 @@ def get_entity_extraction_prompt(text):
     return (
         "Extract named entities (Person, Organization, Product) from the following text. Attempt to give a complete common first name and last name for - for example 'Joe Biden' and not 'Biden' but 'Bill Gates' and not 'William Gates'"
         "Return a JSON array of objects with 'name' and 'type' (PERSON, ORGANIZATION, PRODUCT). Return only the JSON. Your entire response should be a valid JSON object."
-        "Example: [{\"name\": \"John Doe\", \"type\": \"PERSON\"}, {\"name\": \"Acme Corp\", \"type\": \"ORGANIZATION\"}].\n\nText:\n" + text
+        'Example: [{"name": "John Doe", "type": "PERSON"}, {"name": "Acme Corp", "type": "ORGANIZATION"}].\n\nText:\n'
+        + text
     )
 
 
@@ -33,13 +34,14 @@ Do not include any additional text or explanations.
 
 Use only the provided tags ids and do not select more than 10 tags."""
 
+
 def get_speaker_transcript_prompt(episode):
     """
     Generate a prompt for converting a transcript into a speaker-formatted script.
-    
+
     Args:
         transcript_excerpt: The podcast transcript to format
-    
+
     Returns:
         str: Formatted prompt for speaker identification and script formatting
     """
@@ -77,15 +79,16 @@ Podcast summary: {episode.podcast.summary}
 Episode description: {episode.description}
 """
 
+
 def get_episode_summary_prompt(transcript, podcast_description, episode_description):
     """
     Generate a prompt for creating an episode summary from a transcript.
-    
+
     Args:
         transcript: The full podcast transcript to summarize
         podcast_description: Description of the podcast
         episode_description: Description of the episode
-    
+
     Returns:
         str: Formatted prompt for episode summary generation
     """
@@ -108,10 +111,10 @@ and description of the episode:
 def get_quote_extraction_prompt(transcript):
     """
     Generate a prompt for extracting key quotes from a podcast episode transcript.
-    
+
     Args:
         transcript: The podcast transcript to analyze for quotes
-    
+
     Returns:
         str: Formatted prompt for quote extraction
     """

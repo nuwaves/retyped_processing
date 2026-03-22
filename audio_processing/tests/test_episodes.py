@@ -1,4 +1,3 @@
-
 from unittest.mock import Mock
 
 from django.contrib.auth.models import User
@@ -12,6 +11,7 @@ from ..models import Episode, Podcast
 
 class EpisodeCreationFromEntryTest(TestCase):
     """Test creating episodes from RSS entry."""
+
     def setUp(self):
         self.podcast = Podcast.objects.create(
             name="Feed Test Podcast", url="https://example.com/test-feed.xml"
@@ -37,10 +37,10 @@ class EpisodeCreationFromEntryTest(TestCase):
         )
 
         mock_entry.enclosures = [mock_enclosure]
-        mock_entry.summary = 'Episode description'
-        mock_entry.subtitle = 'Episode subtitle'
-        mock_entry.itunes_subtitle = 'Episode subtitle'
-        mock_entry.image = 'https://example.com/episode.jpg'
+        mock_entry.summary = "Episode description"
+        mock_entry.subtitle = "Episode subtitle"
+        mock_entry.itunes_subtitle = "Episode subtitle"
+        mock_entry.image = "https://example.com/episode.jpg"
 
         # Mock published date
         mock_entry.published_parsed = (2023, 8, 15, 10, 30, 0, 1, 227, 0)
@@ -82,6 +82,7 @@ class EpisodeCreationFromEntryTest(TestCase):
         mock_entry.enclosures = []
         mock_entry.links = []
 
+
 class EpisodeViewSetTest(TestCase):
     """Test cases for the episode API endpoints."""
 
@@ -91,55 +92,55 @@ class EpisodeViewSetTest(TestCase):
 
         # Create test user
         self.user = User.objects.create_user(
-            username='testuser',
-            email='test@example.com',
-            password='testpass'
+            username="testuser", email="test@example.com", password="testpass"
         )
         self.client.force_authenticate(user=self.user)
 
         # Create test data
         self.podcast = Podcast.objects.create(
-            name='Test Podcast',
-            url='https://example.com/feed.xml',
-            description='A podcast for testing',
-            author='Test Author'
+            name="Test Podcast",
+            url="https://example.com/feed.xml",
+            description="A podcast for testing",
+            author="Test Author",
         )
 
         self.episode = Episode.objects.create(
-            title='Test Episode',
+            title="Test Episode",
             podcast=self.podcast,
-            description='An episode for testing',
-            subtitle='Test Subtitle'
+            description="An episode for testing",
+            subtitle="Test Subtitle",
         )
 
     def test_list_episodes(self):
         """Test listing all episodes."""
-        url = reverse('v1:api-v1-episodes-list')
+        url = reverse("v1:api-v1-episodes-list")
         response = self.client.get(url)
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         data = response.json()
-        self.assertEqual(len(data['results']), 1)
-        self.assertEqual(data['results'][0]['title'], self.episode.title)
+        self.assertEqual(len(data["results"]), 1)
+        self.assertEqual(data["results"][0]["title"], self.episode.title)
 
     def test_retrieve_episode(self):
         """Test retrieving a single episode."""
-        url = reverse('v1:api-v1-episodes-retrieve-slug', kwargs={'slug': self.episode.slug})
+        url = reverse(
+            "v1:api-v1-episodes-retrieve-slug", kwargs={"slug": self.episode.slug}
+        )
         response = self.client.get(url)
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         data = response.json()
 
-        self.assertEqual(data['title'], self.episode.title)
-        self.assertEqual(data['description'], self.episode.description)
-        self.assertEqual(data['subtitle'], self.episode.subtitle)
-        self.assertEqual(data['podcast']['name'], self.podcast.name)
+        self.assertEqual(data["title"], self.episode.title)
+        self.assertEqual(data["description"], self.episode.description)
+        self.assertEqual(data["subtitle"], self.episode.subtitle)
+        self.assertEqual(data["podcast"]["name"], self.podcast.name)
 
     def test_list_episodes_unauthenticated(self):
         """Test that unauthenticated requests can list episodes."""
         self.client.force_authenticate(user=None)
 
-        url = reverse('v1:api-v1-episodes-list')
+        url = reverse("v1:api-v1-episodes-list")
         response = self.client.get(url)
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
@@ -148,7 +149,9 @@ class EpisodeViewSetTest(TestCase):
         """Test that unauthenticated requests can retrieve an episode."""
         self.client.force_authenticate(user=None)
 
-        url = reverse('v1:api-v1-episodes-retrieve-slug', kwargs={'slug': self.episode.slug})
+        url = reverse(
+            "v1:api-v1-episodes-retrieve-slug", kwargs={"slug": self.episode.slug}
+        )
         response = self.client.get(url)
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)

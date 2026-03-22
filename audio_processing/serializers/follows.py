@@ -13,7 +13,15 @@ class FollowSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Follow
-        fields = ["id", "user", "entity_type", "entity_id", "entity", "created_at", "updated_at"]
+        fields = [
+            "id",
+            "user",
+            "entity_type",
+            "entity_id",
+            "entity",
+            "created_at",
+            "updated_at",
+        ]
         read_only_fields = ["id", "user", "created_at", "updated_at"]
 
     def validate(self, attrs):

@@ -16,10 +16,10 @@ SECRET_KEY = "django-insecure-5wh5q4v%ak6cyobga4x#ngitaft8w-w_hit*94(#_6+r*auzs*
 DEBUG = True
 
 ALLOWED_HOSTS = [
-    'localhost',
-    '127.0.0.1',
-    '0.0.0.0',
-    '*',
+    "localhost",
+    "127.0.0.1",
+    "0.0.0.0",
+    "*",
 ]
 
 # Development-specific database settings (if needed)
@@ -28,16 +28,16 @@ ALLOWED_HOSTS = [
 # }
 
 # Development logging - more verbose
-LOGGING['handlers']['console']['level'] = 'DEBUG'
-LOGGING['loggers']['django']['level'] = 'INFO'
-LOGGING['loggers']['audio_processing']['level'] = 'DEBUG'
+LOGGING["handlers"]["console"]["level"] = "DEBUG"
+LOGGING["loggers"]["django"]["level"] = "INFO"
+LOGGING["loggers"]["audio_processing"]["level"] = "DEBUG"
 
 # Development-specific Meilisearch (local instance)
 if not MEILISEARCH_URL:
-    MEILISEARCH_URL = 'http://localhost:7700'
+    MEILISEARCH_URL = "http://localhost:7700"
 
 # Email backend for development (console)
-EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 
 # Additional development apps
 INSTALLED_APPS += [
@@ -55,4 +55,4 @@ INSTALLED_APPS += [
 #     '127.0.0.1',
 # ]
 
-CELERY_QUEUE_NAME_PREFIX = 'dev-'
+CELERY_QUEUE_NAME_PREFIX = "dev-"

@@ -11,7 +11,9 @@ class UserAnalyticsViewSetAPITest(TestCase):
     def setUp(self):
         self.client = APIClient()
         self.user = User.objects.create_user(username="testuser", password="testpass")
-        self.user2 = User.objects.create_user(username="testuser2", password="testpass2")
+        self.user2 = User.objects.create_user(
+            username="testuser2", password="testpass2"
+        )
 
         # Create test podcasts
         self.podcast1 = Podcast.objects.create(
@@ -72,23 +74,13 @@ class UserAnalyticsViewSetAPITest(TestCase):
     def test_analytics_grouped_with_data(self):
         """Test analytics-grouped returns both episodes and podcasts analytics."""
         # Create analytics for the authenticated user
-        UserAnalytics.objects.create(
-            user=self.user, episode=self.episode1, views=5
-        )
-        UserAnalytics.objects.create(
-            user=self.user, episode=self.episode2, views=3
-        )
-        UserAnalytics.objects.create(
-            user=self.user, podcast=self.podcast1, views=10
-        )
-        UserAnalytics.objects.create(
-            user=self.user, podcast=self.podcast2, views=7
-        )
+        UserAnalytics.objects.create(user=self.user, episode=self.episode1, views=5)
+        UserAnalytics.objects.create(user=self.user, episode=self.episode2, views=3)
+        UserAnalytics.objects.create(user=self.user, podcast=self.podcast1, views=10)
+        UserAnalytics.objects.create(user=self.user, podcast=self.podcast2, views=7)
 
         # Create analytics for another user (should not be included)
-        UserAnalytics.objects.create(
-            user=self.user2, episode=self.episode3, views=2
-        )
+        UserAnalytics.objects.create(user=self.user2, episode=self.episode3, views=2)
 
         self.client.force_authenticate(user=self.user)
         url = reverse("v1:api-v1-user-analytics-grouped")
@@ -103,20 +95,12 @@ class UserAnalyticsViewSetAPITest(TestCase):
 
     def test_analytics_episodes_only(self):
         """Test analytics-episodes returns only episode analytics."""
-        UserAnalytics.objects.create(
-            user=self.user, episode=self.episode1, views=5
-        )
-        UserAnalytics.objects.create(
-            user=self.user, episode=self.episode2, views=3
-        )
-        UserAnalytics.objects.create(
-            user=self.user, podcast=self.podcast1, views=10
-        )
+        UserAnalytics.objects.create(user=self.user, episode=self.episode1, views=5)
+        UserAnalytics.objects.create(user=self.user, episode=self.episode2, views=3)
+        UserAnalytics.objects.create(user=self.user, podcast=self.podcast1, views=10)
 
         # Create analytics for another user
-        UserAnalytics.objects.create(
-            user=self.user2, episode=self.episode3, views=2
-        )
+        UserAnalytics.objects.create(user=self.user2, episode=self.episode3, views=2)
 
         self.client.force_authenticate(user=self.user)
         url = reverse("v1:api-v1-user-analytics-episodes")
@@ -141,20 +125,12 @@ class UserAnalyticsViewSetAPITest(TestCase):
 
     def test_analytics_podcasts_only(self):
         """Test analytics-podcasts returns only podcast analytics."""
-        UserAnalytics.objects.create(
-            user=self.user, episode=self.episode1, views=5
-        )
-        UserAnalytics.objects.create(
-            user=self.user, podcast=self.podcast1, views=10
-        )
-        UserAnalytics.objects.create(
-            user=self.user, podcast=self.podcast2, views=7
-        )
+        UserAnalytics.objects.create(user=self.user, episode=self.episode1, views=5)
+        UserAnalytics.objects.create(user=self.user, podcast=self.podcast1, views=10)
+        UserAnalytics.objects.create(user=self.user, podcast=self.podcast2, views=7)
 
         # Create analytics for another user
-        UserAnalytics.objects.create(
-            user=self.user2, podcast=self.podcast1, views=3
-        )
+        UserAnalytics.objects.create(user=self.user2, podcast=self.podcast1, views=3)
 
         self.client.force_authenticate(user=self.user)
         url = reverse("v1:api-v1-user-analytics-podcasts")
@@ -180,9 +156,7 @@ class UserAnalyticsViewSetAPITest(TestCase):
     def test_analytics_episodes_empty(self):
         """Test analytics-episodes returns empty list when no episode analytics exist."""
         # Create only podcast analytics
-        UserAnalytics.objects.create(
-            user=self.user, podcast=self.podcast1, views=10
-        )
+        UserAnalytics.objects.create(user=self.user, podcast=self.podcast1, views=10)
 
         self.client.force_authenticate(user=self.user)
         url = reverse("v1:api-v1-user-analytics-episodes")
@@ -195,9 +169,7 @@ class UserAnalyticsViewSetAPITest(TestCase):
     def test_analytics_podcasts_empty(self):
         """Test analytics-podcasts returns empty list when no podcast analytics exist."""
         # Create only episode analytics
-        UserAnalytics.objects.create(
-            user=self.user, episode=self.episode1, views=5
-        )
+        UserAnalytics.objects.create(user=self.user, episode=self.episode1, views=5)
 
         self.client.force_authenticate(user=self.user)
         url = reverse("v1:api-v1-user-analytics-podcasts")
@@ -237,9 +209,7 @@ class UserAnalyticsViewSetAPITest(TestCase):
 
     def test_analytics_includes_entity_details(self):
         """Test that analytics responses include detailed entity information."""
-        UserAnalytics.objects.create(
-            user=self.user, episode=self.episode1, views=5
-        )
+        UserAnalytics.objects.create(user=self.user, episode=self.episode1, views=5)
 
         self.client.force_authenticate(user=self.user)
         url = reverse("v1:api-v1-user-analytics-episodes")
@@ -260,18 +230,10 @@ class UserAnalyticsViewSetAPITest(TestCase):
     def test_analytics_user_isolation(self):
         """Test that users can only see their own analytics."""
         # Create analytics for both users
-        UserAnalytics.objects.create(
-            user=self.user, episode=self.episode1, views=5
-        )
-        UserAnalytics.objects.create(
-            user=self.user2, episode=self.episode2, views=3
-        )
-        UserAnalytics.objects.create(
-            user=self.user, podcast=self.podcast1, views=10
-        )
-        UserAnalytics.objects.create(
-            user=self.user2, podcast=self.podcast2, views=7
-        )
+        UserAnalytics.objects.create(user=self.user, episode=self.episode1, views=5)
+        UserAnalytics.objects.create(user=self.user2, episode=self.episode2, views=3)
+        UserAnalytics.objects.create(user=self.user, podcast=self.podcast1, views=10)
+        UserAnalytics.objects.create(user=self.user2, podcast=self.podcast2, views=7)
 
         # Test user1 can only see their own analytics
         self.client.force_authenticate(user=self.user)
@@ -306,12 +268,8 @@ class UserAnalyticsViewSetAPITest(TestCase):
 
     def test_analytics_select_related_efficiency(self):
         """Test that queries use select_related for efficiency."""
-        UserAnalytics.objects.create(
-            user=self.user, episode=self.episode1, views=5
-        )
-        UserAnalytics.objects.create(
-            user=self.user, podcast=self.podcast1, views=10
-        )
+        UserAnalytics.objects.create(user=self.user, episode=self.episode1, views=5)
+        UserAnalytics.objects.create(user=self.user, podcast=self.podcast1, views=10)
 
         self.client.force_authenticate(user=self.user)
 

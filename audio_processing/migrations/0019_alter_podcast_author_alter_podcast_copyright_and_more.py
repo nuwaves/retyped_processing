@@ -4,30 +4,46 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('audio_processing', '0018_processingbatch'),
+        ("audio_processing", "0018_processingbatch"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='podcast',
-            name='author',
-            field=models.CharField(blank=True, help_text='Podcast author/creator', max_length=2000, null=True),
+            model_name="podcast",
+            name="author",
+            field=models.CharField(
+                blank=True,
+                help_text="Podcast author/creator",
+                max_length=2000,
+                null=True,
+            ),
         ),
         migrations.AlterField(
-            model_name='podcast',
-            name='copyright',
-            field=models.CharField(blank=True, help_text='Copyright information', max_length=2000, null=True),
+            model_name="podcast",
+            name="copyright",
+            field=models.CharField(
+                blank=True,
+                help_text="Copyright information",
+                max_length=2000,
+                null=True,
+            ),
         ),
         migrations.AlterField(
-            model_name='podcast',
-            name='owner_name',
-            field=models.CharField(blank=True, help_text='Owner name', max_length=2000, null=True),
+            model_name="podcast",
+            name="owner_name",
+            field=models.CharField(
+                blank=True, help_text="Owner name", max_length=2000, null=True
+            ),
         ),
         migrations.AlterField(
-            model_name='quote',
-            name='speaker',
-            field=models.CharField(blank=True, help_text='Name or identifier of the person who said this quote', max_length=2000, null=True),
+            model_name="quote",
+            name="speaker",
+            field=models.CharField(
+                blank=True,
+                help_text="Name or identifier of the person who said this quote",
+                max_length=2000,
+                null=True,
+            ),
         ),
     ]

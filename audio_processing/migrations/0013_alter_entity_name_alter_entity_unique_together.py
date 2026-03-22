@@ -4,19 +4,18 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('audio_processing', '0012_entity_episode_entities'),
+        ("audio_processing", "0012_entity_episode_entities"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='entity',
-            name='name',
+            model_name="entity",
+            name="name",
             field=models.CharField(max_length=255),
         ),
         migrations.AlterUniqueTogether(
-            name='entity',
-            unique_together={('name', 'type')},
+            name="entity",
+            unique_together={("name", "type")},
         ),
     ]

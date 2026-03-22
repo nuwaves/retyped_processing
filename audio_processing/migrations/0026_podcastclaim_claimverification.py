@@ -8,41 +8,102 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('audio_processing', '0025_alter_topic_slug'),
+        ("audio_processing", "0025_alter_topic_slug"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='PodcastClaim',
+            name="PodcastClaim",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('status', models.CharField(choices=[('RECEIVED', 'Received'), ('IN_REVIEW', 'In Review'), ('APPROVED', 'Approved'), ('REJECTED', 'Rejected')], default='RECEIVED', verbose_name='Claim status')),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('updated_at', models.DateTimeField(auto_now=True)),
-                ('podcast', models.ForeignKey(help_text='Podcast this user is claiming as own', on_delete=django.db.models.deletion.CASCADE, related_name='podcast_claim', to='audio_processing.podcast')),
-                ('user', models.ForeignKey(help_text='Owner of the claim', on_delete=django.db.models.deletion.CASCADE, related_name='podcast_claim', to=settings.AUTH_USER_MODEL)),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "status",
+                    models.CharField(
+                        choices=[
+                            ("RECEIVED", "Received"),
+                            ("IN_REVIEW", "In Review"),
+                            ("APPROVED", "Approved"),
+                            ("REJECTED", "Rejected"),
+                        ],
+                        default="RECEIVED",
+                        verbose_name="Claim status",
+                    ),
+                ),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                ("updated_at", models.DateTimeField(auto_now=True)),
+                (
+                    "podcast",
+                    models.ForeignKey(
+                        help_text="Podcast this user is claiming as own",
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="podcast_claim",
+                        to="audio_processing.podcast",
+                    ),
+                ),
+                (
+                    "user",
+                    models.ForeignKey(
+                        help_text="Owner of the claim",
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="podcast_claim",
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
             ],
             options={
-                'verbose_name': 'Podcast claim',
-                'verbose_name_plural': 'Podcast claims',
+                "verbose_name": "Podcast claim",
+                "verbose_name_plural": "Podcast claims",
             },
         ),
         migrations.CreateModel(
-            name='ClaimVerification',
+            name="ClaimVerification",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('is_verified', models.BooleanField(default=False, verbose_name='Verified')),
-                ('verification_key', models.UUIDField(default=uuid.uuid4, editable=False, verbose_name='Unique verification key')),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('updated_at', models.DateTimeField(auto_now=True)),
-                ('claim', models.ForeignKey(help_text='Podcast this user is claiming as own', on_delete=django.db.models.deletion.CASCADE, related_name='claim_verification', to='audio_processing.podcastclaim')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "is_verified",
+                    models.BooleanField(default=False, verbose_name="Verified"),
+                ),
+                (
+                    "verification_key",
+                    models.UUIDField(
+                        default=uuid.uuid4,
+                        editable=False,
+                        verbose_name="Unique verification key",
+                    ),
+                ),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                ("updated_at", models.DateTimeField(auto_now=True)),
+                (
+                    "claim",
+                    models.ForeignKey(
+                        help_text="Podcast this user is claiming as own",
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="claim_verification",
+                        to="audio_processing.podcastclaim",
+                    ),
+                ),
             ],
             options={
-                'verbose_name': 'Podcast claim verification',
-                'verbose_name_plural': 'Podcast claim verifications',
+                "verbose_name": "Podcast claim verification",
+                "verbose_name_plural": "Podcast claim verifications",
             },
         ),
     ]

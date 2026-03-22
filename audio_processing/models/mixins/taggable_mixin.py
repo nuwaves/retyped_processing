@@ -14,13 +14,16 @@ class TaggableMixin:
     def _validate_transcript(self):
         """Check if transcript exists and is valid for processing."""
         if not self.transcript or not self.transcript.strip():
-            logger.warning(f"No transcript available for {self.__class__.__name__}: {getattr(self, 'raw_audio_url', str(self))}")
+            logger.warning(
+                f"No transcript available for {self.__class__.__name__}: {getattr(self, 'raw_audio_url', str(self))}"
+            )
             return False
         return True
 
     def _get_available_tags(self):
         """Get all available tags formatted for LLM processing."""
         from audio_processing.models.tag import Tag
+
         all_tags = Tag.objects.all()
 
         if not all_tags.exists():
@@ -32,7 +35,7 @@ class TaggableMixin:
             tag_info = {
                 "id": tag.id,
                 "name": tag.name,
-                "description": tag.description or tag.name
+                "description": tag.description or tag.name,
             }
             tag_list.append(tag_info)
 
@@ -45,7 +48,9 @@ class TaggableMixin:
         try:
             suggested_tag_ids = json.loads(llm_response)
             if not isinstance(suggested_tag_ids, list):
-                logger.error(f"Expected list of tag IDs, got: {type(suggested_tag_ids)}")
+                logger.error(
+                    f"Expected list of tag IDs, got: {type(suggested_tag_ids)}"
+                )
                 return None
 
             applied_tags = []
@@ -54,15 +59,21 @@ class TaggableMixin:
                     tag = Tag.objects.get(id=tag_id)
                     self.tags.add(tag)
                     applied_tags.append(tag_id)
-                    logger.info(f"Applied tag '{tag.name}' to {self.__class__.__name__}: {getattr(self, 'raw_audio_url', str(self))}")
+                    logger.info(
+                        f"Applied tag '{tag.name}' to {self.__class__.__name__}: {getattr(self, 'raw_audio_url', str(self))}"
+                    )
                 except Tag.DoesNotExist:
                     logger.warning(f"Tag with ID {tag_id} does not exist")
 
             if applied_tags:
-                logger.info(f"Successfully applied {len(applied_tags)} tags to {self.__class__.__name__}: {getattr(self, 'raw_audio_url', str(self))}")
+                logger.info(
+                    f"Successfully applied {len(applied_tags)} tags to {self.__class__.__name__}: {getattr(self, 'raw_audio_url', str(self))}"
+                )
                 return applied_tags
             else:
-                logger.warning(f"No valid tags were applied to {self.__class__.__name__}: {getattr(self, 'raw_audio_url', str(self))}")
+                logger.warning(
+                    f"No valid tags were applied to {self.__class__.__name__}: {getattr(self, 'raw_audio_url', str(self))}"
+                )
                 return []
 
         except json.JSONDecodeError:
@@ -83,7 +94,9 @@ class TaggableMixin:
         if tag_list is None:
             return None
 
-        logger.info(f"Analyzing transcript for tag suggestions: {getattr(self, 'raw_audio_url', str(self))}")
+        logger.info(
+            f"Analyzing transcript for tag suggestions: {getattr(self, 'raw_audio_url', str(self))}"
+        )
 
         # Build the prompt for Groq
         prompt = get_tag_suggestion_prompt(tag_list, self.transcript)
@@ -92,7 +105,9 @@ class TaggableMixin:
         # Call Groq LLM for tag suggestions
         llm_response = self.get_groq_completion(prompt)
         if llm_response is None:
-            logger.error(f"Failed to get tag suggestions for {self.__class__.__name__}: {getattr(self, 'raw_audio_url', str(self))}")
+            logger.error(
+                f"Failed to get tag suggestions for {self.__class__.__name__}: {getattr(self, 'raw_audio_url', str(self))}"
+            )
             return None
 
         # Parse and apply tags

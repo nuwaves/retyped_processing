@@ -13,6 +13,7 @@ from audio_processing.prompts import get_speaker_transcript_prompt
 
 logger = logging.getLogger(__name__)
 
+
 class GroqMixin:
     """
     Mixin providing Groq API integration for various LLM tasks.
@@ -21,39 +22,34 @@ class GroqMixin:
     def get_groq_completion(self, prompt, model=None, max_tokens=1000, temperature=0.3):
         """
         Generic method to get completions from Groq API.
-        
+
         Args:
             prompt (str): The prompt to send to the model
             model (str, optional): Model name, defaults to llama3-70b-8192
             max_tokens (int): Maximum tokens in response
             temperature (float): Temperature for response generation
-            
+
         Returns:
             str: The completion content or None if failed
         """
         url = "https://api.groq.com/openai/v1/chat/completions"
-        api_key = getattr(settings, 'GROQ_API_KEY', '')
+        api_key = getattr(settings, "GROQ_API_KEY", "")
         if not api_key:
             logger.error("GROQ_API_KEY not configured")
             return None
 
         # Default model if none specified
         if model is None:
-            model = getattr(config, 'DEFAULT_MODEL', 'llama-3.1-8b-instant')
+            model = getattr(config, "DEFAULT_MODEL", "llama-3.1-8b-instant")
 
         headers = {
             "Authorization": f"Bearer {api_key}",
-            "Content-Type": "application/json"
+            "Content-Type": "application/json",
         }
 
         data = {
             "model": model,
-            "messages": [
-                {
-                    "role": "user",
-                    "content": prompt
-                }
-            ],
+            "messages": [{"role": "user", "content": prompt}],
             "temperature": temperature,
             "max_tokens": max_tokens,
         }
@@ -63,10 +59,12 @@ class GroqMixin:
             response.raise_for_status()
 
             result = response.json()
-            content = result['choices'][0]['message']['content'].strip()
+            content = result["choices"][0]["message"]["content"].strip()
 
             # Remove any <think> tags that might be present
-            content = re.sub(r'<think>.*?</think>', '', content, flags=re.DOTALL).strip()
+            content = re.sub(
+                r"<think>.*?</think>", "", content, flags=re.DOTALL
+            ).strip()
 
             return content
 
@@ -84,7 +82,7 @@ class GroqMixin:
             str: The transcript text or None if failed
         """
         url = "https://api.groq.com/openai/v1/audio/transcriptions"
-        api_key = getattr(settings, 'GROQ_API_KEY', '')
+        api_key = getattr(settings, "GROQ_API_KEY", "")
         if not api_key:
             logger.error("GROQ_API_KEY not configured")
             return None
@@ -108,7 +106,7 @@ class GroqMixin:
                 transcript = result.get("text", "")
             else:
                 # Single file, send as usual
-                with open(tmp_path, 'rb') as f:
+                with open(tmp_path, "rb") as f:
                     files = {
                         "url": (None, clean_url),
                         "model": (None, config.TEXT_TO_SPEECH_MODEL),
@@ -133,7 +131,6 @@ class GroqMixin:
                 except Exception:
                     pass
 
-
     def generate_speaker_script(self):
         """
         Use Groq LLM to convert the raw transcript into a formatted script with speaker identification.
@@ -152,9 +149,9 @@ class GroqMixin:
             # Use the generic completion method
             script_content = self.get_groq_completion(
                 prompt=prompt,
-                model=getattr(config, 'SPEAKER_MODEL', None),
+                model=getattr(config, "SPEAKER_MODEL", None),
                 max_tokens=8000,
-                temperature=0.3
+                temperature=0.3,
             )
 
             if script_content:
@@ -173,16 +170,20 @@ class GroqMixin:
     def _validate_transcript(self):
         """
         Validate that the transcript exists and is suitable for processing.
-        
+
         Returns:
             bool: True if transcript is valid, False otherwise
         """
-        if not hasattr(self, 'transcript') or not self.transcript:
-            logger.warning(f"No transcript available for: {getattr(self, 'raw_audio_url', 'Unknown')}")
+        if not hasattr(self, "transcript") or not self.transcript:
+            logger.warning(
+                f"No transcript available for: {getattr(self, 'raw_audio_url', 'Unknown')}"
+            )
             return False
 
         if not self.transcript.strip():
-            logger.warning(f"Empty transcript for: {getattr(self, 'raw_audio_url', 'Unknown')}")
+            logger.warning(
+                f"Empty transcript for: {getattr(self, 'raw_audio_url', 'Unknown')}"
+            )
             return False
 
         return True

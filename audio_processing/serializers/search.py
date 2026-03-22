@@ -11,6 +11,7 @@ class SearchAggregationsSerializer(serializers.Serializer):
     """
     Serializer for aggregated tags and topics in search results.
     """
+
     tags = TagSerializer(many=True, read_only=True)
     topics = TopicSerializer(many=True, read_only=True)
 
@@ -31,6 +32,7 @@ class SearchResultsSerializer(serializers.Serializer):
         }
     }
     """
+
     episodes = EpisodeSerializer(many=True, read_only=True, required=False)
     podcasts = PodcastListSerializer(many=True, read_only=True, required=False)
     entities = EntitySerializer(many=True, read_only=True, required=False)

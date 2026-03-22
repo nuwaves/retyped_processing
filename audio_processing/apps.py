@@ -4,6 +4,7 @@ Django app configuration for audio_processing.
 This module defines the app configuration and ensures that
 signals are registered when the app is ready.
 """
+
 from django.apps import AppConfig
 
 
@@ -11,9 +12,10 @@ class AudioProcessingConfig(AppConfig):
     """
     Configuration for the audio_processing Django app.
     """
-    default_auto_field = 'django.db.models.BigAutoField'
-    name = 'audio_processing'
-    verbose_name = 'Audio Processing'
+
+    default_auto_field = "django.db.models.BigAutoField"
+    name = "audio_processing"
+    verbose_name = "Audio Processing"
 
     def ready(self):
         """

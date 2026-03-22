@@ -19,21 +19,29 @@ def preprocess_audio(input_path: Path) -> Path:
     if not input_path.exists():
         raise FileNotFoundError(f"Input file not found: {input_path}")
 
-    with tempfile.NamedTemporaryFile(suffix='.flac', delete=False) as temp_file:
+    with tempfile.NamedTemporaryFile(suffix=".flac", delete=False) as temp_file:
         output_path = Path(temp_file.name)
     print("Converting audio to 16kHz mono FLAC...")
     try:
-        subprocess.run([
-            'ffmpeg',
-            '-hide_banner',
-            '-loglevel', 'error',
-            '-i', str(input_path),
-            '-ar', '16000',
-            '-ac', '1',
-            '-c:a', 'flac',
-            '-y',
-            str(output_path)
-        ], check=True)
+        subprocess.run(
+            [
+                "ffmpeg",
+                "-hide_banner",
+                "-loglevel",
+                "error",
+                "-i",
+                str(input_path),
+                "-ar",
+                "16000",
+                "-ac",
+                "1",
+                "-c:a",
+                "flac",
+                "-y",
+                str(output_path),
+            ],
+            check=True,
+        )
         return output_path
     except subprocess.CalledProcessError as e:
         try:
@@ -42,16 +50,19 @@ def preprocess_audio(input_path: Path) -> Path:
             pass
         raise RuntimeError(f"FFmpeg conversion failed: {e.stderr}")
 
-def transcribe_single_chunk(client: Groq, chunk: AudioSegment, chunk_num: int, total_chunks: int) -> tuple[dict, float]:
+
+def transcribe_single_chunk(
+    client: Groq, chunk: AudioSegment, chunk_num: int, total_chunks: int
+) -> tuple[dict, float]:
     """
     Transcribe a single audio chunk with Groq API.
-    
+
     Args:
         client: Groq client instance
         chunk: Audio segment to transcribe
         chunk_num: Current chunk number
         total_chunks: Total number of chunks
-        
+
     Returns:
         Tuple of (transcription result, processing time)
 
@@ -61,24 +72,26 @@ def transcribe_single_chunk(client: Groq, chunk: AudioSegment, chunk_num: int, t
     total_api_time = 0
 
     while True:
-        temp_file = tempfile.NamedTemporaryFile(suffix='.flac', delete=False)
+        temp_file = tempfile.NamedTemporaryFile(suffix=".flac", delete=False)
         try:
-            chunk.export(temp_file.name, format='flac')
+            chunk.export(temp_file.name, format="flac")
             start_time = time.time()
             try:
-                with open(temp_file.name, 'rb') as f:
+                with open(temp_file.name, "rb") as f:
                     result = client.audio.transcriptions.create(
                         file=("chunk.flac", f, "audio/flac"),
                         model="whisper-large-v3",
                         language="en",
-                        response_format="verbose_json"
+                        response_format="verbose_json",
                     )
                 api_time = time.time() - start_time
                 total_api_time += api_time
                 print(f"Chunk {chunk_num}/{total_chunks} processed in {api_time:.2f}s")
                 return result, total_api_time
             except RateLimitError:
-                print(f"\nRate limit hit for chunk {chunk_num} - retrying in 60 seconds...")
+                print(
+                    f"\nRate limit hit for chunk {chunk_num} - retrying in 60 seconds..."
+                )
                 time.sleep(60)
                 continue
             except Exception as e:
@@ -90,17 +103,20 @@ def transcribe_single_chunk(client: Groq, chunk: AudioSegment, chunk_num: int, t
             except Exception:
                 pass
 
-def find_longest_common_sequence(sequences: list[str], match_by_words: bool = True) -> str:
+
+def find_longest_common_sequence(
+    sequences: list[str], match_by_words: bool = True
+) -> str:
     """
     Find the optimal alignment between sequences with longest common sequence and sliding window matching.
-    
+
     Args:
         sequences: List of text sequences to align and merge
         match_by_words: Whether to match by words (True) or characters (False)
-        
+
     Returns:
         str: Merged sequence with optimal alignment
-        
+
     Raises:
         RuntimeError: If there's a mismatch in sequence lengths during comparison
     """
@@ -110,8 +126,7 @@ def find_longest_common_sequence(sequences: list[str], match_by_words: bool = Tr
     # Convert input based on matching strategy
     if match_by_words:
         sequences = [
-            [word for word in re.split(r'(\s+\w+)', seq) if word]
-            for seq in sequences
+            [word for word in re.split(r"(\s+\w+)", seq) if word] for seq in sequences
         ]
     else:
         sequences = [list(seq) for seq in sequences]
@@ -169,19 +184,20 @@ def find_longest_common_sequence(sequences: list[str], match_by_words: bool = Tr
 
     # Join back into text
     if match_by_words:
-        return ''.join(total_sequence)
-    return ''.join(total_sequence)
+        return "".join(total_sequence)
+    return "".join(total_sequence)
+
 
 def merge_transcripts(results: list[tuple[dict, int]]) -> dict:
     """
     Merge transcription chunks and handle overlaps.
-    
+
     Works with responses from Groq API regardless of whether segments, words,
     or both were requested via timestamp_granularities.
-    
+
     Args:
         results: List of (result, start_time) tuples
-        
+
     Returns:
         dict: Merged transcription
     """
@@ -190,8 +206,12 @@ def merge_transcripts(results: list[tuple[dict, int]]) -> dict:
     # First, check if we have segments in our results
     has_segments = False
     for chunk, _ in results:
-        data = chunk.model_dump() if hasattr(chunk, 'model_dump') else chunk
-        if 'segments' in data and data['segments'] is not None and len(data['segments']) > 0:
+        data = chunk.model_dump() if hasattr(chunk, "model_dump") else chunk
+        if (
+            "segments" in data
+            and data["segments"] is not None
+            and len(data["segments"]) > 0
+        ):
             has_segments = True
             break
 
@@ -201,32 +221,37 @@ def merge_transcripts(results: list[tuple[dict, int]]) -> dict:
 
     for chunk, chunk_start_ms in results:
         # Convert Pydantic model to dict
-        data = chunk.model_dump() if hasattr(chunk, 'model_dump') else chunk
+        data = chunk.model_dump() if hasattr(chunk, "model_dump") else chunk
 
         # Process word timestamps if available
-        if isinstance(data, dict) and 'words' in data and data['words'] is not None and len(data['words']) > 0:
+        if (
+            isinstance(data, dict)
+            and "words" in data
+            and data["words"] is not None
+            and len(data["words"]) > 0
+        ):
             has_words = True
             # Adjust word timestamps based on chunk start time
-            chunk_words = data['words']
+            chunk_words = data["words"]
             for word in chunk_words:
                 # Convert chunk_start_ms from milliseconds to seconds for word timestamp adjustment
-                word['start'] = word['start'] + (chunk_start_ms / 1000)
-                word['end'] = word['end'] + (chunk_start_ms / 1000)
+                word["start"] = word["start"] + (chunk_start_ms / 1000)
+                word["end"] = word["end"] + (chunk_start_ms / 1000)
             words.extend(chunk_words)
-        elif hasattr(chunk, 'words') and getattr(chunk, 'words') is not None:
+        elif hasattr(chunk, "words") and getattr(chunk, "words") is not None:
             has_words = True
             # Handle Pydantic model for words
-            chunk_words = getattr(chunk, 'words')
+            chunk_words = getattr(chunk, "words")
             processed_words = []
             for word in chunk_words:
-                if hasattr(word, 'model_dump'):
+                if hasattr(word, "model_dump"):
                     word_dict = word.model_dump()
                 else:
                     # Create a dict from the word object
                     word_dict = {
-                        'word': getattr(word, 'word', ''),
-                        'start': getattr(word, 'start', 0) + (chunk_start_ms / 1000),
-                        'end': getattr(word, 'end', 0) + (chunk_start_ms / 1000)
+                        "word": getattr(word, "word", ""),
+                        "start": getattr(word, "start", 0) + (chunk_start_ms / 1000),
+                        "end": getattr(word, "end", 0) + (chunk_start_ms / 1000),
                     }
                 processed_words.append(word_dict)
             words.extend(processed_words)
@@ -239,14 +264,14 @@ def merge_transcripts(results: list[tuple[dict, int]]) -> dict:
 
         for chunk, _ in results:
             # Convert Pydantic model to dict
-            data = chunk.model_dump() if hasattr(chunk, 'model_dump') else chunk
+            data = chunk.model_dump() if hasattr(chunk, "model_dump") else chunk
 
             # Get text - handle both dictionary and object access
             if isinstance(data, dict):
-                text = data.get('text', '')
+                text = data.get("text", "")
             else:
                 # For Pydantic models or other objects
-                text = getattr(chunk, 'text', '')
+                text = getattr(chunk, "text", "")
 
             texts.append(text)
 
@@ -267,15 +292,15 @@ def merge_transcripts(results: list[tuple[dict, int]]) -> dict:
     processed_chunks = []
 
     for i, (chunk, chunk_start_ms) in enumerate(results):
-        data = chunk.model_dump() if hasattr(chunk, 'model_dump') else chunk
+        data = chunk.model_dump() if hasattr(chunk, "model_dump") else chunk
 
         # Handle both dictionary and object access for segments
         if isinstance(data, dict):
-            segments = data.get('segments', [])
+            segments = data.get("segments", [])
         else:
-            segments = getattr(chunk, 'segments', [])
+            segments = getattr(chunk, "segments", [])
             # Convert segments to list of dicts if needed
-            if hasattr(segments, 'model_dump'):
+            if hasattr(segments, "model_dump"):
                 segments = segments.model_dump()
             elif not isinstance(segments, list):
                 segments = []
@@ -291,45 +316,52 @@ def merge_transcripts(results: list[tuple[dict, int]]) -> dict:
             for segment in segments:
                 # Handle both dict and object access for segment
                 if isinstance(segment, dict):
-                    segment_end = segment['end']
+                    segment_end = segment["end"]
                 else:
-                    segment_end = getattr(segment, 'end', 0)
+                    segment_end = getattr(segment, "end", 0)
 
                 # Convert segment end time to ms and compare with next chunk start time
                 if segment_end * 1000 > next_start:
                     # Make sure segment is a dict
-                    if not isinstance(segment, dict) and hasattr(segment, 'model_dump'):
+                    if not isinstance(segment, dict) and hasattr(segment, "model_dump"):
                         segment = segment.model_dump()
                     elif not isinstance(segment, dict):
                         # Create a dict from the segment object
                         segment = {
-                            'text': getattr(segment, 'text', ''),
-                            'start': getattr(segment, 'start', 0),
-                            'end': segment_end
+                            "text": getattr(segment, "text", ""),
+                            "start": getattr(segment, "start", 0),
+                            "end": segment_end,
                         }
                     overlap_segments.append(segment)
                 else:
                     # Make sure segment is a dict
-                    if not isinstance(segment, dict) and hasattr(segment, 'model_dump'):
+                    if not isinstance(segment, dict) and hasattr(segment, "model_dump"):
                         segment = segment.model_dump()
                     elif not isinstance(segment, dict):
                         # Create a dict from the segment object
                         segment = {
-                            'text': getattr(segment, 'text', ''),
-                            'start': getattr(segment, 'start', 0),
-                            'end': segment_end
+                            "text": getattr(segment, "text", ""),
+                            "start": getattr(segment, "start", 0),
+                            "end": segment_end,
                         }
                     current_segments.append(segment)
 
             # Merge overlap segments if any exist
             if overlap_segments:
                 merged_overlap = overlap_segments[0].copy()
-                merged_overlap.update({
-                    'text': ' '.join(s.get('text', '') if isinstance(s, dict) else getattr(s, 'text', '')
-                                   for s in overlap_segments),
-                    'end': overlap_segments[-1].get('end', 0) if isinstance(overlap_segments[-1], dict)
-                           else getattr(overlap_segments[-1], 'end', 0)
-                })
+                merged_overlap.update(
+                    {
+                        "text": " ".join(
+                            s.get("text", "")
+                            if isinstance(s, dict)
+                            else getattr(s, "text", "")
+                            for s in overlap_segments
+                        ),
+                        "end": overlap_segments[-1].get("end", 0)
+                        if isinstance(overlap_segments[-1], dict)
+                        else getattr(overlap_segments[-1], "end", 0),
+                    }
+                )
                 current_segments.append(merged_overlap)
 
             processed_chunks.append(current_segments)
@@ -337,14 +369,16 @@ def merge_transcripts(results: list[tuple[dict, int]]) -> dict:
             # For last chunk, ensure all segments are dicts
             dict_segments = []
             for segment in segments:
-                if not isinstance(segment, dict) and hasattr(segment, 'model_dump'):
+                if not isinstance(segment, dict) and hasattr(segment, "model_dump"):
                     dict_segments.append(segment.model_dump())
                 elif not isinstance(segment, dict):
-                    dict_segments.append({
-                        'text': getattr(segment, 'text', ''),
-                        'start': getattr(segment, 'start', 0),
-                        'end': getattr(segment, 'end', 0)
-                    })
+                    dict_segments.append(
+                        {
+                            "text": getattr(segment, "text", ""),
+                            "start": getattr(segment, "start", 0),
+                            "end": getattr(segment, "end", 0),
+                        }
+                    )
                 else:
                     dict_segments.append(segment)
             processed_chunks.append(dict_segments)
@@ -352,7 +386,7 @@ def merge_transcripts(results: list[tuple[dict, int]]) -> dict:
     # Merge boundaries between chunks
     for i in range(len(processed_chunks) - 1):
         # Skip if either chunk has no segments
-        if not processed_chunks[i] or not processed_chunks[i+1]:
+        if not processed_chunks[i] or not processed_chunks[i + 1]:
             continue
 
         # Add all segments except last from current chunk
@@ -361,23 +395,37 @@ def merge_transcripts(results: list[tuple[dict, int]]) -> dict:
 
         # Merge boundary segments
         last_segment = processed_chunks[i][-1]
-        first_segment = processed_chunks[i+1][0]
+        first_segment = processed_chunks[i + 1][0]
 
-        merged_text = find_longest_common_sequence([
-            last_segment.get('text', '') if isinstance(last_segment, dict) else getattr(last_segment, 'text', ''),
-            first_segment.get('text', '') if isinstance(first_segment, dict) else getattr(first_segment, 'text', '')
-        ])
+        merged_text = find_longest_common_sequence(
+            [
+                last_segment.get("text", "")
+                if isinstance(last_segment, dict)
+                else getattr(last_segment, "text", ""),
+                first_segment.get("text", "")
+                if isinstance(first_segment, dict)
+                else getattr(first_segment, "text", ""),
+            ]
+        )
 
-        merged_segment = last_segment.copy() if isinstance(last_segment, dict) else {
-            'text': getattr(last_segment, 'text', ''),
-            'start': getattr(last_segment, 'start', 0),
-            'end': getattr(last_segment, 'end', 0)
-        }
+        merged_segment = (
+            last_segment.copy()
+            if isinstance(last_segment, dict)
+            else {
+                "text": getattr(last_segment, "text", ""),
+                "start": getattr(last_segment, "start", 0),
+                "end": getattr(last_segment, "end", 0),
+            }
+        )
 
-        merged_segment.update({
-            'text': merged_text,
-            'end': first_segment.get('end', 0) if isinstance(first_segment, dict) else getattr(first_segment, 'end', 0)
-        })
+        merged_segment.update(
+            {
+                "text": merged_text,
+                "end": first_segment.get("end", 0)
+                if isinstance(first_segment, dict)
+                else getattr(first_segment, "end", 0),
+            }
+        )
         final_segments.append(merged_segment)
 
     # Add all segments from last chunk
@@ -385,16 +433,15 @@ def merge_transcripts(results: list[tuple[dict, int]]) -> dict:
         final_segments.extend(processed_chunks[-1])
 
     # Create final transcription
-    final_text = ' '.join(
-        segment.get('text', '') if isinstance(segment, dict) else getattr(segment, 'text', '')
+    final_text = " ".join(
+        segment.get("text", "")
+        if isinstance(segment, dict)
+        else getattr(segment, "text", "")
         for segment in final_segments
     )
 
     # Create result with both segments and words (if available)
-    result = {
-        "text": final_text,
-        "segments": final_segments
-    }
+    result = {"text": final_text, "segments": final_segments}
 
     # Include word-level timestamps if available
     if has_words:
@@ -402,14 +449,15 @@ def merge_transcripts(results: list[tuple[dict, int]]) -> dict:
 
     return result
 
+
 def save_results(result: dict, audio_path: Path) -> Path:
     """
     Save transcription results to files.
-    
+
     Args:
         result: Transcription result dictionary
         audio_path: Original audio file path
-        
+
     Returns:
         base_path: Base path where files were saved
 
@@ -424,13 +472,13 @@ def save_results(result: dict, audio_path: Path) -> Path:
         base_path = output_dir / f"{Path(audio_path).stem}_{timestamp}"
 
         # Save results in different formats
-        with open(f"{base_path}.txt", 'w', encoding='utf-8') as f:
+        with open(f"{base_path}.txt", "w", encoding="utf-8") as f:
             f.write(result["text"])
 
-        with open(f"{base_path}_full.json", 'w', encoding='utf-8') as f:
+        with open(f"{base_path}_full.json", "w", encoding="utf-8") as f:
             json.dump(result, f, indent=2, ensure_ascii=False)
 
-        with open(f"{base_path}_segments.json", 'w', encoding='utf-8') as f:
+        with open(f"{base_path}_segments.json", "w", encoding="utf-8") as f:
             json.dump(result["segments"], f, indent=2, ensure_ascii=False)
 
         print("\nResults saved to transcriptions folder:")
@@ -444,18 +492,21 @@ def save_results(result: dict, audio_path: Path) -> Path:
         print(f"Error saving results: {str(e)}")
         raise
 
-def transcribe_audio_in_chunks(audio_path: Path, chunk_length: int = 600, overlap: int = 10) -> dict:
+
+def transcribe_audio_in_chunks(
+    audio_path: Path, chunk_length: int = 600, overlap: int = 10
+) -> dict:
     """
     Transcribe audio in chunks with overlap with Whisper via Groq API.
-    
+
     Args:
         audio_path: Path to audio file
         chunk_length: Length of each chunk in seconds
         overlap: Overlap between chunks in seconds
-    
+
     Returns:
         dict: Containing transcription results
-    
+
     Raises:
         ValueError: If Groq API key is not set
         RuntimeError: If audio file fails to load
@@ -478,7 +529,7 @@ def transcribe_audio_in_chunks(audio_path: Path, chunk_length: int = 600, overla
             raise RuntimeError(f"Failed to load audio: {str(e)}")
 
         duration = len(audio)
-        print(f"Audio duration: {duration/1000:.2f}s")
+        print(f"Audio duration: {duration / 1000:.2f}s")
 
         # Calculate # of chunks
         chunk_ms = chunk_length * 1000
@@ -494,11 +545,13 @@ def transcribe_audio_in_chunks(audio_path: Path, chunk_length: int = 600, overla
             start = i * (chunk_ms - overlap_ms)
             end = min(start + chunk_ms, duration)
 
-            print(f"\nProcessing chunk {i+1}/{total_chunks}")
-            print(f"Time range: {start/1000:.1f}s - {end/1000:.1f}s")
+            print(f"\nProcessing chunk {i + 1}/{total_chunks}")
+            print(f"Time range: {start / 1000:.1f}s - {end / 1000:.1f}s")
 
             chunk = audio[start:end]
-            result, chunk_time = transcribe_single_chunk(client, chunk, i+1, total_chunks)
+            result, chunk_time = transcribe_single_chunk(
+                client, chunk, i + 1, total_chunks
+            )
             total_transcription_time += chunk_time
             results.append((result, start))
 

@@ -14,6 +14,7 @@ Including another URLconf
     1. Import the include() function: from django.urls import include, path
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
+
 from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
@@ -23,7 +24,6 @@ from drf_yasg import openapi
 from drf_yasg.views import get_schema_view
 
 from audio_processing.sitemaps import (
-    StaticPageSitemap,
     dynamic_sitemap_view,
     sitemap_index_view,
 )
@@ -66,5 +66,9 @@ urlpatterns = [
     path("api/v1/", include((api_v1_patterns, "api_v1"), namespace="v1")),
     # Sitemap index and paginated sitemaps
     path("sitemap.xml", sitemap_index_view, name="sitemap-index"),
-    re_path(r"^sitemap-(?P<section>.+)\.xml$", dynamic_sitemap_view, name="django.contrib.sitemaps.views.sitemap"),
-    ] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
+    re_path(
+        r"^sitemap-(?P<section>.+)\.xml$",
+        dynamic_sitemap_view,
+        name="django.contrib.sitemaps.views.sitemap",
+    ),
+] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)

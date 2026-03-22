@@ -1,4 +1,5 @@
 """Admin package initializer: import submodules so Django registers admin classes."""
+
 from django.contrib import admin
 
 from audio_processing.models import Bookmark, Follow

@@ -15,8 +15,8 @@ class PodcastSerializer(serializers.ModelSerializer):
     def get_tags(self, obj):
         """Return tags ordered by podcast count."""
         tags = obj.tags.annotate(
-            podcast_count=Count('podcasts', distinct=True)
-        ).order_by('-podcast_count')
+            podcast_count=Count("podcasts", distinct=True)
+        ).order_by("-podcast_count")
         return TagSerializer(tags, many=True).data
 
     def get_bookmark_count(self, obj):
@@ -40,7 +40,6 @@ class PodcastSerializer(serializers.ModelSerializer):
 
 
 class PodcastListSerializer(PodcastSerializer):
-
     class Meta:
         model = Podcast
         fields = [

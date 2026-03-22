@@ -4,6 +4,7 @@ Tests for PodcastClaim signal handlers.
 These tests verify that ClaimVerification records are automatically
 created when PodcastClaims are created under the correct conditions.
 """
+
 from django.contrib.auth.models import User
 from django.test import TestCase
 
@@ -26,36 +27,30 @@ class PodcastClaimSignalTest(TestCase):
         """
         # Create test users
         self.user1 = User.objects.create_user(
-            username="testuser1",
-            email="testuser1@example.com",
-            password="testpass123"
+            username="testuser1", email="testuser1@example.com", password="testpass123"
         )
         self.user2 = User.objects.create_user(
-            username="testuser2",
-            email="testuser2@example.com",
-            password="testpass123"
+            username="testuser2", email="testuser2@example.com", password="testpass123"
         )
         self.user3 = User.objects.create_user(
-            username="testuser3",
-            email="testuser3@example.com",
-            password="testpass123"
+            username="testuser3", email="testuser3@example.com", password="testpass123"
         )
 
         # Create test podcasts
         self.podcast1 = Podcast.objects.create(
             name="Test Podcast 1",
             url="https://example.com/podcast1/rss",
-            owner_email="owner1@example.com"
+            owner_email="owner1@example.com",
         )
         self.podcast2 = Podcast.objects.create(
             name="Test Podcast 2",
             url="https://example.com/podcast2/rss",
-            owner_email=None  # No owner email set
+            owner_email=None,  # No owner email set
         )
         self.podcast3 = Podcast.objects.create(
             name="Test Podcast 3",
             url="https://example.com/podcast3/rss",
-            owner_email="testuser2@example.com"  # Matches user2's email
+            owner_email="testuser2@example.com",  # Matches user2's email
         )
 
     def test_claim_verification_created_when_all_criteria_met(self):
@@ -66,15 +61,12 @@ class PodcastClaimSignalTest(TestCase):
         - No ClaimVerification already exists
         """
         # Create a claim
-        claim = PodcastClaim.objects.create(
-            user=self.user1,
-            podcast=self.podcast1
-        )
+        claim = PodcastClaim.objects.create(user=self.user1, podcast=self.podcast1)
 
         # Verify that ClaimVerification was created
         self.assertTrue(
             ClaimVerification.objects.filter(claim=claim).exists(),
-            "ClaimVerification should be created when all criteria are met"
+            "ClaimVerification should be created when all criteria are met",
         )
 
         verification = ClaimVerification.objects.get(claim=claim)
@@ -85,15 +77,12 @@ class PodcastClaimSignalTest(TestCase):
         """
         Test that ClaimVerification is created when podcast has no owner_email set.
         """
-        claim = PodcastClaim.objects.create(
-            user=self.user1,
-            podcast=self.podcast2
-        )
+        claim = PodcastClaim.objects.create(user=self.user1, podcast=self.podcast2)
 
         # Verify that ClaimVerification was created
         self.assertTrue(
             ClaimVerification.objects.filter(claim=claim).exists(),
-            "ClaimVerification should be created when podcast has no owner_email"
+            "ClaimVerification should be created when podcast has no owner_email",
         )
 
     def test_claim_verification_not_created_when_podcast_owner_exists(self):
@@ -106,19 +95,16 @@ class PodcastClaimSignalTest(TestCase):
             podcast=self.podcast1,
             email=self.user1.email,
             first_name="Test",
-            last_name="Owner"
+            last_name="Owner",
         )
 
         # Create a claim
-        claim = PodcastClaim.objects.create(
-            user=self.user1,
-            podcast=self.podcast1
-        )
+        claim = PodcastClaim.objects.create(user=self.user1, podcast=self.podcast1)
 
         # Verify that ClaimVerification was NOT created
         self.assertFalse(
             ClaimVerification.objects.filter(claim=claim).exists(),
-            "ClaimVerification should NOT be created when PodcastOwner exists with user's email"
+            "ClaimVerification should NOT be created when PodcastOwner exists with user's email",
         )
 
     def test_claim_verification_not_created_when_owner_email_matches(self):
@@ -127,15 +113,12 @@ class PodcastClaimSignalTest(TestCase):
         owner_email matches the user's email.
         """
         # Create a claim for podcast3, which has owner_email matching user2's email
-        claim = PodcastClaim.objects.create(
-            user=self.user2,
-            podcast=self.podcast3
-        )
+        claim = PodcastClaim.objects.create(user=self.user2, podcast=self.podcast3)
 
         # Verify that ClaimVerification was NOT created
         self.assertFalse(
             ClaimVerification.objects.filter(claim=claim).exists(),
-            "ClaimVerification should NOT be created when podcast owner_email matches user email"
+            "ClaimVerification should NOT be created when podcast owner_email matches user email",
         )
 
     def test_claim_verification_not_created_when_verification_exists(self):
@@ -144,10 +127,7 @@ class PodcastClaimSignalTest(TestCase):
         for the claim.
         """
         # Create a claim
-        claim = PodcastClaim.objects.create(
-            user=self.user1,
-            podcast=self.podcast1
-        )
+        claim = PodcastClaim.objects.create(user=self.user1, podcast=self.podcast1)
 
         # Verify that one ClaimVerification was created
         initial_count = ClaimVerification.objects.filter(claim=claim).count()
@@ -161,7 +141,7 @@ class PodcastClaimSignalTest(TestCase):
         self.assertEqual(
             final_count,
             1,
-            "No additional ClaimVerification should be created on claim update"
+            "No additional ClaimVerification should be created on claim update",
         )
 
     def test_claim_verification_case_insensitive_email_matching(self):
@@ -173,19 +153,16 @@ class PodcastClaimSignalTest(TestCase):
         podcast = Podcast.objects.create(
             name="Test Podcast Case",
             url="https://example.com/podcast-case/rss",
-            owner_email="TESTUSER3@EXAMPLE.COM"  # Uppercase version of user3's email
+            owner_email="TESTUSER3@EXAMPLE.COM",  # Uppercase version of user3's email
         )
 
         # Create a claim with user3 (whose email is lowercase)
-        claim = PodcastClaim.objects.create(
-            user=self.user3,
-            podcast=podcast
-        )
+        claim = PodcastClaim.objects.create(user=self.user3, podcast=podcast)
 
         # Verify that ClaimVerification was NOT created (case-insensitive match)
         self.assertFalse(
             ClaimVerification.objects.filter(claim=claim).exists(),
-            "ClaimVerification should NOT be created when owner_email matches (case-insensitive)"
+            "ClaimVerification should NOT be created when owner_email matches (case-insensitive)",
         )
 
     def test_multiple_claims_different_users_same_podcast(self):
@@ -194,23 +171,17 @@ class PodcastClaimSignalTest(TestCase):
         by different users on the same podcast.
         """
         # Create claims from different users for the same podcast
-        claim1 = PodcastClaim.objects.create(
-            user=self.user1,
-            podcast=self.podcast1
-        )
-        claim2 = PodcastClaim.objects.create(
-            user=self.user3,
-            podcast=self.podcast1
-        )
+        claim1 = PodcastClaim.objects.create(user=self.user1, podcast=self.podcast1)
+        claim2 = PodcastClaim.objects.create(user=self.user3, podcast=self.podcast1)
 
         # Verify that ClaimVerification was created for both claims
         self.assertTrue(
             ClaimVerification.objects.filter(claim=claim1).exists(),
-            "ClaimVerification should be created for first user's claim"
+            "ClaimVerification should be created for first user's claim",
         )
         self.assertTrue(
             ClaimVerification.objects.filter(claim=claim2).exists(),
-            "ClaimVerification should be created for second user's claim"
+            "ClaimVerification should be created for second user's claim",
         )
 
         # Verify they have different verification keys
@@ -219,7 +190,7 @@ class PodcastClaimSignalTest(TestCase):
         self.assertNotEqual(
             verification1.verification_key,
             verification2.verification_key,
-            "Each ClaimVerification should have a unique verification_key"
+            "Each ClaimVerification should have a unique verification_key",
         )
 
     def test_claim_with_different_status(self):
@@ -231,11 +202,11 @@ class PodcastClaimSignalTest(TestCase):
         claim = PodcastClaim.objects.create(
             user=self.user1,
             podcast=self.podcast2,
-            status=PodcastClaim.ClaimStatus.IN_REVIEW
+            status=PodcastClaim.ClaimStatus.IN_REVIEW,
         )
 
         # Verify that ClaimVerification was created
         self.assertTrue(
             ClaimVerification.objects.filter(claim=claim).exists(),
-            "ClaimVerification should be created regardless of claim status"
+            "ClaimVerification should be created regardless of claim status",
         )

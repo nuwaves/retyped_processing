@@ -17,56 +17,56 @@ class UserAnalytics(models.Model):
     user = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
-        related_name='analytics',
+        related_name="analytics",
         help_text="User who performed the action",
         blank=True,
-        null=True
+        null=True,
     )
 
     # Entity relationships (one of these will be set)
     podcast = models.ForeignKey(
-        'Podcast',
+        "Podcast",
         on_delete=models.CASCADE,
-        related_name='user_analytics',
+        related_name="user_analytics",
         blank=True,
         null=True,
-        help_text="Podcast this analytics record refers to"
+        help_text="Podcast this analytics record refers to",
     )
     episode = models.ForeignKey(
-        'Episode',
+        "Episode",
         on_delete=models.CASCADE,
-        related_name='user_analytics',
+        related_name="user_analytics",
         blank=True,
         null=True,
-        help_text="Episode this analytics record refers to"
+        help_text="Episode this analytics record refers to",
     )
     views = models.IntegerField(
-        default=0,
-        help_text="Number of views for this analytics record"
+        default=0, help_text="Number of views for this analytics record"
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
-
     class Meta:
         verbose_name = "User Analytics"
         verbose_name_plural = "User Analytics"
-        ordering = ['-updated_at']
+        ordering = ["-updated_at"]
         indexes = [
-            models.Index(fields=['user']),
-            models.Index(fields=['podcast']),
-            models.Index(fields=['episode']),
+            models.Index(fields=["user"]),
+            models.Index(fields=["podcast"]),
+            models.Index(fields=["episode"]),
         ]
 
         # Ensure we have analytics for either podcast OR episode, not both
         constraints = [
             models.CheckConstraint(
                 check=models.Q(podcast__isnull=False) | models.Q(episode__isnull=False),
-                name='user_analytics_has_entity'
+                name="user_analytics_has_entity",
             ),
             models.CheckConstraint(
-                check=~(models.Q(podcast__isnull=False) & models.Q(episode__isnull=False)),
-                name='user_analytics_single_entity'
+                check=~(
+                    models.Q(podcast__isnull=False) & models.Q(episode__isnull=False)
+                ),
+                name="user_analytics_single_entity",
             ),
         ]
 
@@ -104,9 +104,9 @@ class UserAnalytics(models.Model):
     def entity_type(self):
         """Return the type of entity ('podcast' or 'episode')."""
         if self.podcast:
-            return 'podcast'
+            return "podcast"
         elif self.episode:
-            return 'episode'
+            return "episode"
         return None
 
     def get_entity_display_name(self):

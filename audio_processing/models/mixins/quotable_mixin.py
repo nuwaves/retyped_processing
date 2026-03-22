@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 class QuotableMixin:
     """
     Mixin for models that can have quotes extracted from their content.
-    
+
     This mixin provides functionality to extract memorable quotes using LLM analysis
     and create Quote objects associated with the model instance.
     """
@@ -19,13 +19,19 @@ class QuotableMixin:
         """
         Extract key quotes from the model's transcript using LLM.
         Creates Quote objects for entertaining, funny, controversial, or informative snippets.
-        
+
         Returns:
             list: List of created Quote objects
         """
         # Check if the model has a transcript
-        if not hasattr(self, 'transcript') or not self.transcript or not self.transcript.strip():
-            logger.warning(f"No transcript available for quote extraction: {getattr(self, 'raw_audio_url', 'Unknown')}")
+        if (
+            not hasattr(self, "transcript")
+            or not self.transcript
+            or not self.transcript.strip()
+        ):
+            logger.warning(
+                f"No transcript available for quote extraction: {getattr(self, 'raw_audio_url', 'Unknown')}"
+            )
             return []
 
         try:
@@ -36,25 +42,33 @@ class QuotableMixin:
 
             response = self.get_groq_completion(prompt, max_tokens=2000)
             if not response:
-                logger.error(f"Failed to get LLM response for quote extraction: {getattr(self, 'raw_audio_url', 'Unknown')}")
+                logger.error(
+                    f"Failed to get LLM response for quote extraction: {getattr(self, 'raw_audio_url', 'Unknown')}"
+                )
                 return []
             cleaned_response = response
             # Remove everything before the first code block (if present)
-            code_block_match = re.search(r'```json(.*?)```', cleaned_response, re.DOTALL | re.IGNORECASE)
+            code_block_match = re.search(
+                r"```json(.*?)```", cleaned_response, re.DOTALL | re.IGNORECASE
+            )
             if code_block_match:
                 cleaned_response = code_block_match.group(1)
             # If not found, fallback to removing any generic code block
             else:
-                code_block_match = re.search(r'```(.*?)```', cleaned_response, re.DOTALL)
+                code_block_match = re.search(
+                    r"```(.*?)```", cleaned_response, re.DOTALL
+                )
                 if code_block_match:
                     cleaned_response = code_block_match.group(1)
-            cleaned_response = cleaned_response.strip('`\n ')
+            cleaned_response = cleaned_response.strip("`\n ")
             # Parse JSON response
             try:
                 quote_data = json.loads(cleaned_response)
-                quotes_list = quote_data.get('quotes', [])
+                quotes_list = quote_data.get("quotes", [])
             except json.JSONDecodeError as e:
-                logger.error(f"Failed to parse quote extraction JSON: {str(e)} | Raw: {cleaned_response[:200]}")
+                logger.error(
+                    f"Failed to parse quote extraction JSON: {str(e)} | Raw: {cleaned_response[:200]}"
+                )
                 # Try to extract quotes from a more flexible format
                 quotes_list = self._parse_quotes_fallback(cleaned_response)
 
@@ -69,10 +83,10 @@ class QuotableMixin:
         """
         Fallback method to parse quotes from LLM response when JSON parsing fails.
         Looks for quote patterns in the text.
-        
+
         Args:
             response_text (str): The LLM response text to parse
-            
+
         Returns:
             list: List of quote dictionaries
         """
@@ -86,13 +100,19 @@ class QuotableMixin:
             ]
 
             for pattern in quote_patterns:
-                matches = re.findall(pattern, response_text, re.IGNORECASE | re.MULTILINE)
+                matches = re.findall(
+                    pattern, response_text, re.IGNORECASE | re.MULTILINE
+                )
                 for match in matches[:12]:  # Limit to 12
                     if len(match) >= 2 and len(match[0].strip()) >= 10:
-                        quotes.append({
-                            'text': match[0].strip(),
-                            'speaker': match[1].strip() if match[1].strip() else None,
-                        })
+                        quotes.append(
+                            {
+                                "text": match[0].strip(),
+                                "speaker": match[1].strip()
+                                if match[1].strip()
+                                else None,
+                            }
+                        )
 
                 if quotes:  # If we found quotes with this pattern, stop trying others
                     break
@@ -105,10 +125,10 @@ class QuotableMixin:
     def _create_quote_objects(self, quotes_list):
         """
         Create Quote objects from the parsed quote data.
-        
+
         Args:
             quotes_list (list): List of quote dictionaries
-            
+
         Returns:
             list: List of created Quote objects
         """
@@ -120,11 +140,11 @@ class QuotableMixin:
         for quote_info in quotes_list[:12]:  # Limit to 12 quotes max
             try:
                 # Validate required fields
-                quote_text = quote_info.get('text', '').strip()
+                quote_text = quote_info.get("text", "").strip()
                 if not quote_text or len(quote_text) < 10:
                     continue
 
-                speaker = quote_info.get('speaker', '').strip() or None
+                speaker = quote_info.get("speaker", "").strip() or None
 
                 # Create the Quote object - assumes the model is an Episode
                 quote = Quote.objects.create(
@@ -140,16 +160,17 @@ class QuotableMixin:
                 logger.error(f"Failed to create quote: {str(e)}")
                 continue
 
-        model_title = getattr(self, 'title', 'Unknown')
+        model_title = getattr(self, "title", "Unknown")
         logger.info(f"Extracted {len(created_quotes)} quotes from: {model_title}")
         return created_quotes
 
     def get_quotes(self):
         """
         Get all quotes associated with this model instance.
-        
+
         Returns:
             QuerySet: Quote objects related to this instance
         """
         from audio_processing.models.quote import Quote
-        return Quote.objects.filter(episode=self).order_by('-created_at')
+
+        return Quote.objects.filter(episode=self).order_by("-created_at")

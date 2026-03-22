@@ -11,7 +11,9 @@ class FollowViewSetAPITest(TestCase):
     def setUp(self):
         self.client = APIClient()
         self.user = User.objects.create_user(username="testuser", password="testpass")
-        self.user2 = User.objects.create_user(username="testuser2", password="testpass2")
+        self.user2 = User.objects.create_user(
+            username="testuser2", password="testpass2"
+        )
 
         # Create test data
         self.tag1 = Tag.objects.create(name="Python", slug="python")
@@ -141,8 +143,12 @@ class FollowViewSetAPITest(TestCase):
         tag_ct = ContentType.objects.get_for_model(Tag)
         podcast_ct = ContentType.objects.get_for_model(Podcast)
 
-        Follow.objects.create(user=self.user, content_type=tag_ct, object_id=self.tag1.id)
-        Follow.objects.create(user=self.user, content_type=tag_ct, object_id=self.tag2.id)
+        Follow.objects.create(
+            user=self.user, content_type=tag_ct, object_id=self.tag1.id
+        )
+        Follow.objects.create(
+            user=self.user, content_type=tag_ct, object_id=self.tag2.id
+        )
         Follow.objects.create(
             user=self.user, content_type=podcast_ct, object_id=self.podcast1.id
         )
@@ -163,7 +169,9 @@ class FollowViewSetAPITest(TestCase):
         tag_ct = ContentType.objects.get_for_model(Tag)
         podcast_ct = ContentType.objects.get_for_model(Podcast)
 
-        Follow.objects.create(user=self.user, content_type=tag_ct, object_id=self.tag1.id)
+        Follow.objects.create(
+            user=self.user, content_type=tag_ct, object_id=self.tag1.id
+        )
         Follow.objects.create(
             user=self.user, content_type=podcast_ct, object_id=self.podcast1.id
         )

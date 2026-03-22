@@ -8,6 +8,7 @@ Notes:
     pip install google-auth google-auth-httplib2 requests
 - The service account must be granted access in Search Console for the target site.
 """
+
 from __future__ import annotations
 
 import logging
@@ -23,6 +24,7 @@ logger = logging.getLogger(__name__)
 WEBMASTERS_SCOPE = ["https://www.googleapis.com/auth/webmasters"]
 WEBMASTERS_BASE = "https://www.googleapis.com/webmasters/v3"
 
+
 def _fetch_sitemap_index(sitemap_index_url: str, timeout: int = 30) -> list[str]:
     """Fetch sitemap index and return list of <loc> URLs.
 
@@ -32,7 +34,11 @@ def _fetch_sitemap_index(sitemap_index_url: str, timeout: int = 30) -> list[str]
     resp = requests.get(sitemap_index_url, timeout=timeout)
     resp.raise_for_status()
     root = ET.fromstring(resp.content)
-    locs = [elem.text.strip() for elem in root.findall('.//{*}loc') if elem.text and elem.text.strip()]
+    locs = [
+        elem.text.strip()
+        for elem in root.findall(".//{*}loc")
+        if elem.text and elem.text.strip()
+    ]
     return locs
 
 
@@ -68,7 +74,9 @@ def submit_sitemaps_to_google(
 
     # Interactive OAuth flow using a client secrets JSON file.
     # This will open a local browser and run the OAuth flow to obtain credentials.
-    flow = InstalledAppFlow.from_client_secrets_file(client_secrets_file, scopes=WEBMASTERS_SCOPE)
+    flow = InstalledAppFlow.from_client_secrets_file(
+        client_secrets_file, scopes=WEBMASTERS_SCOPE
+    )
     creds = flow.run_local_server(port=0)
     authed = AuthorizedSession(creds)
 
@@ -90,7 +98,9 @@ def submit_sitemaps_to_google(
             if resp.status_code // 100 != 2:
                 logger.warning("Non-2xx response for %s: %s", sitemap, resp.status_code)
             else:
-                logger.info("Submitted successfully: %s (status %s)", sitemap, resp.status_code)
+                logger.info(
+                    "Submitted successfully: %s (status %s)", sitemap, resp.status_code
+                )
         except Exception as exc:
             logger.exception("Failed to submit sitemap %s: %s", sitemap, exc)
             results[sitemap] = ("error", str(exc))
@@ -101,11 +111,28 @@ def submit_sitemaps_to_google(
 def main():
     """Small CLI for manual runs (not recommended for production scheduling)."""
     import argparse
-    parser = argparse.ArgumentParser(description="Submit sitemap(s) to Google Search Console using a service account")
-    parser.add_argument("--client-secrets", required=True, help="Path to OAuth client_secrets.json for interactive auth (will open browser)")
-    parser.add_argument("--site-url", required=True, help="Site URL as configured in Search Console, e.g. https://www.example.com")
-    parser.add_argument("--sitemap-index", help="URL of sitemap index (if omitted, site_url/sitemap.xml is used)")
-    parser.add_argument("--sitemap-urls", help="Comma-separated list of sitemap URLs to submit (overrides sitemap-index)")
+
+    parser = argparse.ArgumentParser(
+        description="Submit sitemap(s) to Google Search Console using a service account"
+    )
+    parser.add_argument(
+        "--client-secrets",
+        required=True,
+        help="Path to OAuth client_secrets.json for interactive auth (will open browser)",
+    )
+    parser.add_argument(
+        "--site-url",
+        required=True,
+        help="Site URL as configured in Search Console, e.g. https://www.example.com",
+    )
+    parser.add_argument(
+        "--sitemap-index",
+        help="URL of sitemap index (if omitted, site_url/sitemap.xml is used)",
+    )
+    parser.add_argument(
+        "--sitemap-urls",
+        help="Comma-separated list of sitemap URLs to submit (overrides sitemap-index)",
+    )
     args = parser.parse_args()
 
     sitemap_urls = None

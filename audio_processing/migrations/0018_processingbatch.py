@@ -4,22 +4,61 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('audio_processing', '0017_alter_episode_subtitle'),
+        ("audio_processing", "0017_alter_episode_subtitle"),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='ProcessingBatch',
+            name="ProcessingBatch",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('updated_at', models.DateTimeField(auto_now=True)),
-                ('processing_state', models.CharField(choices=[('created', 'Created'), ('successful', 'Successful'), ('errored', 'Errored')], db_index=True, default='created', max_length=32)),
-                ('error', models.TextField(blank=True, help_text='Error message if processing failed', null=True)),
-                ('record_count', models.PositiveIntegerField(default=0, help_text='Number of records in this batch')),
-                ('external_batch_id', models.CharField(blank=True, help_text='ID from external processing service', max_length=128, null=True)),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                ("updated_at", models.DateTimeField(auto_now=True)),
+                (
+                    "processing_state",
+                    models.CharField(
+                        choices=[
+                            ("created", "Created"),
+                            ("successful", "Successful"),
+                            ("errored", "Errored"),
+                        ],
+                        db_index=True,
+                        default="created",
+                        max_length=32,
+                    ),
+                ),
+                (
+                    "error",
+                    models.TextField(
+                        blank=True,
+                        help_text="Error message if processing failed",
+                        null=True,
+                    ),
+                ),
+                (
+                    "record_count",
+                    models.PositiveIntegerField(
+                        default=0, help_text="Number of records in this batch"
+                    ),
+                ),
+                (
+                    "external_batch_id",
+                    models.CharField(
+                        blank=True,
+                        help_text="ID from external processing service",
+                        max_length=128,
+                        null=True,
+                    ),
+                ),
             ],
         ),
     ]

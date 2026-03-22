@@ -11,7 +11,9 @@ class BookmarkViewSetAPITest(TestCase):
     def setUp(self):
         self.client = APIClient()
         self.user = User.objects.create_user(username="testuser", password="testpass")
-        self.user2 = User.objects.create_user(username="testuser2", password="testpass2")
+        self.user2 = User.objects.create_user(
+            username="testuser2", password="testpass2"
+        )
 
         # Create test data
         self.podcast1 = Podcast.objects.create(

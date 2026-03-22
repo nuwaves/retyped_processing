@@ -5,11 +5,12 @@ from ..models import PodcastClaim
 
 
 class PodcastClaimSerializer(serializers.ModelSerializer):
-
     class Meta:
         model = PodcastClaim
         fields = ["podcast", "user"]
-        read_only_fields = ["user",]
+        read_only_fields = [
+            "user",
+        ]
         validators = [
             UniqueTogetherValidator(
                 queryset=PodcastClaim.objects.all(),

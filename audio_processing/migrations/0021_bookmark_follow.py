@@ -6,48 +6,101 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('audio_processing', '0020_episode_processing_completed_at'),
-        ('contenttypes', '0002_remove_content_type_name'),
+        ("audio_processing", "0020_episode_processing_completed_at"),
+        ("contenttypes", "0002_remove_content_type_name"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='Bookmark',
+            name="Bookmark",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('object_id', models.BigIntegerField()),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('updated_at', models.DateTimeField(auto_now=True)),
-                ('content_type', models.ForeignKey(limit_choices_to={'model__in': ('episode', 'podcast')}, on_delete=django.db.models.deletion.CASCADE, to='contenttypes.contenttype')),
-                ('user', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='bookmarks', to=settings.AUTH_USER_MODEL)),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("object_id", models.BigIntegerField()),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                ("updated_at", models.DateTimeField(auto_now=True)),
+                (
+                    "content_type",
+                    models.ForeignKey(
+                        limit_choices_to={"model__in": ("episode", "podcast")},
+                        on_delete=django.db.models.deletion.CASCADE,
+                        to="contenttypes.contenttype",
+                    ),
+                ),
+                (
+                    "user",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="bookmarks",
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
             ],
             options={
-                'verbose_name': 'Bookmark',
-                'verbose_name_plural': 'Bookmarks',
-                'ordering': ['-created_at'],
-                'indexes': [models.Index(fields=['content_type', 'object_id'], name='audio_proce_content_708a98_idx')],
-                'unique_together': {('content_type', 'object_id', 'user')},
+                "verbose_name": "Bookmark",
+                "verbose_name_plural": "Bookmarks",
+                "ordering": ["-created_at"],
+                "indexes": [
+                    models.Index(
+                        fields=["content_type", "object_id"],
+                        name="audio_proce_content_708a98_idx",
+                    )
+                ],
+                "unique_together": {("content_type", "object_id", "user")},
             },
         ),
         migrations.CreateModel(
-            name='Follow',
+            name="Follow",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('object_id', models.BigIntegerField()),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('updated_at', models.DateTimeField(auto_now=True)),
-                ('content_type', models.ForeignKey(limit_choices_to={'model__in': ('tag', 'podcast')}, on_delete=django.db.models.deletion.CASCADE, to='contenttypes.contenttype')),
-                ('user', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='follows', to=settings.AUTH_USER_MODEL)),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("object_id", models.BigIntegerField()),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                ("updated_at", models.DateTimeField(auto_now=True)),
+                (
+                    "content_type",
+                    models.ForeignKey(
+                        limit_choices_to={"model__in": ("tag", "podcast")},
+                        on_delete=django.db.models.deletion.CASCADE,
+                        to="contenttypes.contenttype",
+                    ),
+                ),
+                (
+                    "user",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="follows",
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
             ],
             options={
-                'verbose_name': 'Follow',
-                'verbose_name_plural': 'Follows',
-                'ordering': ['-created_at'],
-                'indexes': [models.Index(fields=['content_type', 'object_id'], name='audio_proce_content_7649f2_idx')],
-                'unique_together': {('content_type', 'object_id', 'user')},
+                "verbose_name": "Follow",
+                "verbose_name_plural": "Follows",
+                "ordering": ["-created_at"],
+                "indexes": [
+                    models.Index(
+                        fields=["content_type", "object_id"],
+                        name="audio_proce_content_7649f2_idx",
+                    )
+                ],
+                "unique_together": {("content_type", "object_id", "user")},
             },
         ),
     ]

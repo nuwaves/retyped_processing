@@ -4,15 +4,16 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('audio_processing', '0015_alter_episode_title'),
+        ("audio_processing", "0015_alter_episode_title"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='episode',
-            name='image_url',
-            field=models.URLField(blank=True, help_text='Episode artwork URL', max_length=1000, null=True),
+            model_name="episode",
+            name="image_url",
+            field=models.URLField(
+                blank=True, help_text="Episode artwork URL", max_length=1000, null=True
+            ),
         ),
     ]

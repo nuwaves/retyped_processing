@@ -4,6 +4,7 @@ ViewSets for claim verification endpoints.
 This module provides API endpoints for verifying podcast ownership claims
 through verification tokens sent via email.
 """
+
 import logging
 
 from django.shortcuts import get_object_or_404
@@ -49,8 +50,8 @@ class ClaimVerificationView(APIView):
 
         # Fetch the verification record
         verification = get_object_or_404(
-            ClaimVerification.objects.select_related('claim__user', 'claim__podcast'),
-            verification_key=verification_key
+            ClaimVerification.objects.select_related("claim__user", "claim__podcast"),
+            verification_key=verification_key,
         )
 
         # Check if already verified
@@ -58,11 +59,13 @@ class ClaimVerificationView(APIView):
             logger.warning(
                 f"Verification already completed for key: {verification_key}"
             )
-            serializer = ClaimVerificationErrorSerializer(data={
-                "success": False,
-                "error": "This verification has already been completed.",
-                "message": "Your claim has already been verified.",
-            })
+            serializer = ClaimVerificationErrorSerializer(
+                data={
+                    "success": False,
+                    "error": "This verification has already been completed.",
+                    "message": "Your claim has already been verified.",
+                }
+            )
             serializer.is_valid(raise_exception=True)
             return Response(
                 serializer.validated_data,
@@ -71,14 +74,14 @@ class ClaimVerificationView(APIView):
 
         # Check if expired
         if verification.is_expired():
-            logger.warning(
-                f"Verification token expired for key: {verification_key}"
+            logger.warning(f"Verification token expired for key: {verification_key}")
+            serializer = ClaimVerificationErrorSerializer(
+                data={
+                    "success": False,
+                    "error": "This verification link has expired.",
+                    "message": "Please request a new verification link.",
+                }
             )
-            serializer = ClaimVerificationErrorSerializer(data={
-                "success": False,
-                "error": "This verification link has expired.",
-                "message": "Please request a new verification link.",
-            })
             serializer.is_valid(raise_exception=True)
             return Response(
                 serializer.validated_data,
@@ -97,26 +100,28 @@ class ClaimVerificationView(APIView):
                 f"Podcast={verification.claim.podcast.name}"
             )
 
-            serializer = ClaimVerificationSuccessSerializer(data={
-                "success": True,
-                "message": "Your podcast ownership claim has been verified successfully!",
-                "claim_status": verification.claim.status,
-                "podcast_name": verification.claim.podcast.name,
-            })
+            serializer = ClaimVerificationSuccessSerializer(
+                data={
+                    "success": True,
+                    "message": "Your podcast ownership claim has been verified successfully!",
+                    "claim_status": verification.claim.status,
+                    "podcast_name": verification.claim.podcast.name,
+                }
+            )
             serializer.is_valid(raise_exception=True)
             return Response(
                 serializer.validated_data,
                 status=status.HTTP_200_OK,
             )
         else:
-            logger.error(
-                f"Verification failed for key: {verification_key}"
+            logger.error(f"Verification failed for key: {verification_key}")
+            serializer = ClaimVerificationErrorSerializer(
+                data={
+                    "success": False,
+                    "error": "Verification failed.",
+                    "message": "An error occurred while verifying your claim.",
+                }
             )
-            serializer = ClaimVerificationErrorSerializer(data={
-                "success": False,
-                "error": "Verification failed.",
-                "message": "An error occurred while verifying your claim.",
-            })
             serializer.is_valid(raise_exception=True)
             return Response(
                 serializer.validated_data,

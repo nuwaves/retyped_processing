@@ -5,9 +5,9 @@ from celery import shared_task
 from django.utils import timezone
 
 from audio_processing.models import Episode
-from audio_processing.models.episode import Episode
 
 logger = logging.getLogger(__name__)
+
 
 @shared_task
 def save_audio_to_s3_task(episode_id):
@@ -42,6 +42,7 @@ def save_audio_to_s3_task(episode_id):
             pass
         return {"success": False, "error": error_msg}
 
+
 @shared_task
 def batch_groq_transcribe_task(episode_ids):
     """
@@ -53,6 +54,7 @@ def batch_groq_transcribe_task(episode_ids):
     """
     return Episode.groq_batch_transcribe(episode_ids)
 
+
 @shared_task
 def groq_batch_transcribe(episode_ids):
     """
@@ -63,6 +65,7 @@ def groq_batch_transcribe(episode_ids):
         dict: Groq file upload response
     """
     return Episode.groq_batch_transcribe(episode_ids)
+
 
 @shared_task
 def add_transcript(episode_id):
@@ -99,6 +102,7 @@ def add_transcript(episode_id):
             pass
         return {"success": False, "error": error_msg}
 
+
 @shared_task
 def suggest_and_apply_tags(episode_id):
     """
@@ -133,6 +137,7 @@ def suggest_and_apply_tags(episode_id):
             pass
         return {"success": False, "error": error_msg}
 
+
 @shared_task
 def extract_quotes(episode_id):
     """
@@ -148,7 +153,7 @@ def extract_quotes(episode_id):
             return {
                 "success": True,
                 "quotes_extracted": len(quotes),
-                "quote_ids": [quote.id for quote in quotes]
+                "quote_ids": [quote.id for quote in quotes],
             }
         else:
             error_msg = "No quotes extracted"
@@ -170,6 +175,7 @@ def extract_quotes(episode_id):
         except Exception:
             pass
         return {"success": False, "error": error_msg}
+
 
 @shared_task
 def process_complete_workflow(episode_id):
@@ -204,6 +210,7 @@ def process_complete_workflow(episode_id):
             pass
         return {"success": False, "error": error_msg}
 
+
 @shared_task
 def extract_entities(episode_id):
     """
@@ -215,11 +222,13 @@ def extract_entities(episode_id):
         episode = Episode.objects.get(pk=episode_id)
         entities = episode.extract_entities()
         if entities:
-            logger.info(f"Extracted {len(entities)} entities from episode: {episode.title}")
+            logger.info(
+                f"Extracted {len(entities)} entities from episode: {episode.title}"
+            )
             return {
                 "success": True,
                 "entities_extracted": len(entities),
-                "entity_ids": [entity.id for entity in entities]
+                "entity_ids": [entity.id for entity in entities],
             }
         else:
             error_msg = "No entities extracted"
@@ -242,6 +251,7 @@ def extract_entities(episode_id):
             pass
         return {"success": False, "error": error_msg}
 
+
 @shared_task
 def process_recent_episodes_without_transcript():
     """
@@ -250,7 +260,9 @@ def process_recent_episodes_without_transcript():
     logger.info("Processing recent episodes without transcript (last 2 days)")
     now = timezone.now()
     two_days_ago = now - timedelta(days=2)
-    episodes = Episode.objects.filter(release_date__gte=two_days_ago, transcript__isnull=True)
+    episodes = Episode.objects.filter(
+        release_date__gte=two_days_ago, transcript__isnull=True
+    )
     task_results = []
     for episode in episodes:
         logger.info(f"Queueing workflow for episode ID: {episode.id} - {episode.title}")
@@ -259,20 +271,22 @@ def process_recent_episodes_without_transcript():
     logger.info(f"Queued {len(task_results)} episode workflows.")
     return task_results
 
+
 @shared_task
 def index_episode_for_search(episode_id):
     """
     Celery task to index a single episode for search (e.g., Meilisearch/Elasticsearch).
     """
     from audio_processing.models import Episode
+
     try:
         episode = Episode.objects.get(id=episode_id)
         episode.index_to_search()
-        return {'success': f"Episode {episode.title} indexed for search"}
+        return {"success": f"Episode {episode.title} indexed for search"}
     except Episode.DoesNotExist:
-        return {'error': f"Episode with ID {episode_id} does not exist"}
+        return {"error": f"Episode with ID {episode_id} does not exist"}
     except Exception as e:
-        return {'error': str(e)}
+        return {"error": str(e)}
 
 
 @shared_task
@@ -281,8 +295,11 @@ def reindex_all_episodes_for_search(batch_size=100):
     Celery task to reindex all episodes for search in batches.
     """
     from audio_processing.models import Episode
+
     total_episodes = Episode.objects.count()
-    logger.info(f"Starting reindex of {total_episodes} episodes in batches of {batch_size}")
+    logger.info(
+        f"Starting reindex of {total_episodes} episodes in batches of {batch_size}"
+    )
     for start in range(0, total_episodes, batch_size):
         end = min(start + batch_size, total_episodes)
         logger.info(f"Indexing episodes {start + 1} to {end}")
@@ -293,7 +310,8 @@ def reindex_all_episodes_for_search(batch_size=100):
             except Exception as e:
                 logger.error(f"Error indexing episode ID {episode.id}: {str(e)}")
     logger.info("Completed reindexing all episodes.")
-    return {'success': f"Reindexed {total_episodes} episodes for search"}
+    return {"success": f"Reindexed {total_episodes} episodes for search"}
+
 
 @shared_task
 def tag_episode_with_topics(episode_id):
@@ -301,11 +319,12 @@ def tag_episode_with_topics(episode_id):
     Celery task to tag a single episode with topics.
     """
     from audio_processing.models import Topic
+
     try:
         episode = Episode.objects.get(id=episode_id)
         Topic.set_episode_topics(episode)
-        return {'success': f"Episode {episode.title} tagged with topics"}
+        return {"success": f"Episode {episode.title} tagged with topics"}
     except Episode.DoesNotExist:
-        return {'error': f"Episode with ID {episode_id} does not exist"}
+        return {"error": f"Episode with ID {episode_id} does not exist"}
     except Exception as e:
-        return {'error': str(e)}
+        return {"error": str(e)}

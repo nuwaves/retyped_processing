@@ -4,23 +4,24 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('audio_processing', '0005_episode_has_public_transcript'),
+        ("audio_processing", "0005_episode_has_public_transcript"),
     ]
 
     operations = [
         migrations.RemoveField(
-            model_name='episode',
-            name='itunes_keywords',
+            model_name="episode",
+            name="itunes_keywords",
         ),
         migrations.RemoveField(
-            model_name='podcast',
-            name='itunes_keywords',
+            model_name="podcast",
+            name="itunes_keywords",
         ),
         migrations.AlterField(
-            model_name='podcast',
-            name='subtitle',
-            field=models.CharField(blank=True, help_text='iTunes subtitle', max_length=5000, null=True),
+            model_name="podcast",
+            name="subtitle",
+            field=models.CharField(
+                blank=True, help_text="iTunes subtitle", max_length=5000, null=True
+            ),
         ),
     ]

@@ -4,15 +4,17 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('audio_processing', '0008_alter_useranalytics_user'),
+        ("audio_processing", "0008_alter_useranalytics_user"),
     ]
 
     def gen_unique_slug(apps, schema_editor):
-        Podcast = apps.get_model('audio_processing', 'Podcast')
+        Podcast = apps.get_model("audio_processing", "Podcast")
         from django.utils.text import slugify
-        for podcast in Podcast.objects.filter(models.Q(slug__isnull=True) | models.Q(slug="")):
+
+        for podcast in Podcast.objects.filter(
+            models.Q(slug__isnull=True) | models.Q(slug="")
+        ):
             base_slug = slugify(podcast.name or str(podcast.pk))
             slug = base_slug
             counter = 1
@@ -20,13 +22,15 @@ class Migration(migrations.Migration):
                 slug = f"{base_slug}-{counter}"
                 counter += 1
             podcast.slug = slug
-            podcast.save(update_fields=['slug'])
+            podcast.save(update_fields=["slug"])
 
     operations = [
         migrations.AddField(
-            model_name='podcast',
-            name='slug',
-            field=models.SlugField(blank=True, help_text='Unique slug for podcast', max_length=255),
+            model_name="podcast",
+            name="slug",
+            field=models.SlugField(
+                blank=True, help_text="Unique slug for podcast", max_length=255
+            ),
         ),
         migrations.RunPython(gen_unique_slug, reverse_code=migrations.RunPython.noop),
     ]

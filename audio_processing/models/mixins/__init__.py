@@ -6,10 +6,10 @@ from .summarizable_mixin import SummarizableMixin
 from .taggable_mixin import TaggableMixin
 
 __all__ = [
-    'SearchableMixin',
-    'SummarizableMixin',
-    'TaggableMixin',
-    'QuotableMixin',
-    'GroqMixin',
-    'AwsMixin',
+    "SearchableMixin",
+    "SummarizableMixin",
+    "TaggableMixin",
+    "QuotableMixin",
+    "GroqMixin",
+    "AwsMixin",
 ]

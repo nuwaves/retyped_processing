@@ -6,27 +6,41 @@ import audio_processing.models.mixins.groq_mixin
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('audio_processing', '0022_episode_s3_audio_url'),
+        ("audio_processing", "0022_episode_s3_audio_url"),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='Topic',
+            name="Topic",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('name', models.CharField(max_length=255)),
-                ('slug', models.SlugField(blank=True, max_length=255, unique=True)),
-                ('description', models.TextField(blank=True)),
-                ('top_words', models.JSONField(blank=True, help_text='List of top words or phrases for this topic', null=True)),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('updated_at', models.DateTimeField(auto_now=True)),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("name", models.CharField(max_length=255)),
+                ("slug", models.SlugField(blank=True, max_length=255, unique=True)),
+                ("description", models.TextField(blank=True)),
+                (
+                    "top_words",
+                    models.JSONField(
+                        blank=True,
+                        help_text="List of top words or phrases for this topic",
+                        null=True,
+                    ),
+                ),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                ("updated_at", models.DateTimeField(auto_now=True)),
             ],
             options={
-                'verbose_name': 'Topic',
-                'verbose_name_plural': 'Topics',
-                'ordering': ['-created_at'],
+                "verbose_name": "Topic",
+                "verbose_name_plural": "Topics",
+                "ordering": ["-created_at"],
             },
             bases=(models.Model, audio_processing.models.mixins.groq_mixin.GroqMixin),
         ),

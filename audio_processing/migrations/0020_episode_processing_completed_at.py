@@ -4,15 +4,21 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('audio_processing', '0019_alter_podcast_author_alter_podcast_copyright_and_more'),
+        (
+            "audio_processing",
+            "0019_alter_podcast_author_alter_podcast_copyright_and_more",
+        ),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='episode',
-            name='processing_completed_at',
-            field=models.DateTimeField(blank=True, help_text='Timestamp when episode processing was completed', null=True),
+            model_name="episode",
+            name="processing_completed_at",
+            field=models.DateTimeField(
+                blank=True,
+                help_text="Timestamp when episode processing was completed",
+                null=True,
+            ),
         ),
     ]

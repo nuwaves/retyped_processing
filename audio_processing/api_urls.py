@@ -7,13 +7,13 @@ All API endpoints are versioned and nested under /api/v1/
 from django.urls import path
 
 from .views import EpisodeViewSet, PodcastViewSet, TagsViewSet
-from .views.topics_viewsets import TopicViewSet
 from .views.bookmarks_viewsets import BookmarkViewSet
 from .views.claim_verification_viewsets import ClaimVerificationView
 from .views.entity_viewsets import EntityViewSet
 from .views.follows_viewsets import FollowViewSet
 from .views.podcast_claims_viewsets import PodcastClaimViewSet
 from .views.search_viewsets import SearchViewSet
+from .views.topics_viewsets import TopicViewSet
 from .views.user_analytics_viewsets import UserAnalyticsViewSet
 
 api_v1_patterns = [
@@ -33,7 +33,11 @@ api_v1_patterns = [
     ),
     # Topics endpoints
     path("topics/", TopicViewSet.as_view({"get": "list"}), name="api-v1-topics-list"),
-    path("topics/<slug:slug>/", TopicViewSet.as_view({"get": "retrieve"}), name="api-v1-topics-retrieve"),
+    path(
+        "topics/<slug:slug>/",
+        TopicViewSet.as_view({"get": "retrieve"}),
+        name="api-v1-topics-retrieve",
+    ),
     # Tags endpoints
     path("tags/", TagsViewSet.as_view({"get": "list"}), name="api-v1-tags-list"),
     path(
@@ -121,7 +125,6 @@ api_v1_patterns = [
         FollowViewSet.as_view({"get": "by_entity_type"}),
         name="api-v1-follows-by-type",
     ),
-
     path(
         "user_analytics/",
         UserAnalyticsViewSet.as_view({"get": "analytics_grouped"}),

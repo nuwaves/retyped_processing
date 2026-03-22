@@ -6,26 +6,48 @@ import audio_processing.models.mixins.groq_mixin
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('audio_processing', '0011_make_slug_unique'),
+        ("audio_processing", "0011_make_slug_unique"),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='Entity',
+            name="Entity",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('name', models.CharField(max_length=255, unique=True)),
-                ('type', models.CharField(choices=[('PERSON', 'Person'), ('ORGANIZATION', 'Organization'), ('PRODUCT', 'Product')], max_length=20)),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('updated_at', models.DateTimeField(auto_now=True)),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("name", models.CharField(max_length=255, unique=True)),
+                (
+                    "type",
+                    models.CharField(
+                        choices=[
+                            ("PERSON", "Person"),
+                            ("ORGANIZATION", "Organization"),
+                            ("PRODUCT", "Product"),
+                        ],
+                        max_length=20,
+                    ),
+                ),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                ("updated_at", models.DateTimeField(auto_now=True)),
             ],
             bases=(models.Model, audio_processing.models.mixins.groq_mixin.GroqMixin),
         ),
         migrations.AddField(
-            model_name='episode',
-            name='entities',
-            field=models.ManyToManyField(blank=True, help_text='Entities associated with this episode', related_name='episodes', to='audio_processing.entity'),
+            model_name="episode",
+            name="entities",
+            field=models.ManyToManyField(
+                blank=True,
+                help_text="Entities associated with this episode",
+                related_name="episodes",
+                to="audio_processing.entity",
+            ),
         ),
     ]

@@ -4,18 +4,20 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('audio_processing', '0009_podcast_slug'),
+        ("audio_processing", "0009_podcast_slug"),
     ]
 
     def gen_unique_slug(apps, schema_editor):
-        Episode = apps.get_model('audio_processing', 'Episode')
-        Podcast = apps.get_model('audio_processing', 'Podcast')
+        Episode = apps.get_model("audio_processing", "Episode")
+        Podcast = apps.get_model("audio_processing", "Podcast")
         from django.utils.text import slugify
-        for episode in Episode.objects.filter(models.Q(slug__isnull=True) | models.Q(slug="")):
+
+        for episode in Episode.objects.filter(
+            models.Q(slug__isnull=True) | models.Q(slug="")
+        ):
             podcast = episode.podcast
-            podcast_slug = getattr(podcast, 'slug', None) or 'podcast'
+            podcast_slug = getattr(podcast, "slug", None) or "podcast"
             base_slug = f"{podcast_slug}-{slugify(episode.title or str(episode.pk))}"
             slug = base_slug
             counter = 1
@@ -23,13 +25,17 @@ class Migration(migrations.Migration):
                 slug = f"{base_slug}-{counter}"
                 counter += 1
             episode.slug = slug
-            episode.save(update_fields=['slug'])
+            episode.save(update_fields=["slug"])
 
     operations = [
         migrations.AddField(
-            model_name='episode',
-            name='slug',
-            field=models.SlugField(blank=True, help_text='Unique slug for episode, prefixed with podcast slug', max_length=512),
+            model_name="episode",
+            name="slug",
+            field=models.SlugField(
+                blank=True,
+                help_text="Unique slug for episode, prefixed with podcast slug",
+                max_length=512,
+            ),
         ),
         migrations.RunPython(gen_unique_slug, reverse_code=migrations.RunPython.noop),
     ]

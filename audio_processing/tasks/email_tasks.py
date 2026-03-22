@@ -4,6 +4,7 @@ Celery tasks for sending emails.
 This module contains async tasks for email operations to prevent
 blocking the main application flow.
 """
+
 import logging
 
 from celery import shared_task
@@ -31,15 +32,16 @@ def send_claim_verification_email(verification_id):
             - email (str): Recipient email address (on success)
             - error (str): Error message (on failure)
     """
-    logger.info(f"Sending verification email for ClaimVerification ID: {verification_id}")
+    logger.info(
+        f"Sending verification email for ClaimVerification ID: {verification_id}"
+    )
 
     try:
         from ..models import ClaimVerification, PodcastClaim
 
         # Fetch the verification record
         verification = ClaimVerification.objects.select_related(
-            'claim__user',
-            'claim__podcast'
+            "claim__user", "claim__podcast"
         ).get(pk=verification_id)
 
         user = verification.claim.user
@@ -50,16 +52,16 @@ def send_claim_verification_email(verification_id):
 
         # Prepare email context
         context = {
-            'user_name': user.get_full_name() or user.username,
-            'user_first_name': user.first_name or user.username,
-            'podcast_name': podcast.name,
-            'verification_url': verification_url,
-            'expiry_hours': getattr(settings, 'VERIFICATION_EXPIRY_HOURS', 48),
+            "user_name": user.get_full_name() or user.username,
+            "user_first_name": user.first_name or user.username,
+            "podcast_name": podcast.name,
+            "verification_url": verification_url,
+            "expiry_hours": getattr(settings, "VERIFICATION_EXPIRY_HOURS", 48),
         }
 
         # Render email templates
-        html_content = render_to_string('emails/claim_verification.html', context)
-        text_content = render_to_string('emails/claim_verification.txt', context)
+        html_content = render_to_string("emails/claim_verification.html", context)
+        text_content = render_to_string("emails/claim_verification.txt", context)
 
         # Prepare subject
         subject = f"Verify Your Podcast Ownership Claim - {podcast.name}"

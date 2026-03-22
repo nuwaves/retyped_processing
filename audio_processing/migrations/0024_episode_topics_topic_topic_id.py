@@ -4,20 +4,24 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('audio_processing', '0023_topic'),
+        ("audio_processing", "0023_topic"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='episode',
-            name='topics',
-            field=models.ManyToManyField(blank=True, help_text='Topics associated with this episode', related_name='episodes', to='audio_processing.topic'),
+            model_name="episode",
+            name="topics",
+            field=models.ManyToManyField(
+                blank=True,
+                help_text="Topics associated with this episode",
+                related_name="episodes",
+                to="audio_processing.topic",
+            ),
         ),
         migrations.AddField(
-            model_name='topic',
-            name='topic_id',
+            model_name="topic",
+            name="topic_id",
             field=models.IntegerField(default=0, unique=True),
             preserve_default=False,
         ),

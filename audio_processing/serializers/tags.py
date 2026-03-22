@@ -14,7 +14,7 @@ class TagSerializer(serializers.ModelSerializer):
     def get_episode_count(self, obj):
         """Return the number of episodes associated with this tag."""
         # Check if already annotated (more efficient)
-        if hasattr(obj, 'episode_count'):
+        if hasattr(obj, "episode_count"):
             return obj.episode_count
         # Fallback to counting (will cause N+1 if not annotated)
         return obj.episodes.count()
@@ -22,7 +22,7 @@ class TagSerializer(serializers.ModelSerializer):
     def get_podcast_count(self, obj):
         """Return the number of podcasts associated with this tag."""
         # Check if already annotated (more efficient)
-        if hasattr(obj, 'podcast_count'):
+        if hasattr(obj, "podcast_count"):
             return obj.podcast_count
         # Fallback to counting (will cause N+1 if not annotated)
         return obj.podcasts.count()

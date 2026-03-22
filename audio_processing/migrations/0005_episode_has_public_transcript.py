@@ -4,15 +4,16 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('audio_processing', '0004_podcastowner'),
+        ("audio_processing", "0004_podcastowner"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='episode',
-            name='has_public_transcript',
-            field=models.BooleanField(default=False, help_text='Whether the episode has a public transcript'),
+            model_name="episode",
+            name="has_public_transcript",
+            field=models.BooleanField(
+                default=False, help_text="Whether the episode has a public transcript"
+            ),
         ),
     ]

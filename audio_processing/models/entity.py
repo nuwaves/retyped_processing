@@ -19,6 +19,7 @@ class Entity(models.Model, GroqMixin, SearchableMixin):
         super().save(*args, **kwargs)
         try:
             from audio_processing.tasks.entity_tasks import index_entity_for_search
+
             index_entity_for_search.delay(self.id)
         except Exception:
             pass
@@ -34,10 +35,11 @@ class Entity(models.Model, GroqMixin, SearchableMixin):
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
         }
+
     class EntityType(models.TextChoices):
-        PERSON = 'PERSON', _('Person')
-        ORGANIZATION = 'ORGANIZATION', _('Organization')
-        PRODUCT = 'PRODUCT', _('Product')
+        PERSON = "PERSON", _("Person")
+        ORGANIZATION = "ORGANIZATION", _("Organization")
+        PRODUCT = "PRODUCT", _("Product")
 
     name = models.CharField(max_length=255)
     type = models.CharField(max_length=20, choices=EntityType.choices)
@@ -60,22 +62,26 @@ class Entity(models.Model, GroqMixin, SearchableMixin):
         entities = []
         if response:
             cleaned_response = response
-            code_block_match = re.search(r'```json(.*?)```', cleaned_response, re.DOTALL | re.IGNORECASE)
+            code_block_match = re.search(
+                r"```json(.*?)```", cleaned_response, re.DOTALL | re.IGNORECASE
+            )
             if code_block_match:
                 cleaned_response = code_block_match.group(1)
             # If not found, fallback to removing any generic code block
             else:
-                code_block_match = re.search(r'```(.*?)```', cleaned_response, re.DOTALL)
+                code_block_match = re.search(
+                    r"```(.*?)```", cleaned_response, re.DOTALL
+                )
                 if code_block_match:
                     cleaned_response = code_block_match.group(1)
             data = json.loads(response)
             for ent in data:
-                name = ent.get('name')
-                etype = ent.get('type')
+                name = ent.get("name")
+                etype = ent.get("type")
                 if name and etype in cls.EntityType.values:
                     entity, _ = cls.objects.get_or_create(name=name, type=etype)
                     entities.append(entity)
         # Associate entities to related_obj if provided
-        if related_obj and hasattr(related_obj, 'entities'):
+        if related_obj and hasattr(related_obj, "entities"):
             related_obj.entities.add(*entities)
         return entities

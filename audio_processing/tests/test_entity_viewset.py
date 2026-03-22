@@ -14,8 +14,14 @@ def test_entity_endpoints_list_episodes_and_podcasts():
     client = APIClient()
     # Create test data
     entity = Entity.objects.create(name="Test Person", type=Entity.EntityType.PERSON)
-    podcast = Podcast.objects.create(name="Test Podcast", slug="test-podcast", url="http://example.com")
-    episode = Episode.objects.create(title="Test Episode", podcast=podcast, raw_audio_url="http://example.com/audio.mp3")
+    podcast = Podcast.objects.create(
+        name="Test Podcast", slug="test-podcast", url="http://example.com"
+    )
+    episode = Episode.objects.create(
+        title="Test Episode",
+        podcast=podcast,
+        raw_audio_url="http://example.com/audio.mp3",
+    )
     episode.entities.add(entity)
     episode.save()
     podcast.tags.add(Tag.objects.create(name="Test Tag"))

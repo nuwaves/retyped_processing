@@ -7,13 +7,23 @@ from audio_processing.serializers.podcasts import PodcastListSerializer
 
 
 class BookmarkSerializer(serializers.ModelSerializer):
-    entity_type = serializers.ChoiceField(choices=["episode", "podcast"], write_only=True)
+    entity_type = serializers.ChoiceField(
+        choices=["episode", "podcast"], write_only=True
+    )
     entity_id = serializers.IntegerField(write_only=True)
     entity = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
         model = Bookmark
-        fields = ["id", "user", "entity_type", "entity_id", "entity", "created_at", "updated_at"]
+        fields = [
+            "id",
+            "user",
+            "entity_type",
+            "entity_id",
+            "entity",
+            "created_at",
+            "updated_at",
+        ]
         read_only_fields = ["id", "user", "created_at", "updated_at"]
 
     def validate(self, attrs):
@@ -27,9 +37,7 @@ class BookmarkSerializer(serializers.ModelSerializer):
         if Bookmark.objects.filter(
             user=user, content_type=content_type, object_id=entity_id
         ).exists():
-            raise serializers.ValidationError(
-                "You have already bookmarked this item."
-            )
+            raise serializers.ValidationError("You have already bookmarked this item.")
 
         return attrs
 

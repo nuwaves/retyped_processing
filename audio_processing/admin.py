@@ -1,5 +1,5 @@
-
 """Admin package loader: import submodules so Django registers admin classes."""
+
 from django.contrib import admin
 
 from audio_processing.models import Bookmark, Follow

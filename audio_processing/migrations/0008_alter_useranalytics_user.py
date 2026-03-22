@@ -6,16 +6,22 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('audio_processing', '0007_quote'),
+        ("audio_processing", "0007_quote"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='useranalytics',
-            name='user',
-            field=models.ForeignKey(blank=True, help_text='User who performed the action', null=True, on_delete=django.db.models.deletion.CASCADE, related_name='analytics', to=settings.AUTH_USER_MODEL),
+            model_name="useranalytics",
+            name="user",
+            field=models.ForeignKey(
+                blank=True,
+                help_text="User who performed the action",
+                null=True,
+                on_delete=django.db.models.deletion.CASCADE,
+                related_name="analytics",
+                to=settings.AUTH_USER_MODEL,
+            ),
         ),
     ]

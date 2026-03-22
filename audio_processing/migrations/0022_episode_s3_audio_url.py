@@ -4,15 +4,19 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('audio_processing', '0021_bookmark_follow'),
+        ("audio_processing", "0021_bookmark_follow"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='episode',
-            name='s3_audio_url',
-            field=models.URLField(blank=True, help_text='S3 URI of the uploaded audio file', max_length=2000, null=True),
+            model_name="episode",
+            name="s3_audio_url",
+            field=models.URLField(
+                blank=True,
+                help_text="S3 URI of the uploaded audio file",
+                max_length=2000,
+                null=True,
+            ),
         ),
     ]

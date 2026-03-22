@@ -7,6 +7,7 @@ This module tests the complete verification workflow including:
 - API endpoint verification
 - Token expiration handling
 """
+
 import uuid
 from datetime import timedelta
 from unittest.mock import patch
@@ -35,24 +36,21 @@ class ClaimVerificationModelTest(TestCase):
             email="testuser@example.com",
             password="testpass123",
             first_name="Test",
-            last_name="User"
+            last_name="User",
         )
         self.podcast = Podcast.objects.create(
             name="Test Podcast",
             url="https://example.com/podcast/rss",
-            owner_email="owner@example.com"
+            owner_email="owner@example.com",
         )
-        self.claim = PodcastClaim.objects.create(
-            user=self.user,
-            podcast=self.podcast
-        )
+        self.claim = PodcastClaim.objects.create(user=self.user, podcast=self.podcast)
         self.verification = ClaimVerification.objects.create(claim=self.claim)
 
     def test_get_verification_url(self):
         """Test verification URL generation using Django Sites framework."""
         url = self.verification.get_verification_url()
         self.assertIn(str(self.verification.verification_key), url)
-        self.assertIn('/verify-claim/', url)
+        self.assertIn("/verify-claim/", url)
 
         # Should use the current site's domain
         current_site = Site.objects.get_current()
@@ -62,11 +60,11 @@ class ClaimVerificationModelTest(TestCase):
         """Test verification URL with custom site domain."""
         # Update the site domain
         site = Site.objects.get_current()
-        site.domain = 'example.com'
+        site.domain = "example.com"
         site.save()
 
         url = self.verification.get_verification_url()
-        self.assertTrue('example.com' in url)
+        self.assertTrue("example.com" in url)
         self.assertIn(str(self.verification.verification_key), url)
 
     def test_is_expired_not_expired(self):
@@ -121,25 +119,22 @@ class EmailTaskTest(TestCase):
             email="testuser@example.com",
             password="testpass123",
             first_name="Test",
-            last_name="User"
+            last_name="User",
         )
         self.podcast = Podcast.objects.create(
             name="Test Podcast",
             url="https://example.com/podcast/rss",
-            owner_email="owner@example.com"
+            owner_email="owner@example.com",
         )
-        self.claim = PodcastClaim.objects.create(
-            user=self.user,
-            podcast=self.podcast
-        )
+        self.claim = PodcastClaim.objects.create(user=self.user, podcast=self.podcast)
         self.verification = ClaimVerification.objects.create(claim=self.claim)
 
     def test_send_claim_verification_email_success(self):
         """Test that verification email is sent successfully."""
         result = send_claim_verification_email(self.verification.id)
 
-        self.assertTrue(result['success'])
-        self.assertEqual(result['email'], self.user.email)
+        self.assertTrue(result["success"])
+        self.assertEqual(result["email"], self.user.email)
 
         # Check that email was sent
         self.assertEqual(len(mail.outbox), 1)
@@ -159,14 +154,14 @@ class EmailTaskTest(TestCase):
         self.assertTrue(len(email.alternatives) > 0)
         html_content = email.alternatives[0][0]
         self.assertIn(self.podcast.name, html_content)
-        self.assertIn('Verify Podcast Ownership', html_content)
+        self.assertIn("Verify Podcast Ownership", html_content)
 
     def test_send_claim_verification_email_not_found(self):
         """Test email task with non-existent verification."""
         result = send_claim_verification_email(99999)
 
-        self.assertFalse(result['success'])
-        self.assertIn('not found', result['error'])
+        self.assertFalse(result["success"])
+        self.assertIn("not found", result["error"])
         self.assertEqual(len(mail.outbox), 0)
 
     def test_send_claim_verification_email_includes_verification_url(self):
@@ -192,28 +187,25 @@ class ClaimVerificationAPITest(TestCase):
             email="testuser@example.com",
             password="testpass123",
             first_name="Test",
-            last_name="User"
+            last_name="User",
         )
         self.podcast = Podcast.objects.create(
             name="Test Podcast",
             url="https://example.com/podcast/rss",
-            owner_email="owner@example.com"
+            owner_email="owner@example.com",
         )
-        self.claim = PodcastClaim.objects.create(
-            user=self.user,
-            podcast=self.podcast
-        )
+        self.claim = PodcastClaim.objects.create(user=self.user, podcast=self.podcast)
         self.verification = ClaimVerification.objects.create(claim=self.claim)
 
     def test_post_verification_success(self):
         """Test successful claim verification via API."""
-        url = f'/api/v1/claims/verify/{self.verification.verification_key}/'
+        url = f"/api/v1/claims/verify/{self.verification.verification_key}/"
         response = self.client.post(url)
 
         self.assertEqual(response.status_code, 200)
         data = response.json()
-        self.assertTrue(data['success'])
-        self.assertEqual(data['podcast_name'], self.podcast.name)
+        self.assertTrue(data["success"])
+        self.assertEqual(data["podcast_name"], self.podcast.name)
 
         # Verify database was updated
         self.verification.refresh_from_db()
@@ -228,13 +220,13 @@ class ClaimVerificationAPITest(TestCase):
         self.verification.verify()
 
         # Try to verify again
-        url = f'/api/v1/claims/verify/{self.verification.verification_key}/'
+        url = f"/api/v1/claims/verify/{self.verification.verification_key}/"
         response = self.client.post(url)
 
         self.assertEqual(response.status_code, 400)
         data = response.json()
-        self.assertFalse(data['success'])
-        self.assertIn('already been verified', data['message'])
+        self.assertFalse(data["success"])
+        self.assertIn("already been verified", data["message"])
 
     @override_settings(VERIFICATION_EXPIRY_HOURS=1)
     def test_post_verification_expired(self):
@@ -244,25 +236,25 @@ class ClaimVerificationAPITest(TestCase):
         self.verification.created_at = past_time
         self.verification.save()
 
-        url = f'/api/v1/claims/verify/{self.verification.verification_key}/'
+        url = f"/api/v1/claims/verify/{self.verification.verification_key}/"
         response = self.client.post(url)
 
         self.assertEqual(response.status_code, 400)
         data = response.json()
-        self.assertFalse(data['success'])
-        self.assertIn('expired', data['error'])
+        self.assertFalse(data["success"])
+        self.assertIn("expired", data["error"])
 
     def test_post_verification_invalid_key(self):
         """Test verification with invalid key."""
         invalid_key = uuid.uuid4()
-        url = f'/api/v1/claims/verify/{invalid_key}/'
+        url = f"/api/v1/claims/verify/{invalid_key}/"
         response = self.client.post(url)
 
         self.assertEqual(response.status_code, 404)
 
     def test_verification_endpoint_no_authentication_required(self):
         """Test that verification endpoint doesn't require authentication."""
-        url = f'/api/v1/claims/verify/{self.verification.verification_key}/'
+        url = f"/api/v1/claims/verify/{self.verification.verification_key}/"
         # Client is not authenticated
         response = self.client.post(url)
 
@@ -276,24 +268,19 @@ class SignalIntegrationTest(TestCase):
     def setUp(self):
         """Set up test data."""
         self.user = User.objects.create_user(
-            username="testuser",
-            email="testuser@example.com",
-            password="testpass123"
+            username="testuser", email="testuser@example.com", password="testpass123"
         )
         self.podcast = Podcast.objects.create(
             name="Test Podcast",
             url="https://example.com/podcast/rss",
-            owner_email="owner@example.com"
+            owner_email="owner@example.com",
         )
 
-    @patch('audio_processing.tasks.email_tasks.send_claim_verification_email')
+    @patch("audio_processing.tasks.email_tasks.send_claim_verification_email")
     def test_signal_triggers_email_task(self, mock_email_task):
         """Test that creating a claim triggers the email task."""
         # Create claim (should trigger signal)
-        claim = PodcastClaim.objects.create(
-            user=self.user,
-            podcast=self.podcast
-        )
+        claim = PodcastClaim.objects.create(user=self.user, podcast=self.podcast)
 
         # Verify that ClaimVerification was created
         verification = ClaimVerification.objects.get(claim=claim)
@@ -305,10 +292,7 @@ class SignalIntegrationTest(TestCase):
     def test_signal_sends_actual_email(self):
         """Test that signal triggers actual email sending (integration test)."""
         # Create claim
-        claim = PodcastClaim.objects.create(
-            user=self.user,
-            podcast=self.podcast
-        )
+        claim = PodcastClaim.objects.create(user=self.user, podcast=self.podcast)
 
         # Get the created verification
         verification = ClaimVerification.objects.get(claim=claim)

@@ -18,21 +18,21 @@ class PodcastModelTest(TestCase):
     def setUp(self):
         """Set up test data."""
         self.podcast_data = {
-            'name': 'Test Podcast',
-            'url': 'https://example.com/feed.xml',
-            'description': 'A test podcast description',
-            'author': 'Test Author',
-            'language': 'en',
-            'copyright': 'Test Copyright',
-            'subtitle': 'Test Subtitle',
-            'summary': 'Test Summary',
-            'itunes_explicit': False,
-            'itunes_type': 'episodic',
-            'itunes_categories': ['Technology', 'Business'],
-            'image_url': 'https://example.com/image.jpg',
-            'itunes_image_url': 'https://example.com/itunes_image.jpg',
-            'owner_name': 'Test Owner',
-            'owner_email': 'test@example.com'
+            "name": "Test Podcast",
+            "url": "https://example.com/feed.xml",
+            "description": "A test podcast description",
+            "author": "Test Author",
+            "language": "en",
+            "copyright": "Test Copyright",
+            "subtitle": "Test Subtitle",
+            "summary": "Test Summary",
+            "itunes_explicit": False,
+            "itunes_type": "episodic",
+            "itunes_categories": ["Technology", "Business"],
+            "image_url": "https://example.com/image.jpg",
+            "itunes_image_url": "https://example.com/itunes_image.jpg",
+            "owner_name": "Test Owner",
+            "owner_email": "test@example.com",
         }
 
         self.podcast = Podcast.objects.create(**self.podcast_data)
@@ -65,7 +65,8 @@ class PodcastModelTest(TestCase):
         """Test that podcast URLs must be unique."""
         with self.assertRaises(Exception):  # IntegrityError in practice
             Podcast.objects.create(
-                name="Duplicate Podcast", url="https://example.com/feed.xml"  # Same URL
+                name="Duplicate Podcast",
+                url="https://example.com/feed.xml",  # Same URL
             )
 
     def test_podcast_optional_fields(self):
@@ -151,19 +152,19 @@ class PodcastFeedProcessingTest(TestCase):
         # Create mock feed with comprehensive data
         mock_feed = Mock()
         mock_feed.feed = Mock()
-        mock_feed.feed.title = 'Updated Title'
-        mock_feed.feed.description = 'Updated Description'
-        mock_feed.feed.language = 'fr'
-        mock_feed.feed.copyright = 'Updated Copyright'
-        mock_feed.feed.itunes_subtitle = 'Updated Subtitle'
-        mock_feed.feed.subtitle = 'Updated Subtitle'
-        mock_feed.feed.summary = 'Updated Summary'
+        mock_feed.feed.title = "Updated Title"
+        mock_feed.feed.description = "Updated Description"
+        mock_feed.feed.language = "fr"
+        mock_feed.feed.copyright = "Updated Copyright"
+        mock_feed.feed.itunes_subtitle = "Updated Subtitle"
+        mock_feed.feed.subtitle = "Updated Subtitle"
+        mock_feed.feed.summary = "Updated Summary"
         mock_feed.feed.itunes_summary = None
-        mock_feed.feed.author = 'Updated Author'
+        mock_feed.feed.author = "Updated Author"
         mock_feed.feed.itunes_author = None
-        mock_feed.feed.itunes_explicit = 'yes'
-        mock_feed.feed.itunes_type = 'serial'
-        mock_feed.feed.itunes_keywords = 'updated,keywords'
+        mock_feed.feed.itunes_explicit = "yes"
+        mock_feed.feed.itunes_type = "serial"
+        mock_feed.feed.itunes_keywords = "updated,keywords"
 
         # Mock categories
         mock_tag1 = Mock()
@@ -195,12 +196,13 @@ class PodcastFeedProcessingTest(TestCase):
         self.assertEqual(self.podcast.summary, "Updated Summary")
         self.assertEqual(self.podcast.author, "Updated Author")
         self.assertTrue(self.podcast.itunes_explicit)
-        self.assertEqual(self.podcast.itunes_type, 'serial')
-        self.assertEqual(self.podcast.image_url, 'https://example.com/new-image.jpg')
-        self.assertEqual(self.podcast.itunes_image_url, 'https://example.com/new-itunes-image.jpg')
-        self.assertEqual(self.podcast.owner_name, 'Updated Owner')
-        self.assertEqual(self.podcast.owner_email, 'updated@example.com')
-
+        self.assertEqual(self.podcast.itunes_type, "serial")
+        self.assertEqual(self.podcast.image_url, "https://example.com/new-image.jpg")
+        self.assertEqual(
+            self.podcast.itunes_image_url, "https://example.com/new-itunes-image.jpg"
+        )
+        self.assertEqual(self.podcast.owner_name, "Updated Owner")
+        self.assertEqual(self.podcast.owner_email, "updated@example.com")
 
     def test_process_feed_success(self):
         """Test complete feed processing."""
@@ -239,7 +241,9 @@ class PodcastFeedProcessingTest(TestCase):
             mock_episode = Mock()
             mock_episode.created_at = utils.timezone.now()
 
-            with patch("audio_processing.models.episode.Episode.create_from_entry") as mock_create_episode:
+            with patch(
+                "audio_processing.models.episode.Episode.create_from_entry"
+            ) as mock_create_episode:
                 mock_create_episode.return_value = mock_episode
 
                 result = self.podcast.process_feed()
@@ -258,6 +262,7 @@ class PodcastFeedProcessingTest(TestCase):
 
         self.assertIn("error", result)
         self.assertEqual(result["error"], "RSS feed is marked as inactive")
+
 
 class PodcastDateHandlingTest(TestCase):
     """Test cases for date parsing and handling."""

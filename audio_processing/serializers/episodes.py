@@ -32,15 +32,14 @@ class EpisodeSerializer(serializers.ModelSerializer):
     def get_tags(self, obj):
         """Return tags ordered by episode count."""
         tags = obj.tags.annotate(
-            episode_count=Count('episodes', distinct=True)
-        ).order_by('-episode_count')
+            episode_count=Count("episodes", distinct=True)
+        ).order_by("-episode_count")
         return TagSerializer(tags, many=True).data
 
     def get_bookmark_count(self, obj):
         content_type = ContentType.objects.get_for_model(Episode)
         return Bookmark.objects.filter(
-            content_type=content_type,
-            object_id=obj.id
+            content_type=content_type, object_id=obj.id
         ).count()
 
     def get_image_url(self, obj):
@@ -54,7 +53,6 @@ class EpisodeSerializer(serializers.ModelSerializer):
 
 
 class EpisodeListSerializer(EpisodeSerializer):
-
     class Meta:
         model = Episode
         fields = [
@@ -68,7 +66,7 @@ class EpisodeListSerializer(EpisodeSerializer):
             "image_url",
             "episode_number",
             "bookmark_count",
-            "podcast"
+            "podcast",
         ]
 
 

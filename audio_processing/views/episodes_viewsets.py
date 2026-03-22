@@ -17,7 +17,7 @@ from ..serializers import (
 
 # Local OrderingFilter that accepts `order_by` and maps `random` to ORDER BY RANDOM()
 class OrderByFilter(filters.OrderingFilter):
-    ordering_param = 'order_by'
+    ordering_param = "order_by"
 
     def get_ordering(self, request, queryset, view):
         """Return ordering fields for this request.
@@ -31,9 +31,9 @@ class OrderByFilter(filters.OrderingFilter):
             return super().get_ordering(request, queryset, view)
 
         # allow comma-separated fields; treat any 'random' token as RANDOM
-        tokens = [t.strip() for t in param.split(',') if t.strip()]
-        if any(t.lower() == 'random' for t in tokens):
-            return ['?']
+        tokens = [t.strip() for t in param.split(",") if t.strip()]
+        if any(t.lower() == "random" for t in tokens):
+            return ["?"]
 
         return super().get_ordering(request, queryset, view)
 
@@ -53,10 +53,10 @@ class EpisodeViewSet(
         OrderByFilter,
     ]
     filterset_fields = {
-        'processing_completed_at': ['isnull'],
-        'quotes': ['isnull'],
+        "processing_completed_at": ["isnull"],
+        "quotes": ["isnull"],
         # allow filtering episodes by their podcast's publication date
-        'podcast__pub_date': ['gte', 'lte', 'isnull'],
+        "podcast__pub_date": ["gte", "lte", "isnull"],
     }
 
     search_fields = [
@@ -67,26 +67,23 @@ class EpisodeViewSet(
     ordering_fields = [
         "updated_at",
         "created_at",
-        'release_date',
+        "release_date",
     ]
     ordering = ["-release_date"]
 
     def get_queryset(self):
         """Support extra query params like last_24h to filter by podcast pub_date."""
         qs = super().get_queryset()
-        req = getattr(self, 'request', None)
+        req = getattr(self, "request", None)
         if not req:
             return qs
 
-        last_24 = (
-            req.query_params.get('last_24h')
-        )
-        if last_24 and str(last_24).lower() in ('1', 'true', 'yes'):
+        last_24 = req.query_params.get("last_24h")
+        if last_24 and str(last_24).lower() in ("1", "true", "yes"):
             since = timezone.now() - timezone.timedelta(hours=24)
             qs = qs.filter(podcast__pub_date__gte=since)
 
         return qs
-
 
     @action(detail=False, methods=["get"], url_path="top-by-views")
     def top_by_views(self, request):
@@ -100,9 +97,12 @@ class EpisodeViewSet(
         return Response(serialized_data.data, status=status.HTTP_200_OK)
 
     def get_serializer_class(self):
-        request = getattr(self, 'request', None)
+        request = getattr(self, "request", None)
         if self.action == "list":
-            if request and request.query_params.get("details", "false").lower() == "true":
+            if (
+                request
+                and request.query_params.get("details", "false").lower() == "true"
+            ):
                 return EpisodeSerializer
             return EpisodeListSerializer
         return self.serializer_class
