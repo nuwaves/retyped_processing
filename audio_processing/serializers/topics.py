@@ -14,6 +14,7 @@ class TopicSerializer(serializers.ModelSerializer):
             "slug",
             "description",
             "top_words",
+            "is_enabled",
             "episode_count",
             "created_at",
             "updated_at",

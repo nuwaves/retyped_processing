@@ -30,6 +30,9 @@ class Topic(models.Model, GroqMixin):
     top_words = JSONField(
         blank=True, null=True, help_text="List of top words or phrases for this topic"
     )
+    is_enabled = models.BooleanField(
+        default=True, help_text="Whether this topic is visible on the frontend"
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
