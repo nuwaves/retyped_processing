@@ -106,7 +106,7 @@ class GroqMixin:
                 transcript = result.get("text", "")
             else:
                 # Single file, send as usual
-                with open(tmp_path, "rb") as f:
+                with open(tmp_path, "rb"):
                     files = {
                         "url": (None, clean_url),
                         "model": (None, config.TEXT_TO_SPEECH_MODEL),

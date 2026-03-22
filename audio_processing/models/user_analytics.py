@@ -79,6 +79,11 @@ class UserAnalytics(models.Model):
 
         return f"{self.user.username if self.user else 'Anonymous'} - {entity_name}"
 
+    def save(self, *args, **kwargs):
+        """Override save to run validation."""
+        self.full_clean()
+        super().save(*args, **kwargs)
+
     def clean(self):
         """Validate that exactly one of podcast or episode is set."""
         super().clean()
@@ -89,11 +94,6 @@ class UserAnalytics(models.Model):
 
         if self.podcast and self.episode:
             raise ValidationError("Cannot specify both podcast and episode.")
-
-    def save(self, *args, **kwargs):
-        """Override save to run validation."""
-        self.full_clean()
-        super().save(*args, **kwargs)
 
     @property
     def entity(self):

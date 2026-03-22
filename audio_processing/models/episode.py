@@ -203,6 +203,9 @@ class Episode(
             self.raw_audio_url = self.clean_url(self.raw_audio_url)
         super().save(*args, **kwargs)
 
+    def get_absolute_url(self):
+        return "/shows/" + self.podcast.slug + "/" + self.slug
+
     @classmethod
     def create_from_entry(cls, podcast, entry):
         """
@@ -777,6 +780,3 @@ class Episode(
             external_batch_id=batch.id, record_count=len(episode_ids)
         )
         return groq_response
-
-    def get_absolute_url(self):
-        return "/shows/" + self.podcast.slug + "/" + self.slug

@@ -88,6 +88,25 @@ class PodcastOwner(models.Model):
             f"{self.full_name} - {self.podcast.name if self.podcast else 'No Podcast'}"
         )
 
+    def save(self, *args, **kwargs):
+        """Override save to run validation."""
+        self.clean()
+        super().save(*args, **kwargs)
+
+    def clean(self):
+        """Validate the model data."""
+
+        # Ensure approval/rejection dates match the status
+        if self.approval_status == "approved" and not self.date_approved:
+            self.date_approved = timezone.now()
+        elif self.approval_status == "rejected" and not self.date_rejected:
+            self.date_rejected = timezone.now()
+        elif self.approval_status == "pending":
+            if self.date_approved or self.date_rejected:
+                # If status is pending, clear any approval/rejection dates
+                self.date_approved = None
+                self.date_rejected = None
+
     @property
     def full_name(self):
         """Return the owner's full name."""
@@ -150,22 +169,3 @@ class PodcastOwner(models.Model):
         self.approved_by = None
         self.approval_notes = None
         self.save()
-
-    def clean(self):
-        """Validate the model data."""
-
-        # Ensure approval/rejection dates match the status
-        if self.approval_status == "approved" and not self.date_approved:
-            self.date_approved = timezone.now()
-        elif self.approval_status == "rejected" and not self.date_rejected:
-            self.date_rejected = timezone.now()
-        elif self.approval_status == "pending":
-            if self.date_approved or self.date_rejected:
-                # If status is pending, clear any approval/rejection dates
-                self.date_approved = None
-                self.date_rejected = None
-
-    def save(self, *args, **kwargs):
-        """Override save to run validation."""
-        self.clean()
-        super().save(*args, **kwargs)

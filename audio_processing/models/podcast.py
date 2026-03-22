@@ -119,6 +119,9 @@ class Podcast(models.Model, SearchableMixin):
         super().save(*args, **kwargs)
         self.index_to_search()
 
+    def get_absolute_url(self):
+        return "/shows/" + self.slug
+
     def fetch_feed(self):
         """
         Fetch and parse the RSS feed and update metadata.
@@ -495,6 +498,3 @@ class Podcast(models.Model, SearchableMixin):
             "episode_count": self.episodes.count(),
             "tags": [tag.name for tag in self.tags.all()],
         }
-
-    def get_absolute_url(self):
-        return "/shows/" + self.slug

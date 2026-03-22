@@ -118,7 +118,7 @@ def get_quote_extraction_prompt(transcript):
     Returns:
         str: Formatted prompt for quote extraction
     """
-    return f"""Please analyze the following podcast episode transcript and extract up to 12 of the most interesting quotes. 
+    return f"""Please analyze the following podcast episode transcript and extract up to 12 of the most interesting quotes.
 Focus on snippets that are particularly:
 - Entertaining or funny
 - Controversial or thought-provoking

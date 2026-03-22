@@ -10,10 +10,23 @@ from audio_processing.prompts import get_entity_extraction_prompt
 
 
 class Entity(models.Model, GroqMixin, SearchableMixin):
+    SEARCH_INDEX_UID = "entities"
+
+    class EntityType(models.TextChoices):
+        PERSON = "PERSON", _("Person")
+        ORGANIZATION = "ORGANIZATION", _("Organization")
+        PRODUCT = "PRODUCT", _("Product")
+
+    name = models.CharField(max_length=255)
+    type = models.CharField(max_length=20, choices=EntityType.choices)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
     class Meta:
         unique_together = ("name", "type")
 
-    SEARCH_INDEX_UID = "entities"
+    def __str__(self):
+        return f"{self.name} ({self.type})"
 
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
@@ -35,19 +48,6 @@ class Entity(models.Model, GroqMixin, SearchableMixin):
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
         }
-
-    class EntityType(models.TextChoices):
-        PERSON = "PERSON", _("Person")
-        ORGANIZATION = "ORGANIZATION", _("Organization")
-        PRODUCT = "PRODUCT", _("Product")
-
-    name = models.CharField(max_length=255)
-    type = models.CharField(max_length=20, choices=EntityType.choices)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    def __str__(self):
-        return f"{self.name} ({self.type})"
 
     @classmethod
     def entities_from_text(cls, text, related_obj=None):
