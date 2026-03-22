@@ -110,7 +110,7 @@ class EpisodeSitemap(Sitemap):
     def items(self):
         offset = (self.page - 1) * EPISODE_SITEMAP_PAGE_SIZE
         # Only load essential fields to reduce memory usage
-        return Episode.objects.only('id', 'slug', 'updated_at').order_by('-updated_at')[offset:offset + EPISODE_SITEMAP_PAGE_SIZE].iterator()
+        return Episode.objects.only('id', 'slug', 'updated_at').order_by('-updated_at')[offset:offset + EPISODE_SITEMAP_PAGE_SIZE]
 
     def location(self, obj):
         return f'/episodes/{obj.slug}' if obj.slug else f'/episodes/{obj.id}'
@@ -128,7 +128,7 @@ class PodcastSitemap(Sitemap):
     def items(self):
         offset = (self.page - 1) * PODCAST_SITEMAP_PAGE_SIZE
         # Only load essential fields to reduce memory usage
-        return Podcast.objects.only('id', 'slug', 'updated_at').order_by('-updated_at')[offset:offset + PODCAST_SITEMAP_PAGE_SIZE].iterator()
+        return Podcast.objects.only('id', 'slug', 'updated_at').order_by('-updated_at')[offset:offset + PODCAST_SITEMAP_PAGE_SIZE]
 
     def location(self, obj):
         return f'/podcasts/{obj.slug}' if obj.slug else f'/podcasts/{obj.id}'
