@@ -10,6 +10,7 @@ from .views import EpisodeViewSet, PodcastViewSet, TagsViewSet
 from .views.bookmarks_viewsets import BookmarkViewSet
 from .views.claim_verification_viewsets import ClaimVerificationView
 from .views.entity_viewsets import EntityViewSet
+from .views.feed_viewsets import FeedViewSet
 from .views.follows_viewsets import FollowViewSet
 from .views.podcast_claims_viewsets import PodcastClaimViewSet
 from .views.search_viewsets import SearchViewSet
@@ -30,6 +31,17 @@ api_v1_patterns = [
         "entities/<int:pk>/podcasts/",
         EntityViewSet.as_view({"get": "podcasts"}),
         name="api-v1-entities-podcasts",
+    ),
+    # Feed endpoints (authenticated)
+    path(
+        "feed/episodes/",
+        FeedViewSet.as_view({"get": "episodes"}),
+        name="api-v1-feed-episodes",
+    ),
+    path(
+        "feed/quotes/",
+        FeedViewSet.as_view({"get": "quotes"}),
+        name="api-v1-feed-quotes",
     ),
     # Topics endpoints
     path("topics/", TopicViewSet.as_view({"get": "list"}), name="api-v1-topics-list"),
