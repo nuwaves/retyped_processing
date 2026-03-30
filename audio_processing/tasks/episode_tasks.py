@@ -328,3 +328,31 @@ def tag_episode_with_topics(episode_id):
         return {"error": f"Episode with ID {episode_id} does not exist"}
     except Exception as e:
         return {"error": str(e)}
+
+
+@shared_task
+def backfill_topics_for_recent_episodes():
+    """
+    Celery beat task to find episodes from the last 7 days that have no topics
+    assigned and queue topic tagging for each.
+    """
+    from audio_processing.models.topic import loaded_model
+
+    if loaded_model is None:
+        logger.warning("Topic model not loaded — skipping topic backfill")
+        return {"skipped": True, "reason": "HF_API_TOKEN not set"}
+
+    cutoff = timezone.now() - timedelta(days=7)
+    episodes = Episode.objects.filter(
+        release_date__gte=cutoff,
+        transcript__isnull=False,
+        topics__isnull=True,
+    ).distinct()
+
+    queued = []
+    for episode in episodes:
+        result = tag_episode_with_topics.delay(episode.id)
+        queued.append({"episode_id": episode.id, "task_id": result.id})
+
+    logger.info(f"Queued topic tagging for {len(queued)} episodes")
+    return {"queued": len(queued), "episodes": queued}
