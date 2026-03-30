@@ -43,6 +43,11 @@ api_v1_patterns = [
         TopicViewSet.as_view({"get": "episodes"}),
         name="api-v1-topics-episodes",
     ),
+    path(
+        "topics/<slug:slug>/quotes/",
+        TopicViewSet.as_view({"get": "quotes"}),
+        name="api-v1-topics-quotes",
+    ),
     # Tags endpoints
     path("tags/", TagsViewSet.as_view({"get": "list"}), name="api-v1-tags-list"),
     path(

@@ -3,8 +3,10 @@ from rest_framework import mixins, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
+from ..models.quote import Quote
 from ..models.topic import Topic
 from ..serializers.episodes import EpisodeListSerializer
+from ..serializers.quotes import QuoteWithEpisodeSerializer
 from ..serializers.topics import TopicSerializer
 
 
@@ -30,4 +32,19 @@ class TopicViewSet(
             serializer = EpisodeListSerializer(page, many=True)
             return self.get_paginated_response(serializer.data)
         serializer = EpisodeListSerializer(episodes, many=True)
+        return Response(serializer.data)
+
+    @action(detail=True, methods=["get"], url_path="quotes")
+    def quotes(self, request, slug=None):
+        topic = self.get_object()
+        quotes = (
+            Quote.objects.filter(episode__topics=topic)
+            .select_related("episode", "episode__podcast")
+            .order_by("-created_at")
+        )
+        page = self.paginate_queryset(quotes)
+        if page is not None:
+            serializer = QuoteWithEpisodeSerializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+        serializer = QuoteWithEpisodeSerializer(quotes, many=True)
         return Response(serializer.data)
