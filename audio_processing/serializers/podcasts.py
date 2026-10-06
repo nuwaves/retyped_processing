@@ -3,10 +3,13 @@ from django.db.models import Count
 from rest_framework import serializers
 
 from ..models import Bookmark, Follow, Podcast
+from .fields import HtmlSanitizedField
 from .tags import TagSerializer
 
 
 class PodcastSerializer(serializers.ModelSerializer):
+    description = HtmlSanitizedField()
+    summary = HtmlSanitizedField()
     tags = serializers.SerializerMethodField()
     episode_count = serializers.SerializerMethodField()
     followers_count = serializers.SerializerMethodField()
