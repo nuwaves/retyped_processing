@@ -673,7 +673,9 @@ class Episode(
                 results["topics_assigned"] = True
                 logger.info(f"Topics assigned for: {self.raw_audio_url}")
             else:
-                results["errors"].append("Topic model not loaded (HF_API_TOKEN missing)")
+                results["errors"].append(
+                    "Topic model not loaded (HF_API_TOKEN missing)"
+                )
         except Exception as e:
             results["errors"].append(f"Failed to assign topics: {str(e)}")
         self.processing_completed_at = timezone.now()
