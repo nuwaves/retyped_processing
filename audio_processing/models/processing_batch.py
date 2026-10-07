@@ -57,7 +57,9 @@ class ProcessingBatch(models.Model):
         batch_id = self.external_batch_id
         batch_url = f"https://api.groq.com/openai/v1/batches/{batch_id}"
         resp = requests.get(
-            batch_url, headers={"Authorization": f"Bearer {groq_api_key}"}
+            batch_url,
+            headers={"Authorization": f"Bearer {groq_api_key}"},
+            timeout=settings.HTTP_TIMEOUT,
         )
         resp.raise_for_status()
         batch_info = resp.json()
@@ -85,7 +87,10 @@ class ProcessingBatch(models.Model):
         # 3. Download output file
         files_url = f"https://api.groq.com/openai/v1/files/{output_file_id}/content"
         out_resp = requests.get(
-            files_url, headers={"Authorization": f"Bearer {groq_api_key}"}, stream=True
+            files_url,
+            headers={"Authorization": f"Bearer {groq_api_key}"},
+            stream=True,
+            timeout=settings.HTTP_TIMEOUT,
         )
         out_resp.raise_for_status()
 

@@ -42,20 +42,17 @@ def process_podcast_by_id(podcast_id):
 @shared_task
 def process_all_active_podcasts():
     """
-    Celery task to process all active podcasts.
+    Celery task to queue a feed refresh for every active podcast.
+    Each feed runs as its own task so one slow feed can't hit the time limit for all.
     """
-    active_podcasts = Podcast.objects.filter(is_active=True)
-    results = []
+    podcast_ids = list(
+        Podcast.objects.filter(is_active=True).values_list("id", flat=True)
+    )
+    for podcast_id in podcast_ids:
+        process_podcast_by_id.delay(podcast_id)
 
-    for podcast in active_podcasts:
-        logger.info(f"Processing podcast: {podcast.name} ({podcast.url})")
-        result = podcast.process_feed()
-        results.append(result)
-
-    summary = {"total_feeds_processed": len(results), "feeds": results}
-
-    logger.info(f"Completed processing all active podcasts: {len(results)} podcasts")
-    return summary
+    logger.info(f"Queued feed refresh for {len(podcast_ids)} active podcasts")
+    return {"total_feeds_queued": len(podcast_ids)}
 
 
 def get_podcast_summary(podcast_id):

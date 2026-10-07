@@ -22,6 +22,7 @@ from audio_processing.models.mixins import (
     SummarizableMixin,
     TaggableMixin,
 )
+from audio_processing.utils.storage import get_s3_client, public_audio_url
 
 from .mixins.aws_mixin import AwsMixin
 from .mixins.groq_mixin import GroqMixin
@@ -455,13 +456,7 @@ class Episode(
                 logger.error("AWS_S3_BUCKET not configured")
                 return None
 
-            # Initialize S3 client
-            s3_client = boto3.client(
-                "s3",
-                region_name=getattr(settings, "AWS_REGION", "us-east-1"),
-                aws_access_key_id=getattr(settings, "AWS_ACCESS_KEY_ID", None),
-                aws_secret_access_key=getattr(settings, "AWS_SECRET_ACCESS_KEY", None),
-            )
+            s3_client = get_s3_client()
 
             # Download the audio file
             logger.info(f"Downloading audio file from: {audio_url}")
@@ -529,7 +524,7 @@ class Episode(
             # Return S3 URI
             s3_uri = f"s3://{bucket_name}/{s3_key}"
             logger.info(f"Audio file uploaded successfully to: {s3_uri}")
-            self.s3_audio_url = "https://cdn.retyped.xyz/" + s3_key
+            self.s3_audio_url = public_audio_url(s3_key)
             self.save(update_fields=["s3_audio_url"])
             return self.s3_audio_url
 
@@ -775,6 +770,7 @@ class Episode(
                 headers={"Authorization": f"Bearer {groq_api_key}"},
                 files={"file": (os.path.basename(tmpfile_path), file_data)},
                 data={"purpose": "batch"},
+                timeout=settings.HTTP_TIMEOUT,
             )
         response.raise_for_status()
         # Optionally, clean up the temp file
