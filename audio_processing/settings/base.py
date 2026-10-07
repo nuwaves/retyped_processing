@@ -260,5 +260,3 @@ AUTHENTICATION_BACKENDS = (
     "drf_social_oauth2.backends.DjangoOAuth2",
     "django.contrib.auth.backends.ModelBackend",
 )
-
-HF_API_TOKEN = os.environ.get("HF_API_TOKEN", None)

@@ -3,9 +3,6 @@
 # Exit on any error
 set -e
 
-# echo "Installing bertopic..."
-# pip install bertopic
-
 echo "Starting Django application..."
 
 # Run database migrations
