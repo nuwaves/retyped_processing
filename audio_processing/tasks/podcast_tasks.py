@@ -78,7 +78,7 @@ def index_podcast_for_search(podcast_id):
 
     try:
         podcast = Podcast.objects.get(id=podcast_id)
-        index_podcast_for_search.delay(podcast.id)
+        podcast.index_to_search()
         return {"success": f"Podcast {podcast.name} indexed for search"}
     except Podcast.DoesNotExist:
         return {"error": f"Podcast with ID {podcast_id} does not exist"}

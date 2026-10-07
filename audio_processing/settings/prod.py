@@ -86,9 +86,8 @@ if not MEILISEARCH_URL:
 #     }
 # }
 
-# Production-specific middleware
-MIDDLEWARE.insert(1, "django.middleware.cache.UpdateCacheMiddleware")
-MIDDLEWARE.append("django.middleware.cache.FetchFromCacheMiddleware")
+# No site-wide cache middleware: it keys responses by URL only, so it served
+# one user's bookmarks, feed and analytics to other users. Cache per view instead.
 
 # Admin security
 # ADMIN_URL = os.environ.get('ADMIN_URL', 'admin/')  # Allow custom admin URL

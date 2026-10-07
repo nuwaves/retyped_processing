@@ -2,20 +2,15 @@ from django.contrib.contenttypes.models import ContentType
 from django.db.models import Count
 from rest_framework import serializers
 
-from audio_processing.utils import sanitize_html_content
-
 from ..models import Bookmark, Episode
+from .fields import HtmlSanitizedField
 from .podcasts import PodcastListSerializer
 from .quotes import QuoteSerializer
 from .tags import TagSerializer
 from .topics import TopicSerializer
 
-
-class HtmlSanitizedField(serializers.CharField):
-    def to_representation(self, value):
-        if isinstance(value, str):
-            return sanitize_html_content(value)
-        return value
+# Signed-out visitors get a transcript preview this long; the frontend blurs it.
+ANONYMOUS_TRANSCRIPT_PREVIEW_CHARS = 200
 
 
 class EpisodeSerializer(serializers.ModelSerializer):
@@ -47,9 +42,50 @@ class EpisodeSerializer(serializers.ModelSerializer):
             return obj.podcast.image_url
         return obj.image_url
 
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        request = self.context.get("request")
+        if not (request and request.user.is_authenticated):
+            for field in ("transcript", "script_transcript"):
+                if data.get(field):
+                    data[field] = data[field][:ANONYMOUS_TRANSCRIPT_PREVIEW_CHARS]
+        return data
+
     class Meta:
         model = Episode
-        fields = "__all__"
+        fields = [
+            "id",
+            "slug",
+            "title",
+            "subtitle",
+            "description",
+            "content_encoded",
+            "summary",
+            "image_url",
+            "podcast",
+            "tags",
+            "topics",
+            "quotes",
+            "entities",
+            "release_date",
+            "pub_date",
+            "duration",
+            "episode_number",
+            "season_number",
+            "episode_type",
+            "raw_audio_url",
+            "audio_type",
+            "audio_length",
+            "itunes_explicit",
+            "itunes_episode_type",
+            "has_public_transcript",
+            "transcript",
+            "script_transcript",
+            "processing_completed_at",
+            "bookmark_count",
+            "created_at",
+            "updated_at",
+        ]
 
 
 class EpisodeListSerializer(EpisodeSerializer):
