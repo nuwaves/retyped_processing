@@ -16,9 +16,9 @@ class FeedViewSet(viewsets.GenericViewSet):
 
     def _followed_podcast_ids(self, user):
         podcast_ct = ContentType.objects.get_for_model(Podcast)
-        return Follow.objects.filter(
-            user=user, content_type=podcast_ct
-        ).values_list("object_id", flat=True)
+        return Follow.objects.filter(user=user, content_type=podcast_ct).values_list(
+            "object_id", flat=True
+        )
 
     @action(detail=False, methods=["get"], url_path="episodes")
     def episodes(self, request):

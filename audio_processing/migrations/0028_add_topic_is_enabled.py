@@ -4,15 +4,16 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('audio_processing', '0027_add_updated_at_indexes'),
+        ("audio_processing", "0027_add_updated_at_indexes"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='topic',
-            name='is_enabled',
-            field=models.BooleanField(default=True, help_text='Whether this topic is visible on the frontend'),
+            model_name="topic",
+            name="is_enabled",
+            field=models.BooleanField(
+                default=True, help_text="Whether this topic is visible on the frontend"
+            ),
         ),
     ]
