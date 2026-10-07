@@ -664,18 +664,13 @@ class Episode(
             logger.info(f"Extracted {len(quotes)} quotes from: {self.raw_audio_url}")
         else:
             results["errors"].append("Failed to extract quotes")
-        # Step 7: Assign BERTopic topics
+        # Step 7: Assign a topic
         try:
-            from audio_processing.models.topic import Topic, loaded_model
+            from audio_processing.models.topic import Topic
 
-            if loaded_model is not None:
-                Topic.set_episode_topics(self)
+            if Topic.set_episode_topics(self):
                 results["topics_assigned"] = True
                 logger.info(f"Topics assigned for: {self.raw_audio_url}")
-            else:
-                results["errors"].append(
-                    "Topic model not loaded (HF_API_TOKEN missing)"
-                )
         except Exception as e:
             results["errors"].append(f"Failed to assign topics: {str(e)}")
         self.processing_completed_at = timezone.now()

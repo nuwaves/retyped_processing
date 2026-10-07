@@ -143,3 +143,21 @@ Format your response as JSON with this structure:
 
 Transcript:
 {transcript}"""
+
+
+def get_topic_selection_prompt(topic_list, episode_text):
+    """
+    Generate a prompt asking the model to pick the single best-fitting topic.
+    """
+    return f"""You are an AI assistant that assigns podcast episodes to a topic.
+
+Available topics:
+{json.dumps(topic_list, indent=2)}
+
+Episode title and show notes:
+{episode_text}
+
+Pick the ONE topic from the list that best fits this episode.
+Return ONLY a JSON object with the topic id, for example: {{"topic_id": 3}}
+If none of the topics fit, return: {{"topic_id": null}}
+Do not include any additional text or explanations."""
