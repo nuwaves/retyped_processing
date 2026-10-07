@@ -20,12 +20,8 @@ class QuoteSerializer(serializers.ModelSerializer):
 class QuoteWithEpisodeSerializer(serializers.ModelSerializer):
     episode_title = serializers.CharField(source="episode.title", read_only=True)
     episode_slug = serializers.CharField(source="episode.slug", read_only=True)
-    podcast_name = serializers.CharField(
-        source="episode.podcast.name", read_only=True
-    )
-    podcast_slug = serializers.CharField(
-        source="episode.podcast.slug", read_only=True
-    )
+    podcast_name = serializers.CharField(source="episode.podcast.name", read_only=True)
+    podcast_slug = serializers.CharField(source="episode.podcast.slug", read_only=True)
     podcast_image_url = serializers.URLField(
         source="episode.podcast.image_url", read_only=True
     )
