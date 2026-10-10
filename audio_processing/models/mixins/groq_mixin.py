@@ -11,6 +11,9 @@ from django.conf import settings
 from audio_processing.models.mixins.audio_chunking import transcribe_audio_in_chunks
 from audio_processing.prompts import get_speaker_transcript_prompt
 
+# Seconds to wait for Groq to transcribe a whole file (up to 100 MB) in one request.
+TRANSCRIPTION_TIMEOUT = 900
+
 logger = logging.getLogger(__name__)
 
 
@@ -55,7 +58,9 @@ class GroqMixin:
         }
 
         try:
-            response = requests.post(url, headers=headers, json=data)
+            response = requests.post(
+                url, headers=headers, json=data, timeout=settings.HTTP_TIMEOUT
+            )
             response.raise_for_status()
 
             result = response.json()
@@ -113,7 +118,13 @@ class GroqMixin:
                         "language": (None, "en"),
                         "response_format": (None, "json"),
                     }
-                    response = requests.post(url, headers=headers, files=files)
+                    # Groq fetches and transcribes the whole file during this request.
+                    response = requests.post(
+                        url,
+                        headers=headers,
+                        files=files,
+                        timeout=TRANSCRIPTION_TIMEOUT,
+                    )
                     response.raise_for_status()
                     transcript = response.json().get("text", "")
             if transcript.strip():
