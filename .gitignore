@@ -6,6 +6,7 @@
 # C extensions
 *.so
 .env.dev
+.env.prod
 
 # Distribution / packaging
 .Python

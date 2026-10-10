@@ -1,0 +1,115 @@
+# Production stack for a single server (Hetzner + Coolify, or plain `docker compose`).
+# The frontend deploys separately from the retyped_frontend repo.
+#
+#   cp .env.example .env.prod   # then fill in real values
+#   docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build
+#
+# Only the API is published, on 127.0.0.1:8000, for the reverse proxy in front of it.
+
+x-app: &app
+  image: retyped/backend:${IMAGE_TAG:-latest}
+  env_file:
+    - .env.prod
+  environment:
+    DJANGO_SETTINGS_MODULE: audio_processing.settings.prod
+    DB_HOST: db
+    DB_PORT: "5432"
+    CELERY_BROKER_URL: redis://redis:6379/0
+    REDIS_URL: redis://redis:6379/1
+    MEILISEARCH_URL: http://meilisearch:7700
+  restart: unless-stopped
+  depends_on:
+    db:
+      condition: service_healthy
+    redis:
+      condition: service_healthy
+    meilisearch:
+      condition: service_healthy
+
+services:
+  api:
+    <<: *app
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      DJANGO_SETTINGS_MODULE: audio_processing.settings.prod
+      DB_HOST: db
+      DB_PORT: "5432"
+      CELERY_BROKER_URL: redis://redis:6379/0
+      REDIS_URL: redis://redis:6379/1
+      MEILISEARCH_URL: http://meilisearch:7700
+      GUNICORN_WORKERS: "3"
+    command: /app/entrypoint.sh
+    ports:
+      - "127.0.0.1:8000:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import socket; socket.create_connection(('localhost', 8000), 2)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+
+  worker:
+    <<: *app
+    command: /app/celery_worker_endpoint.sh
+    # Wait for the API, which runs migrations on start.
+    depends_on:
+      api:
+        condition: service_healthy
+
+  beat:
+    <<: *app
+    command: /app/celery_beat_endpoint.sh
+    # Wait for the API, which runs migrations on start.
+    depends_on:
+      api:
+        condition: service_healthy
+
+  db:
+    image: postgres:17
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    # Append-only file so queued tasks survive a restart.
+    command: redis-server --appendonly yes
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  meilisearch:
+    image: getmeili/meilisearch:v1.16
+    restart: unless-stopped
+    environment:
+      MEILI_ENV: production
+      MEILI_MASTER_KEY: ${MEILISEARCH_API_KEY}
+      MEILI_NO_ANALYTICS: "true"
+    volumes:
+      - meilidata:/meili_data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:7700/health | grep -q available"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  pgdata:
+  redisdata:
+  meilidata:
