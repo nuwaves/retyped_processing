@@ -74,7 +74,9 @@ class SummarizableMixin:
                 "max_tokens": 8192,
             }
 
-            response = requests.post(url, headers=headers, json=data)
+            response = requests.post(
+                url, headers=headers, json=data, timeout=settings.HTTP_TIMEOUT
+            )
             response.raise_for_status()
 
             result = response.json()
