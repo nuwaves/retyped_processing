@@ -15,8 +15,4 @@ python manage.py collectstatic --noinput || echo "Static files collection failed
 
 # Start the application
 echo "Starting gunicorn server..."
-# GUNICORN_WORKERS defaults to 1 to match the current ECS task size.
-gunicorn audio_processing.wsgi:application \
-  --bind 0.0.0.0:8000 \
-  --workers "${GUNICORN_WORKERS:-1}" \
-  --timeout "${GUNICORN_TIMEOUT:-60}"
+gunicorn audio_processing.wsgi:application --bind 0.0.0.0:8000

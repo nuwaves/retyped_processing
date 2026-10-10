@@ -7,8 +7,6 @@ on:
   pull_request:
     branches: 
       - main
-  # Called by the deploy workflow so deploys wait for tests.
-  workflow_call:
 
 jobs:
   test:
