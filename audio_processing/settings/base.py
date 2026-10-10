@@ -127,10 +127,43 @@ AWS_SECRET_ACCESS_KEY = os.environ.get("AWS_SECRET_ACCESS_KEY", "")
 AWS_REGION = os.environ.get("AWS_REGION", "us-east-1")
 AWS_S3_BUCKET = os.environ.get("AWS_S3_BUCKET", None)
 AWS_TRANSCRIBE_OUTPUT_BUCKET = os.environ.get("AWS_TRANSCRIBE_OUTPUT_BUCKET", None)
+# Set to an S3-compatible endpoint (e.g. Cloudflare R2) to store audio outside AWS.
+AWS_S3_ENDPOINT_URL = os.environ.get("AWS_S3_ENDPOINT_URL") or None
+# Public base URL that serves objects from AWS_S3_BUCKET.
+AUDIO_CDN_URL = os.environ.get("AUDIO_CDN_URL", "https://cdn.retyped.xyz").rstrip("/")
+
+# Timeout in seconds for outbound HTTP calls (Groq, feeds, audio downloads).
+HTTP_TIMEOUT = int(os.environ.get("HTTP_TIMEOUT", "120"))
+
+# Redis serves as the Celery broker and the shared Django cache when REDIS_URL is set.
+REDIS_URL = os.environ.get("REDIS_URL", "")
+
+if REDIS_URL:
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.redis.RedisCache",
+            "LOCATION": REDIS_URL,
+            "KEY_PREFIX": "audio_processing",
+        }
+    }
 
 # Celery settings
-CELERY_BROKER_URL = f"sqs://{AWS_ACCESS_KEY_ID}:{AWS_SECRET_ACCESS_KEY}@"
+CELERY_BROKER_URL = os.environ.get(
+    "CELERY_BROKER_URL", f"sqs://{AWS_ACCESS_KEY_ID}:{AWS_SECRET_ACCESS_KEY}@"
+)
 CELERY_QUEUE_NAME_PREFIX = ""
+
+# Stop runaway tasks: the soft limit raises SoftTimeLimitExceeded so the task can
+# record the failure, and the hard limit kills the worker process.
+CELERY_TASK_SOFT_TIME_LIMIT = int(os.environ.get("CELERY_TASK_SOFT_TIME_LIMIT", "5400"))
+CELERY_TASK_TIME_LIMIT = int(os.environ.get("CELERY_TASK_TIME_LIMIT", "6000"))
+
+if CELERY_BROKER_URL.startswith("redis"):
+    # Redis redelivers unacknowledged tasks after visibility_timeout (default 1 hour),
+    # so it must outlast the longest task or long episodes get processed twice.
+    CELERY_BROKER_TRANSPORT_OPTIONS = {
+        "visibility_timeout": CELERY_TASK_TIME_LIMIT + 600
+    }
 
 # Meilisearch settings
 MEILISEARCH_URL = os.environ.get("MEILISEARCH_URL", "")

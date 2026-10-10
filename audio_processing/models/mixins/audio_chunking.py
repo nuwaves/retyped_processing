@@ -10,6 +10,9 @@ from pathlib import Path
 from groq import Groq, RateLimitError
 from pydub import AudioSegment
 
+# Give up on a chunk after this many rate-limit waits (60 seconds each).
+MAX_RATE_LIMIT_RETRIES = 10
+
 
 def preprocess_audio(input_path: Path) -> Path:
     """
@@ -70,6 +73,7 @@ def transcribe_single_chunk(
         Exception: If chunk transcription fails after retries
     """
     total_api_time = 0
+    rate_limit_retries = 0
 
     while True:
         temp_file = tempfile.NamedTemporaryFile(suffix=".flac", delete=False)
@@ -89,8 +93,12 @@ def transcribe_single_chunk(
                 print(f"Chunk {chunk_num}/{total_chunks} processed in {api_time:.2f}s")
                 return result, total_api_time
             except RateLimitError:
+                rate_limit_retries += 1
+                if rate_limit_retries > MAX_RATE_LIMIT_RETRIES:
+                    raise
                 print(
-                    f"\nRate limit hit for chunk {chunk_num} - retrying in 60 seconds..."
+                    f"\nRate limit hit for chunk {chunk_num} - retrying in 60 seconds "
+                    f"({rate_limit_retries}/{MAX_RATE_LIMIT_RETRIES})..."
                 )
                 time.sleep(60)
                 continue
