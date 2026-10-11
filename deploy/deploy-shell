@@ -1,0 +1,8 @@
+#!/bin/bash
+# Login shell for the deploy user (installed as /usr/local/bin/retyped-deploy-shell).
+# SSH runs commands as `<shell> -c "<command>"`; the only command accepted is
+# "<backend|frontend> <sha>", which is handed to retyped-deploy via sudo.
+[ "${1:-}" = "-c" ] && [ $# -eq 2 ] || { echo "this account only runs deploys" >&2; exit 1; }
+read -r target sha extra <<< "$2"
+[ -z "$extra" ] || { echo "usage: <backend|frontend> <sha>" >&2; exit 2; }
+exec sudo -n /usr/local/sbin/retyped-deploy "$target" "$sha"

@@ -1,0 +1,13 @@
+.git
+.github
+.env
+.env.*
+!.env.example
+**/__pycache__
+*.pyc
+.ruff_cache
+.DS_Store
+django.log
+docker-compose*.yml
+docs
+deploy
