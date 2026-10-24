@@ -1,0 +1,89 @@
+#!/bin/bash
+# Deploys one commit-tagged image to the Retyped stack in /opt/retyped.
+# Installed as /usr/local/sbin/retyped-deploy (root:root 755); the deploy user
+# may run it via sudo and nothing else. See deploy/README.md.
+#
+#   echo "$GHCR_TOKEN" | sudo retyped-deploy backend <sha>
+#   sudo retyped-deploy frontend <sha> < /dev/null   # image already on the server
+#
+# Pulls the image, points BACKEND_*/FRONTEND_* in /opt/retyped/.env at it,
+# recreates the services, waits for them to come up, and puts the previous
+# image back if they don't. Database migrations are not rolled back.
+set -euo pipefail
+
+STACK=/opt/retyped
+ENV_FILE=$STACK/.env
+LOG=/var/log/retyped-deploy.log
+
+usage() { echo "usage: retyped-deploy <backend|frontend> <git-sha>" >&2; exit 2; }
+
+[ $# -eq 2 ] || usage
+target=$1 sha=$2
+[[ $sha =~ ^[0-9a-f]{7,40}$ ]] || usage
+
+case $target in
+  backend)  prefix=BACKEND;  image=ghcr.io/nuwaves/retyped_processing; services=(web worker beat) ;;
+  frontend) prefix=FRONTEND; image=ghcr.io/nuwaves/retyped_frontend;   services=(frontend) ;;
+  *) usage ;;
+esac
+
+exec > >(tee -a "$LOG") 2>&1
+exec 9>/run/lock/retyped-deploy.lock
+flock -w 600 9 || { echo "another deploy is still running" >&2; exit 1; }
+
+log() { echo "$(date -u +%FT%TZ) [$target] $*"; }
+log "deploying $image:$sha"
+cd "$STACK"
+
+# A token on stdin (from CI) is used once for the pull and then thrown away.
+token=
+[ -t 0 ] || read -r -t 5 token || true
+docker_cfg=$(mktemp -d)
+trap 'rm -rf "$docker_cfg"' EXIT
+if [ -n "$token" ]; then
+  echo "$token" | DOCKER_CONFIG=$docker_cfg docker login ghcr.io -u deploy --password-stdin >/dev/null
+fi
+# Images already on the server (e.g. a rollback) are not pulled again.
+docker image inspect "$image:$sha" >/dev/null 2>&1 \
+  || DOCKER_CONFIG=$docker_cfg docker pull -q "$image:$sha"
+
+touch "$ENV_FILE"
+get() { sed -n "s/^$1=//p" "$ENV_FILE"; }
+put() {
+  if grep -q "^$1=" "$ENV_FILE"; then sed -i "s|^$1=.*|$1=$2|" "$ENV_FILE"
+  else echo "$1=$2" >> "$ENV_FILE"; fi
+}
+prev_image=$(get ${prefix}_IMAGE) prev_tag=$(get ${prefix}_TAG)
+
+up() {
+  put ${prefix}_IMAGE "$1"; put ${prefix}_TAG "$2"
+  docker compose up -d --no-deps --wait --wait-timeout 240 "${services[@]}"
+}
+
+# Next.js has no healthcheck in compose, so ask it for a page directly.
+smoke() {
+  [ "$target" = frontend ] || return 0
+  for _ in $(seq 20); do
+    docker compose exec -T frontend \
+      wget -q -O /dev/null http://127.0.0.1:3000/ && return 0
+    sleep 3
+  done
+  return 1
+}
+
+if up "$image" "$sha" && smoke; then
+  log "ok: now running $image:$sha"
+else
+  log "FAILED; rolling back to ${prev_image:-default}:${prev_tag:-default}"
+  if [ -n "$prev_tag" ]; then
+    up "$prev_image" "$prev_tag" || true
+  else
+    sed -i "/^${prefix}_\(IMAGE\|TAG\)=/d" "$ENV_FILE"
+    docker compose up -d --no-deps "${services[@]}" || true
+  fi
+  exit 1
+fi
+
+# Keep the running image and the two before it for quick rollbacks.
+docker images "$image" --format '{{.CreatedAt}}\t{{.Repository}}:{{.Tag}}' \
+  | sort -r | tail -n +4 | cut -f2 | xargs -r docker rmi >/dev/null 2>&1 || true
