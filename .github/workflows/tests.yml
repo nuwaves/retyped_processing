@@ -40,11 +40,11 @@ jobs:
           MEILI_MASTER_KEY: 'test767ff88c4893803599b546731d95'
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
 
     # Match the production image (Dockerfile: python:3.11)
     - name: Set up Python 3.11
-      uses: actions/setup-python@v5
+      uses: actions/setup-python@v7
       with:
         python-version: '3.11'
         cache: 'pip'
