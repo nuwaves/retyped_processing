@@ -9,7 +9,11 @@ from audio_processing.tasks.podcast_tasks import (
     process_all_active_podcasts,
     process_podcast_by_id,
 )
-from audio_processing.utils.storage import get_s3_client, public_audio_url
+from audio_processing.utils.storage import (
+    audio_download_url,
+    get_s3_client,
+    public_audio_url,
+)
 
 
 class StorageTest(SimpleTestCase):
@@ -33,6 +37,27 @@ class StorageTest(SimpleTestCase):
             public_audio_url("audio/episode-1.mp3"),
             "https://media.example.com/audio/episode-1.mp3",
         )
+
+    @override_settings(
+        AUDIO_CDN_URL="https://media.example.com",
+        AWS_S3_BUCKET="audio-bucket",
+        AWS_S3_ENDPOINT_URL=None,
+        AWS_REGION="us-east-1",
+        AWS_ACCESS_KEY_ID="test-key",
+        AWS_SECRET_ACCESS_KEY="test-secret",
+    )
+    def test_audio_download_url_presigns_cdn_urls(self):
+        url = audio_download_url("https://media.example.com/audio/episode-1.mp3")
+        self.assertIn("audio-bucket", url)
+        self.assertIn("audio/episode-1.mp3", url)
+        self.assertIn("X-Amz-Signature=", url)
+        self.assertNotIn("media.example.com", url)
+
+    @override_settings(AUDIO_CDN_URL="https://media.example.com")
+    def test_audio_download_url_passes_other_urls_through(self):
+        feed_url = "https://feeds.example.org/episode.mp3"
+        self.assertEqual(audio_download_url(feed_url), feed_url)
+        self.assertIsNone(audio_download_url(None))
 
 
 class ProcessAllActivePodcastsTest(TestCase):
