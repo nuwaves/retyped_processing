@@ -3,6 +3,8 @@ name: Lint
 on:
   push:
   pull_request:
+  # Called by the deploy workflow so deploys wait for lint.
+  workflow_call:
 
 jobs:
   lint:
