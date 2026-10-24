@@ -10,6 +10,7 @@ from django.conf import settings
 
 from audio_processing.models.mixins.audio_chunking import transcribe_audio_in_chunks
 from audio_processing.prompts import get_speaker_transcript_prompt
+from audio_processing.utils.storage import audio_download_url
 
 # Seconds to wait for Groq to transcribe a whole file (up to 100 MB) in one request.
 TRANSCRIPTION_TIMEOUT = 900
@@ -92,7 +93,7 @@ class GroqMixin:
             logger.error("GROQ_API_KEY not configured")
             return None
         headers = {"Authorization": f"Bearer {api_key}"}
-        clean_url = self.s3_audio_url
+        clean_url = audio_download_url(self.s3_audio_url)
         if clean_url is None:
             clean_url = self.clean_url(self.raw_audio_url)
         tmp_path = None

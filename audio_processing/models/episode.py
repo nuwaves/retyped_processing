@@ -22,7 +22,11 @@ from audio_processing.models.mixins import (
     SummarizableMixin,
     TaggableMixin,
 )
-from audio_processing.utils.storage import get_s3_client, public_audio_url
+from audio_processing.utils.storage import (
+    audio_download_url,
+    get_s3_client,
+    public_audio_url,
+)
 
 from .mixins.aws_mixin import AwsMixin
 from .mixins.groq_mixin import GroqMixin
@@ -735,7 +739,7 @@ class Episode(
                     "body": {
                         "model": config.TEXT_TO_SPEECH_MODEL,
                         "language": "en",
-                        "url": s3_uri,
+                        "url": audio_download_url(s3_uri),
                         "response_format": "verbose_json",
                         "timestamp_granularities": ["segment"],
                     },
