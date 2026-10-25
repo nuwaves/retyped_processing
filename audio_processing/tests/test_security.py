@@ -1,3 +1,4 @@
+import base64
 from unittest.mock import patch
 
 from django.contrib.auth.models import User
@@ -94,6 +95,12 @@ class EpisodeSerializerExposureTest(TestCase):
         response = self.client.get(self.url)
         self.assertEqual(response.data["transcript"], self.transcript)
         self.assertEqual(response.data["script_transcript"], self.transcript)
+
+    def test_basic_auth_credentials_do_not_authenticate(self):
+        token = base64.b64encode(b"reader:testpass").decode()
+        self.client.credentials(HTTP_AUTHORIZATION=f"Basic {token}")
+        response = self.client.get(self.url)
+        self.assertNotEqual(response.data.get("transcript"), self.transcript)
 
     def test_episode_description_is_sanitized(self):
         response = self.client.get(self.url)
