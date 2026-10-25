@@ -1,5 +1,4 @@
 from rest_framework import filters
-from rest_framework.compat import coreapi, coreschema
 
 from audio_processing.models import Tag
 
@@ -11,19 +10,6 @@ class MultiTagFilterBackend(filters.BaseFilterBackend):
     Usage: ?tags=slug1,slug2,slug3
     Returns objects that have ANY of the specified tags (OR logic).
     """
-
-    def get_schema_fields(self, view):
-        return [
-            coreapi.Field(
-                name="tags",
-                required=False,
-                location="query",
-                schema=coreschema.String(
-                    title="Tag Filter",
-                    description="Comma separated list with tag slugs",
-                ),
-            )
-        ]
 
     def get_schema_operation_parameters(self, view):
         return [
