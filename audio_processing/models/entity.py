@@ -1,4 +1,5 @@
 import json
+import logging
 import re
 
 from django.db import models
@@ -7,6 +8,8 @@ from django.utils.translation import gettext_lazy as _
 from audio_processing.models.mixins.groq_mixin import GroqMixin
 from audio_processing.models.mixins.searchable_mixin import SearchableMixin
 from audio_processing.prompts import get_entity_extraction_prompt
+
+logger = logging.getLogger(__name__)
 
 
 class Entity(models.Model, GroqMixin, SearchableMixin):
@@ -74,7 +77,14 @@ class Entity(models.Model, GroqMixin, SearchableMixin):
                 )
                 if code_block_match:
                     cleaned_response = code_block_match.group(1)
-            data = json.loads(response)
+            try:
+                data = json.loads(cleaned_response.strip())
+            except json.JSONDecodeError as e:
+                # Don't let one bad response stop the rest of the episode workflow.
+                logger.error(
+                    f"Failed to parse entity extraction JSON: {e} | Raw: {response[:200]}"
+                )
+                data = []
             for ent in data:
                 name = ent.get("name")
                 etype = ent.get("type")
