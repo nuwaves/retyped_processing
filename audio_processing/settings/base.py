@@ -236,10 +236,12 @@ LOGGING = {
 REST_FRAMEWORK = {
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.LimitOffsetPagination",
     "PAGE_SIZE": 32,
+    # The first class sets the WWW-Authenticate header on 401s. OAuth2 goes first
+    # so unauthenticated requests get 401 (the frontend proxy relies on it), not 403.
     "DEFAULT_AUTHENTICATION_CLASSES": [
-        "rest_framework.authentication.SessionAuthentication",
         "oauth2_provider.contrib.rest_framework.OAuth2Authentication",
         "drf_social_oauth2.authentication.SocialAuthentication",
+        "rest_framework.authentication.SessionAuthentication",
     ],
     "DEFAULT_RENDERER_CLASSES": [
         "rest_framework.renderers.JSONRenderer",
