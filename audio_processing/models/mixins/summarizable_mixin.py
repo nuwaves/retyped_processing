@@ -37,11 +37,11 @@ class SummarizableMixin:
         )
 
         try:
-            url = "https://api.groq.com/openai/v1/chat/completions"
-            api_key = getattr(settings, "GROQ_API_KEY", "")
+            url = settings.LLM_API_URL
+            api_key = getattr(settings, "LLM_API_KEY", "")
 
             if not api_key:
-                logger.error("GROQ_API_KEY not configured")
+                logger.error("LLM_API_KEY not configured")
                 return None
 
             # Limit transcript to first 130,000 tokens (roughly 100,000 words)
@@ -75,7 +75,7 @@ class SummarizableMixin:
             }
 
             response = requests.post(
-                url, headers=headers, json=data, timeout=settings.HTTP_TIMEOUT
+                url, headers=headers, json=data, timeout=settings.LLM_TIMEOUT
             )
             response.raise_for_status()
 

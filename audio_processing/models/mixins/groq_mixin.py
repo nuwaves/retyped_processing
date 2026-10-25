@@ -15,6 +15,20 @@ from audio_processing.utils.storage import audio_download_url
 # Seconds to wait for Groq to transcribe a whole file (up to 100 MB) in one request.
 TRANSCRIPTION_TIMEOUT = 900
 
+# Speaker scripts run close to the transcript's length; a typical hour-long
+# episode needs about 11k output tokens.
+SCRIPT_MAX_TOKENS = 16384
+
+# Some models bold the speaker labels ("**Host:**"), which the site shows as
+# literal asterisks.
+BOLD_SPEAKER_LABEL = re.compile(r"^\*\*([^*\n]+?):?\*\*:?", re.MULTILINE)
+
+
+def clean_speaker_labels(script):
+    """Turn "**Name:**" or "**Name**:" at the start of a line into "Name:"."""
+    return BOLD_SPEAKER_LABEL.sub(r"\1:", script)
+
+
 logger = logging.getLogger(__name__)
 
 
@@ -25,26 +39,26 @@ class GroqMixin:
 
     def get_groq_completion(self, prompt, model=None, max_tokens=1000, temperature=0.3):
         """
-        Generic method to get completions from Groq API.
+        Generic method to get completions from the chat LLM (LLM_API_URL).
 
         Args:
             prompt (str): The prompt to send to the model
-            model (str, optional): Model name, defaults to llama3-70b-8192
+            model (str, optional): Model name, defaults to config.DEFAULT_MODEL
             max_tokens (int): Maximum tokens in response
             temperature (float): Temperature for response generation
 
         Returns:
             str: The completion content or None if failed
         """
-        url = "https://api.groq.com/openai/v1/chat/completions"
-        api_key = getattr(settings, "GROQ_API_KEY", "")
+        url = settings.LLM_API_URL
+        api_key = getattr(settings, "LLM_API_KEY", "")
         if not api_key:
-            logger.error("GROQ_API_KEY not configured")
+            logger.error("LLM_API_KEY not configured")
             return None
 
         # Default model if none specified
         if model is None:
-            model = getattr(config, "DEFAULT_MODEL", "llama-3.1-8b-instant")
+            model = config.DEFAULT_MODEL
 
         headers = {
             "Authorization": f"Bearer {api_key}",
@@ -60,7 +74,7 @@ class GroqMixin:
 
         try:
             response = requests.post(
-                url, headers=headers, json=data, timeout=settings.HTTP_TIMEOUT
+                url, headers=headers, json=data, timeout=settings.LLM_TIMEOUT
             )
             response.raise_for_status()
 
@@ -75,10 +89,10 @@ class GroqMixin:
             return content
 
         except requests.exceptions.RequestException as e:
-            logger.error(f"Groq API request failed: {str(e)}")
+            logger.error(f"LLM API request failed: {str(e)}")
             return None
         except (KeyError, IndexError) as e:
-            logger.error(f"Unexpected Groq API response format: {str(e)}")
+            logger.error(f"Unexpected LLM API response format: {str(e)}")
             return None
 
     def get_transcript_from_groq(self):
@@ -162,11 +176,12 @@ class GroqMixin:
             script_content = self.get_groq_completion(
                 prompt=prompt,
                 model=getattr(config, "SPEAKER_MODEL", None),
-                max_tokens=8000,
+                max_tokens=SCRIPT_MAX_TOKENS,
                 temperature=0.3,
             )
 
             if script_content:
+                script_content = clean_speaker_labels(script_content)
                 self.script_transcript = script_content
                 self.save()
                 logger.info(f"Speaker script generated for: {self.raw_audio_url}")

@@ -57,8 +57,8 @@ class Entity(models.Model, GroqMixin, SearchableMixin):
         Returns a list of Entity instances.
         """
         prompt = get_entity_extraction_prompt(text)
-        # Use GroqMixin to call Groq
-        response = cls().get_groq_completion(prompt)
+        # Episodes with many guests and sponsors overflow the default 1000 tokens.
+        response = cls().get_groq_completion(prompt, max_tokens=2500)
         entities = []
         if response:
             cleaned_response = response
