@@ -61,3 +61,15 @@ class EntitiesFromTextTest(TestCase):
             Entity.entities_from_text(text, related_obj=related)
         self.assertEqual(len(related.entities.added), 2)
         self.assertTrue(all(isinstance(e, Entity) for e in related.entities.added))
+
+    def test_entities_from_text_parses_fenced_json(self):
+        response = '```json\n[{"name": "John Doe", "type": "PERSON"}]\n```'
+        with patch.object(Entity, "get_groq_completion", return_value=response):
+            entities = Entity.entities_from_text("John Doe spoke.")
+        self.assertEqual([e.name for e in entities], ["John Doe"])
+
+    def test_entities_from_text_returns_empty_on_invalid_json(self):
+        with patch.object(
+            Entity, "get_groq_completion", return_value="Sorry, no entities."
+        ):
+            self.assertEqual(Entity.entities_from_text("Nothing here."), [])
