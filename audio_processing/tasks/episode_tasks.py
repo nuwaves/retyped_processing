@@ -256,12 +256,15 @@ def extract_entities(episode_id):
 def process_recent_episodes_without_transcript():
     """
     Celery task to process the full workflow for all episodes created in the last two days without a transcript.
+    Episodes from paused (inactive) podcasts are skipped.
     """
     logger.info("Processing recent episodes without transcript (last 2 days)")
     now = timezone.now()
     two_days_ago = now - timedelta(days=2)
     episodes = Episode.objects.filter(
-        release_date__gte=two_days_ago, transcript__isnull=True
+        release_date__gte=two_days_ago,
+        transcript__isnull=True,
+        podcast__is_active=True,
     )
     task_results = []
     for episode in episodes:
