@@ -135,6 +135,15 @@ AUDIO_CDN_URL = os.environ.get("AUDIO_CDN_URL", "https://cdn.retyped.xyz").rstri
 # Timeout in seconds for outbound HTTP calls (Groq, feeds, audio downloads).
 HTTP_TIMEOUT = int(os.environ.get("HTTP_TIMEOUT", "120"))
 
+# OpenAI-compatible chat completions endpoint for the LLM steps (tags, entities,
+# quotes, summaries, speaker scripts, topics). Whisper transcription stays on Groq.
+LLM_API_URL = os.environ.get(
+    "LLM_API_URL", "https://api.deepinfra.com/v1/openai/chat/completions"
+)
+LLM_API_KEY = os.environ.get("LLM_API_KEY", "")
+# Speaker scripts take several minutes to generate, well past HTTP_TIMEOUT.
+LLM_TIMEOUT = int(os.environ.get("LLM_TIMEOUT", "600"))
+
 # Redis serves as the Celery broker and the shared Django cache when REDIS_URL is set.
 REDIS_URL = os.environ.get("REDIS_URL", "")
 
@@ -170,13 +179,12 @@ MEILISEARCH_URL = os.environ.get("MEILISEARCH_URL", "")
 MEILISEARCH_API_KEY = os.environ.get("MEILISEARCH_API_KEY", "")
 
 # Constance settings
+CHAT_MODEL = "deepseek-ai/DeepSeek-V4-Flash"
 CONSTANCE_CONFIG = {
-    "SUMMARY_MODEL": ("llama-3.1-8b-instant", "Model to use for generating summaries"),
-    "TAG_MODEL": ("llama-3.1-8b-instant", "Model to use for generating tags"),
-    "SPEAKER_MODEL": (
-        "deepseek-r1-distill-llama-70b",
-        "Model to use for speaker diarization",
-    ),
+    "DEFAULT_MODEL": (CHAT_MODEL, "Model for tags, entities and quotes"),
+    "SUMMARY_MODEL": (CHAT_MODEL, "Model to use for generating summaries"),
+    "TAG_MODEL": (CHAT_MODEL, "Model to use for picking topics"),
+    "SPEAKER_MODEL": (CHAT_MODEL, "Model to use for speaker diarization"),
     "TEXT_TO_SPEECH_MODEL": (
         "whisper-large-v3-turbo",
         "Model to use for text-to-speech synthesis",
