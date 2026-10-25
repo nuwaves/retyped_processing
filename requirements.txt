@@ -4,7 +4,7 @@ botocore==1.40.0
 boto3==1.40.0
 celery==5.5.3
 kombu==5.5.4
-Django==5.2.4
+Django==5.2.18
 django-celery-beat==2.8.1
 django-constance==4.3.4
 django-cors-headers==4.8.0
