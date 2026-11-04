@@ -59,27 +59,45 @@ class ConvertTokenTest(TestCase):
 
         self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
         body = response.json()
-        for key in ("access_token", "refresh_token", "expires_in", "token_type", "scope"):
+        for key in (
+            "access_token",
+            "refresh_token",
+            "expires_in",
+            "token_type",
+            "scope",
+        ):
             self.assertIn(key, body)
         self.assertEqual(body["token_type"], "Bearer")
         self.assertEqual(
             body["user"],
-            {"email": "listener@example.com", "first_name": "Ada", "last_name": "Listener"},
+            {
+                "email": "listener@example.com",
+                "first_name": "Ada",
+                "last_name": "Listener",
+            },
         )
 
         user = User.objects.get(email="listener@example.com")
         self.assertTrue(
             UserSocialAuth.objects.filter(user=user, provider="google-oauth2").exists()
         )
-        self.assertTrue(AccessToken.objects.filter(user=user, application=self.application).exists())
-        self.assertTrue(RefreshToken.objects.filter(user=user, application=self.application).exists())
+        self.assertTrue(
+            AccessToken.objects.filter(user=user, application=self.application).exists()
+        )
+        self.assertTrue(
+            RefreshToken.objects.filter(
+                user=user, application=self.application
+            ).exists()
+        )
 
     @mock.patch(USER_DATA_PATH, return_value=GOOGLE_USER_DATA)
     def test_issued_token_authenticates_api_requests(self, _user_data):
         access_token = self.convert().json()["access_token"]
 
         bookmarks = reverse("v1:api-v1-bookmarks")
-        self.assertEqual(self.client.get(bookmarks).status_code, status.HTTP_401_UNAUTHORIZED)
+        self.assertEqual(
+            self.client.get(bookmarks).status_code, status.HTTP_401_UNAUTHORIZED
+        )
         self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {access_token}")
         self.assertEqual(self.client.get(bookmarks).status_code, status.HTTP_200_OK)
 

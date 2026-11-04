@@ -105,8 +105,12 @@ class ConvertTokenView(APIView):
                 user = backend.do_auth(access_token=data["token"])
             except SocialAuthBaseException as error:
                 # Includes the provider rejecting the token (AuthProviderError).
-                logger.info("Social auth failed for backend %s: %r", data["backend"], error)
-                return _error("access_denied", "The token you provided is invalid or expired.")
+                logger.info(
+                    "Social auth failed for backend %s: %r", data["backend"], error
+                )
+                return _error(
+                    "access_denied", "The token you provided is invalid or expired."
+                )
 
             if not isinstance(user, get_user_model()):
                 return _error("invalid_grant", "Invalid credentials given.")
