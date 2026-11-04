@@ -25,7 +25,6 @@ INSTALLED_APPS = [
     "drf_yasg",
     "oauth2_provider",
     "social_django",
-    "drf_social_oauth2",
     "django_celery_beat",
     "django.contrib.sites",
     "django.contrib.sitemaps",
@@ -248,7 +247,6 @@ REST_FRAMEWORK = {
     # so unauthenticated requests get 401 (the frontend proxy relies on it), not 403.
     "DEFAULT_AUTHENTICATION_CLASSES": [
         "oauth2_provider.contrib.rest_framework.OAuth2Authentication",
-        "drf_social_oauth2.authentication.SocialAuthentication",
         "rest_framework.authentication.SessionAuthentication",
     ],
     "DEFAULT_RENDERER_CLASSES": [
@@ -299,6 +297,5 @@ AUTHENTICATION_BACKENDS = (
     "social_core.backends.facebook.FacebookAppOAuth2",
     "social_core.backends.facebook.FacebookOAuth2",
     "social_core.backends.twitter.TwitterOAuth",
-    "drf_social_oauth2.backends.DjangoOAuth2",
     "django.contrib.auth.backends.ModelBackend",
 )

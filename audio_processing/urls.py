@@ -60,8 +60,8 @@ urlpatterns = [
     # Admin and health endpoints
     path("admin/", admin.site.urls),
     path("health/", health_check, name="health"),
-    # Auth Endpoints called outside v1 because namespace
-    re_path(r"^auth/", include("drf_social_oauth2.urls", namespace="drf")),
+    # Auth endpoints (outside v1): social token conversion and OAuth2 token endpoints
+    re_path(r"^auth/", include("audio_processing.auth_urls", namespace="auth")),
     # API v1 endpoints
     path("api/v1/", include((api_v1_patterns, "api_v1"), namespace="v1")),
     # Sitemap index and paginated sitemaps
