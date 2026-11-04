@@ -281,19 +281,12 @@ SOCIAL_AUTH_FACEBOOK_SCOPE = ["email"]
 SOCIAL_AUTH_TWITTER_KEY = os.environ.get("SA_TWITTER_API_KEY", "")
 SOCIAL_AUTH_TWITTER_SECRET = os.environ.get("SA_TWITTER_API_SECRET", "")
 
-# Instagram Configuration
-# Instagram configuration
-SOCIAL_AUTH_INSTAGRAM_KEY = os.environ.get("SA_INSTAGRAM_AUTH_KEY", "")
-SOCIAL_AUTH_INSTAGRAM_SECRET = os.environ.get("SA_INSTAGRAM_AUTH_SECRET", "")
-# SOCIAL_AUTH_INSTAGRAM_AUTH_EXTRA_ARGUMENTS = {'scope': 'likes comments relationships'}
-
 # CORS Configuration
 if os.environ.get("CORS_ALLOWED_ORIGINS", None):
     CORS_ALLOWED_ORIGINS = os.environ.get("CORS_ALLOWED_ORIGINS").split(",")
 
 AUTHENTICATION_BACKENDS = (
     "social_core.backends.google.GoogleOAuth2",
-    "social_core.backends.instagram.InstagramOAuth2",
     "social_core.backends.facebook.FacebookAppOAuth2",
     "social_core.backends.facebook.FacebookOAuth2",
     "social_core.backends.twitter.TwitterOAuth",
