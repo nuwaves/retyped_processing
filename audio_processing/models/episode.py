@@ -1,8 +1,5 @@
-import json
 import logging
 import mimetypes
-import os
-import tempfile
 import time
 import uuid
 from urllib.parse import urlparse, urlunparse
@@ -14,7 +11,6 @@ from django.conf import settings
 from django.db import models
 from django.utils import timezone
 from django.utils.text import slugify
-from groq import Groq
 
 from audio_processing.models.mixins import (
     QuotableMixin,
@@ -57,6 +53,11 @@ class Episode(
         RUNNING = "running", "Running"
         DONE = "done", "Done"
         FAILED = "failed", "Failed"
+
+    # processing_step values for a queued episode whose transcript comes from a
+    # Groq batch job: waiting to be added to a batch, then waiting for the batch.
+    BATCH_PENDING_STEP = "batch pending"
+    BATCH_SUBMITTED_STEP = "batch submitted"
 
     processing_status = models.CharField(
         max_length=16,
@@ -638,11 +639,17 @@ class Episode(
         limit = timezone.timedelta(seconds=settings.CELERY_TASK_TIME_LIMIT)
         return timezone.now() - self.processing_started_at > limit
 
-    def queue_processing(self, force=False):
+    def queue_processing(self, force=False, realtime=False):
         """
         Queue the complete processing workflow for this episode.
         Returns False (and queues nothing) if it is already queued or running,
         unless force=True or the run has stalled.
+
+        An episode without a transcript is transcribed through the Groq Batch API
+        (half the price of a direct request) unless TRANSCRIPTION_MODE is
+        "realtime" or realtime=True. It waits as queued until the next batch run
+        (ProcessingBatch.run_transcription_batches) gets its transcript, and the
+        rest of the workflow is queued then.
         """
         from audio_processing.tasks.episode_tasks import process_complete_workflow
 
@@ -653,8 +660,13 @@ class Episode(
         if busy and not force and not self.is_stalled:
             return False
 
+        use_batch = (
+            not realtime
+            and not self.transcript
+            and config.TRANSCRIPTION_MODE != "realtime"
+        )
         self.processing_status = self.ProcessingStatus.QUEUED
-        self.processing_step = ""
+        self.processing_step = self.BATCH_PENDING_STEP if use_batch else ""
         self.processing_queued_at = timezone.now()
         self.error = None
         self.save(
@@ -666,8 +678,26 @@ class Episode(
                 "updated_at",
             ]
         )
-        process_complete_workflow.delay(self.id)
+        if not use_batch:
+            process_complete_workflow.delay(self.id)
         return True
+
+    def batch_transcription_request(self):
+        """One line of a Groq batch input file that transcribes this episode."""
+        audio_url = audio_download_url(self.s3_audio_url) or self.clean_url(
+            self.raw_audio_url
+        )
+        return {
+            "custom_id": f"episode-{self.id}",
+            "method": "POST",
+            "url": "/v1/audio/transcriptions",
+            "body": {
+                "model": config.TEXT_TO_SPEECH_MODEL,
+                "language": "en",
+                "url": audio_url,
+                "response_format": "json",
+            },
+        }
 
     def _set_processing_step(self, step):
         self.processing_step = step
@@ -846,79 +876,10 @@ class Episode(
     @staticmethod
     def groq_batch_transcribe(episode_ids):
         """
-        Batch transcribe a list of episode IDs using Groq's Batch API.
-        Generates a JSONL file for batch processing and uploads it to Groq.
-        Args:
-            episode_ids (list): List of Episode IDs to transcribe
-        Returns:
-            dict: Groq file upload response
+        Transcribe the given episodes with one Groq batch job (admin action).
+        Transcripts are saved when the batch finishes; see ProcessingBatch.
         """
         from audio_processing.models import ProcessingBatch
 
-        # Prepare JSONL lines
-        lines = []
-        for eid in episode_ids:
-            try:
-                episode = Episode.objects.get(pk=eid)
-                if not episode.s3_audio_url:
-                    s3_uri = episode.upload_audio_to_s3(episode.raw_audio_url)
-                else:
-                    s3_uri = episode.s3_audio_url
-                line = {
-                    "custom_id": f"episode-{eid}",
-                    "method": "POST",
-                    "url": "/v1/audio/transcriptions",
-                    "body": {
-                        "model": config.TEXT_TO_SPEECH_MODEL,
-                        "language": "en",
-                        "url": audio_download_url(s3_uri),
-                        "response_format": "verbose_json",
-                        "timestamp_granularities": ["segment"],
-                    },
-                }
-                lines.append(json.dumps(line))
-            except Episode.DoesNotExist:
-                continue
-
-        # Write JSONL file to a temp file
-        with tempfile.NamedTemporaryFile(
-            mode="w+b", suffix=".jsonl", delete=False
-        ) as tmpfile:
-            for line in lines:
-                tmpfile.write((line + "\n").encode("utf-8"))
-            tmpfile.flush()
-            tmpfile_path = tmpfile.name
-
-        # Upload file to Groq Files API
-        groq_api_key = getattr(settings, "GROQ_API_KEY", os.environ.get("GROQ_API_KEY"))
-        if not groq_api_key:
-            raise Exception("GROQ_API_KEY not configured in settings or environment.")
-
-        files_url = "https://api.groq.com/openai/v1/files"
-        with open(tmpfile_path, "rb") as file_data:
-            response = requests.post(
-                files_url,
-                headers={"Authorization": f"Bearer {groq_api_key}"},
-                files={"file": (os.path.basename(tmpfile_path), file_data)},
-                data={"purpose": "batch"},
-                timeout=settings.HTTP_TIMEOUT,
-            )
-        response.raise_for_status()
-        # Optionally, clean up the temp file
-        os.remove(tmpfile_path)
-        groq_response = response.json()
-        file_id = groq_response.get("id")
-
-        client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
-
-        batch = client.batches.create(
-            completion_window="24h",
-            endpoint="/v1/chat/completions",
-            input_file_id=file_id,
-        )
-
-        # Create ProcessingBatch record
-        batch = ProcessingBatch.objects.create(
-            external_batch_id=batch.id, record_count=len(episode_ids)
-        )
-        return groq_response
+        batch = ProcessingBatch.submit_transcriptions(episode_ids)
+        return {"batch_id": batch.id, "external_batch_id": batch.external_batch_id}

@@ -1,5 +1,6 @@
 from unittest.mock import Mock, patch
 
+from constance.test import override_config
 from django.test import TestCase
 from django.utils import timezone
 
@@ -9,6 +10,7 @@ from audio_processing.tasks.episode_tasks import (
 )
 
 
+@override_config(TRANSCRIPTION_MODE="realtime")
 class ProcessRecentEpisodesWithoutTranscriptTest(TestCase):
     def setUp(self):
         self.active = Podcast.objects.create(

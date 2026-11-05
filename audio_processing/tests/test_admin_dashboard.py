@@ -3,6 +3,7 @@
 from datetime import timedelta
 from unittest.mock import Mock, patch
 
+from constance.test import override_config
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.test import TestCase, override_settings
@@ -22,6 +23,9 @@ INDEX = (
 )
 
 
+# These tests cover queueing itself, so transcribe right away rather than via a
+# Groq batch (see test_batch_transcription.py).
+@override_config(TRANSCRIPTION_MODE="realtime")
 @patch(INDEX, Mock(return_value=None))
 class StatusTestCase(TestCase):
     def setUp(self):
