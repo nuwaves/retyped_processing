@@ -6,7 +6,7 @@ from constance.models import Constance
 from django.apps import apps
 from django.test import SimpleTestCase, TestCase, override_settings
 
-from audio_processing.models.mixins import groq_mixin
+from audio_processing.models.mixins import groq_mixin, summarizable_mixin
 from audio_processing.models.mixins.groq_mixin import GroqMixin, clean_speaker_labels
 from audio_processing.models.mixins.summarizable_mixin import SummarizableMixin
 from audio_processing.utils import llm
@@ -145,6 +145,11 @@ class ChatCompletionRetryTest(SimpleTestCase):
 
         episode = FakeEpisode()
         responses = [_response(502), _response(content="## Summary\nGood.")]
-        with patch.object(llm.requests, "post", side_effect=responses):
+        # constance reads the model from the database, which SimpleTestCase blocks.
+        model_config = MagicMock(SUMMARY_MODEL="summary-model")
+        with (
+            patch.object(summarizable_mixin, "config", model_config),
+            patch.object(llm.requests, "post", side_effect=responses),
+        ):
             self.assertEqual(episode.generate_summary(), "## Summary\nGood.")
         self.assertEqual(episode.summary, "## Summary\nGood.")
