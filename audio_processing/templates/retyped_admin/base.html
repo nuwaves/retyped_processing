@@ -1,0 +1,11 @@
+{% extends "admin/base_site.html" %}
+{% load static %}
+{% block extrastyle %}{{ block.super }}<link rel="stylesheet" href="{% static 'retyped_admin/dashboard.css' %}">{% endblock %}
+{% block extrahead %}{{ block.super }}<script src="{% static 'retyped_admin/dashboard.js' %}" defer></script>{% endblock %}
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+  <a href="{% url 'admin:index' %}">Dashboard</a>
+  {% block crumbs %}{% if title %}&rsaquo; {{ title }}{% endif %}{% endblock %}
+</div>
+{% endblock %}
+{% block nav-sidebar %}{% endblock %}

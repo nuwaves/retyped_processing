@@ -1,0 +1,116 @@
+{% extends "admin/index.html" %}
+{% load static retyped_admin %}
+{% block extrastyle %}{{ block.super }}<link rel="stylesheet" href="{% static 'retyped_admin/dashboard.css' %}">{% endblock %}
+{% block coltype %}colM{% endblock %}
+{# Not "dashboard": the stock dashboard class narrows #content for the app list. #}
+{% block bodyclass %}rt-dashboard{% endblock %}
+{% block content %}
+<div id="content-main">
+  <div class="rt-toolbar">
+    <a class="rt-button rt-primary" href="{% url 'admin:podcast_add_feed' %}">+ Add podcast</a>
+    <a class="rt-button" href="{% url 'admin:processing_queue' %}">Processing queue</a>
+    <a class="rt-button" href="{% url 'admin:audio_processing_podcast_changelist' %}">All podcasts</a>
+    <a class="rt-button" href="{% url 'admin:audio_processing_episode_changelist' %}">All episodes</a>
+  </div>
+
+  <div class="rt-cards">
+    <a class="rt-card" href="{% url 'admin:audio_processing_podcast_changelist' %}?is_active__exact=1">
+      <div class="rt-card-value">{{ stats.active_podcasts }}</div>
+      <div class="rt-card-label">Active podcasts</div>
+    </a>
+    <a class="rt-card" href="{% url 'admin:audio_processing_episode_changelist' %}">
+      <div class="rt-card-value">{{ stats.total }}</div>
+      <div class="rt-card-label">Episodes</div>
+    </a>
+    <a class="rt-card" href="{% url 'admin:processing_queue' %}?tab=queued">
+      <div class="rt-card-value">{{ stats.queued }}</div>
+      <div class="rt-card-label">Queued</div>
+    </a>
+    <a class="rt-card{% if stats.stalled %} rt-warn{% endif %}" href="{% url 'admin:processing_queue' %}?tab=running">
+      <div class="rt-card-value">{{ stats.running }}</div>
+      <div class="rt-card-label">Running{% if stats.stalled %} · {{ stats.stalled }} stalled{% endif %}</div>
+    </a>
+    <a class="rt-card" href="{% url 'admin:processing_queue' %}?tab=done">
+      <div class="rt-card-value">{{ stats.done_week }}</div>
+      <div class="rt-card-label">Processed (7 days)</div>
+    </a>
+    <a class="rt-card{% if stats.failed %} rt-warn{% endif %}" href="{% url 'admin:processing_queue' %}?tab=failed">
+      <div class="rt-card-value">{{ stats.failed }}</div>
+      <div class="rt-card-label">Failed</div>
+    </a>
+  </div>
+
+  <div class="rt-columns">
+    <section class="rt-panel">
+      <div class="rt-panel-head">
+        <h2>New and unprocessed <span class="rt-count">{{ new_unprocessed_count }}</span></h2>
+        {% if new_unprocessed_count %}
+        <form method="post" action="{% url 'admin:queue_episodes' %}">
+          {% csrf_token %}
+          <input type="hidden" name="scope" value="new_unprocessed">
+          <input type="hidden" name="next" value="{{ request.get_full_path }}">
+          <button class="rt-button rt-small rt-primary" type="submit">Process all {{ new_unprocessed_count }}</button>
+        </form>
+        {% endif %}
+      </div>
+      {% if new_unprocessed %}
+      <table>
+        <thead><tr><th>Episode</th><th>Podcast</th><th>Released</th><th></th></tr></thead>
+        <tbody>
+        {% for episode in new_unprocessed %}
+          <tr>
+            <td><a href="{% url 'admin:audio_processing_episode_change' episode.pk %}">{{ episode.title|truncatechars:70 }}</a></td>
+            <td><a href="{% url 'admin:podcast_episodes' episode.podcast_id %}">{{ episode.podcast.name|truncatechars:40 }}</a></td>
+            <td class="rt-nowrap rt-muted">{{ episode.release_date|timesince }} ago</td>
+            <td>
+              <form method="post" action="{% url 'admin:queue_episodes' %}">
+                {% csrf_token %}
+                <input type="hidden" name="episode_ids" value="{{ episode.pk }}">
+                <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                <button class="rt-button rt-small" type="submit">Process</button>
+              </form>
+            </td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      {% if new_unprocessed_count > new_unprocessed|length %}
+        <p class="rt-empty">Showing the newest {{ new_unprocessed|length }} of {{ new_unprocessed_count }}.</p>
+      {% endif %}
+      {% else %}
+        <p class="rt-empty">Nothing waiting. Episodes released in the last 7 days by active podcasts appear here until they're processed.</p>
+      {% endif %}
+    </section>
+
+    <section class="rt-panel">
+      <div class="rt-panel-head">
+        <h2>Recent activity</h2>
+        <a href="{% url 'admin:processing_queue' %}?tab=done">View queue →</a>
+      </div>
+      {% if recent_activity %}
+      <table>
+        <tbody>
+        {% for episode in recent_activity %}
+          <tr>
+            <td>
+              <a href="{% url 'admin:audio_processing_episode_change' episode.pk %}">{{ episode.title|truncatechars:50 }}</a>
+              <div class="rt-muted">{{ episode.podcast.name|truncatechars:40 }} · {{ episode.updated_at|timesince }} ago</div>
+            </td>
+            <td class="rt-nowrap">{% status_badge episode %}</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+        <p class="rt-empty">No processed episodes yet.</p>
+      {% endif %}
+    </section>
+  </div>
+
+  <h2>Everything else</h2>
+  <div class="rt-app-list">
+    {% include "admin/app_list.html" with app_list=app_list show_changelinks=True %}
+  </div>
+</div>
+{% endblock %}
+{% block sidebar %}{% endblock %}

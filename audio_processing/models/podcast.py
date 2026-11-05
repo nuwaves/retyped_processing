@@ -87,6 +87,14 @@ class Podcast(models.Model, SearchableMixin):
     last_processed = models.DateTimeField(
         blank=True, null=True, help_text="Last time this podcast was processed"
     )
+    auto_process = models.BooleanField(
+        default=False,
+        help_text="Automatically process new episodes found when the feed is refreshed",
+    )
+    auto_process_count = models.PositiveSmallIntegerField(
+        default=3,
+        help_text="Max number of the newest new episodes to auto-process per refresh",
+    )
     tags = models.ManyToManyField(
         "Tag",
         blank=True,
@@ -338,7 +346,7 @@ class Podcast(models.Model, SearchableMixin):
             logger.warning(f"No entries found in feed: {self.url}")
             return {"error": "No entries found in feed"}
 
-        created_count = 0
+        created = []
         existing_count = 0
         failed_count = 0
 
@@ -347,17 +355,20 @@ class Podcast(models.Model, SearchableMixin):
                 result = Episode.create_from_entry(self, entry)
                 if result is None:
                     failed_count += 1
-                elif result:
-                    # Check if this was a new creation
-                    if result.created_at >= timezone.now() - timezone.timedelta(
-                        seconds=1
-                    ):
-                        created_count += 1
-                    else:
-                        existing_count += 1
+                elif getattr(result, "created_from_feed", False):
+                    created.append(result)
+                else:
+                    existing_count += 1
             except Exception as e:
                 logger.error(f"Error processing entry: {e}")
                 failed_count += 1
+        created_count = len(created)
+
+        auto_queued = 0
+        if self.auto_process and created:
+            auto_queued = self.queue_newest_episodes(
+                self.auto_process_count, among_ids=[e.id for e in created]
+            )
 
         # Update last_processed timestamp
         self.last_processed = timezone.now()
@@ -368,12 +379,30 @@ class Podcast(models.Model, SearchableMixin):
             "created": created_count,
             "existing": existing_count,
             "failed": failed_count,
+            "auto_queued": auto_queued,
             "rss_feed_id": self.id,
             "rss_feed_name": self.name,
         }
 
         logger.info(f"RSS feed processing complete: {summary}")
         return summary
+
+    def queue_newest_episodes(self, count, among_ids=None):
+        """
+        Queue the processing workflow for this podcast's newest `count` episodes that
+        have never been processed. Optionally restrict to the given episode ids.
+        Returns how many were queued.
+        """
+        if count <= 0:
+            return 0
+        episodes = self.episodes.filter(processing_status="idle")
+        if among_ids is not None:
+            episodes = episodes.filter(id__in=among_ids)
+        queued = 0
+        for episode in episodes.order_by("-release_date", "-id")[:count]:
+            if episode.queue_processing():
+                queued += 1
+        return queued
 
     def get_summary(self):
         """

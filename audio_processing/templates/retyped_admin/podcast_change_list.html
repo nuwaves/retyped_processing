@@ -1,0 +1,6 @@
+{# django-import-export wraps this as its base template, so extend the stock changelist. #}
+{% extends "admin/change_list.html" %}
+{% block object-tools-items %}
+  <li><a href="{% url 'admin:podcast_add_feed' %}" class="addlink">Add from RSS feed</a></li>
+  {{ block.super }}
+{% endblock %}

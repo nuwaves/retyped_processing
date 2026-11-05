@@ -104,3 +104,24 @@ def reindex_all_podcasts_for_search(batch_size=50):
             except Exception as e:
                 logger.error(f"Error indexing podcast ID {podcast.id}: {str(e)}")
     logger.info("Completed reindexing all podcasts.")
+
+
+@shared_task
+def import_podcast(podcast_id, process_latest=0):
+    """
+    Fetch a newly added podcast's feed, then queue processing for its newest
+    `process_latest` episodes. Used by the admin "Add podcast" flow.
+    """
+    try:
+        podcast = Podcast.objects.get(id=podcast_id)
+    except Podcast.DoesNotExist:
+        logger.error(f"Podcast with ID {podcast_id} does not exist")
+        return {"error": f"Podcast with ID {podcast_id} does not exist"}
+
+    summary = podcast.process_feed()
+    if "error" in summary:
+        return summary
+    # Auto-process (if on) may already have queued some; only top up to process_latest.
+    already = podcast.episodes.exclude(processing_status="idle").count()
+    summary["queued"] = podcast.queue_newest_episodes(max(process_latest - already, 0))
+    return summary

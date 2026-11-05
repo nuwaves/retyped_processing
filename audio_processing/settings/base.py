@@ -12,7 +12,7 @@ INSTALLED_APPS = [
     "constance",
     # 'admin_tools_stats',
     "django_nvd3",
-    "django.contrib.admin",
+    "audio_processing.admin_site.RetypedAdminConfig",  # django.contrib.admin + dashboard
     "django.contrib.auth",
     "django.contrib.contenttypes",
     "django.contrib.sessions",

@@ -1,0 +1,53 @@
+{% extends "retyped_admin/base.html" %}
+{% block content %}
+<div id="content-main">
+  <div class="rt-preview">
+    {% if preview.image %}<img src="{{ preview.image }}" alt="">{% endif %}
+    <div>
+      <h2 style="margin-top:0">{{ preview.title }}</h2>
+      {% if preview.author %}<p class="rt-muted">by {{ preview.author }}</p>{% endif %}
+      <p>{{ preview.episode_count }} episode{{ preview.episode_count|pluralize }} in the feed</p>
+      <p class="rt-muted">{{ form.initial.url }}</p>
+    </div>
+  </div>
+
+  <section class="rt-panel" style="margin-bottom:20px">
+    <div class="rt-panel-head"><h2>Newest episodes</h2></div>
+    <table>
+      <tbody>
+      {% for entry in preview.entries %}
+        <tr>
+          <td>{{ entry.title|truncatechars:90 }}</td>
+          <td class="rt-nowrap rt-muted">{% if entry.published %}{{ entry.published|date:"M j, Y" }}{% endif %}</td>
+          <td class="rt-nowrap rt-muted">{{ entry.duration|default:"" }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </section>
+
+  <form method="post">
+    {% csrf_token %}
+    <input type="hidden" name="step" value="create">
+    <input type="hidden" name="feed_title" value="{{ preview.title }}">
+    {{ form.url }}
+    <div class="rt-form-row">
+      <label for="{{ form.process_latest.id_for_label }}">{{ form.process_latest.label }}</label>
+      {{ form.process_latest }}
+      <span class="rt-help">{{ form.process_latest.help_text }}</span>
+    </div>
+    <div class="rt-form-row">
+      <label>{{ form.auto_process }} {{ form.auto_process.label }}</label>
+      <span class="rt-help">{{ form.auto_process.help_text }}</span>
+    </div>
+    <div class="rt-form-row">
+      <label for="{{ form.auto_process_count.id_for_label }}">{{ form.auto_process_count.label }}</label>
+      {{ form.auto_process_count }}
+    </div>
+    <div class="rt-toolbar">
+      <button class="rt-button rt-primary" type="submit">Add podcast</button>
+      <a class="rt-button" href="{% url 'admin:podcast_add_feed' %}">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}
