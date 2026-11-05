@@ -20,7 +20,10 @@ def status_key(episode):
 def status_badge(episode):
     label, bg, fg = _BADGES.get(status_key(episode), _BADGES["idle"])
     step = ""
-    if episode.processing_status in ("running", "failed") and episode.processing_step:
+    if (
+        episode.processing_status in ("queued", "running", "failed")
+        and episode.processing_step
+    ):
         step = f" · {episode.processing_step}"
     return format_html(
         '<span class="rt-badge" style="display:inline-block;padding:2px 8px;'

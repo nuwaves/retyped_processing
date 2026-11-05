@@ -320,10 +320,11 @@ class EpisodeAdmin(admin.ModelAdmin):
     def batch_groq_transcribe(self, request, queryset):
         episode_ids = list(queryset.values_list("id", flat=True))
         try:
-            async_result = groq_batch_transcribe.delay(episode_ids)
+            groq_batch_transcribe.delay(episode_ids)
             self.message_user(
                 request,
-                f"Batch transcription task queued. Celery Task ID: {async_result.id}",
+                f"Submitting {len(episode_ids)} episode(s) to a Groq batch job. "
+                "Transcripts are saved when it finishes (within 24 hours).",
             )
         except Exception as e:
             self.message_user(

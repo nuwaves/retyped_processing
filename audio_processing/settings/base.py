@@ -188,6 +188,21 @@ CONSTANCE_CONFIG = {
         "whisper-large-v3-turbo",
         "Model to use for text-to-speech synthesis",
     ),
+    "TRANSCRIPTION_MODE": (
+        "batch",
+        "How queued episodes are transcribed. Batch uses the Groq Batch API: half "
+        "the price, transcripts within 24 hours. Realtime transcribes right away.",
+        "transcription_mode",
+    ),
+}
+CONSTANCE_ADDITIONAL_FIELDS = {
+    "transcription_mode": [
+        "django.forms.fields.ChoiceField",
+        {
+            "widget": "django.forms.Select",
+            "choices": (("batch", "Batch"), ("realtime", "Realtime")),
+        },
+    ],
 }
 CONSTANCE_BACKEND = "constance.backends.database.DatabaseBackend"
 

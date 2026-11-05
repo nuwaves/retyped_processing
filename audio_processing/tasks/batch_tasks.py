@@ -15,6 +15,8 @@ def fetch_and_apply_groq_results_task(batch_id):
 @shared_task
 def process_pending_batches_task():
     """
-    Celery task to process all pending ProcessingBatch jobs from the last week.
+    Celery task, run by the "fetch groq batches" beat schedule: put episodes
+    waiting for batch transcription into Groq batch jobs, then apply the results
+    of finished batches and continue those episodes' workflows.
     """
-    return ProcessingBatch.process_pending_batches()
+    return ProcessingBatch.run_transcription_batches()
