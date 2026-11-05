@@ -6,6 +6,7 @@ from constance import config
 from django.conf import settings
 
 from audio_processing.prompts import get_episode_summary_prompt
+from audio_processing.utils.llm import post_chat_completion
 
 logger = logging.getLogger(__name__)
 
@@ -37,7 +38,6 @@ class SummarizableMixin:
         )
 
         try:
-            url = settings.LLM_API_URL
             api_key = getattr(settings, "LLM_API_KEY", "")
 
             if not api_key:
@@ -62,11 +62,6 @@ class SummarizableMixin:
                 self.description if hasattr(self, "description") else "",
             )
 
-            headers = {
-                "Authorization": f"Bearer {api_key}",
-                "Content-Type": "application/json",
-            }
-
             data = {
                 "model": config.SUMMARY_MODEL,
                 "messages": [{"role": "user", "content": prompt}],
@@ -74,13 +69,9 @@ class SummarizableMixin:
                 "max_tokens": 8192,
             }
 
-            response = requests.post(
-                url, headers=headers, json=data, timeout=settings.LLM_TIMEOUT
-            )
-            response.raise_for_status()
-
-            result = response.json()
-            summary_content = result["choices"][0]["message"]["content"].strip()
+            summary_content = post_chat_completion(
+                data, label=f"Summary request ({config.SUMMARY_MODEL})"
+            ).strip()
 
             # Remove <think></think> blocks that some models include
             summary_content = re.sub(
@@ -106,8 +97,9 @@ class SummarizableMixin:
                 return None
 
         except requests.exceptions.RequestException as e:
+            body = e.response.text[:500] if e.response is not None else "N/A"
             logger.error(
-                f"API request failed for summary generation: {str(e)} and response was: {response.json() if 'response' in locals() else 'N/A'}"
+                f"API request failed for summary generation: {str(e)} and response was: {body}"
             )
             return None
         except Exception as e:

@@ -10,6 +10,7 @@ from django.conf import settings
 
 from audio_processing.models.mixins.audio_chunking import transcribe_audio_in_chunks
 from audio_processing.prompts import get_speaker_transcript_prompt
+from audio_processing.utils.llm import post_chat_completion
 from audio_processing.utils.storage import audio_download_url
 
 # Seconds to wait for Groq to transcribe a whole file (up to 100 MB) in one request.
@@ -50,7 +51,6 @@ class GroqMixin:
         Returns:
             str: The completion content or None if failed
         """
-        url = settings.LLM_API_URL
         api_key = getattr(settings, "LLM_API_KEY", "")
         if not api_key:
             logger.error("LLM_API_KEY not configured")
@@ -60,11 +60,6 @@ class GroqMixin:
         if model is None:
             model = config.DEFAULT_MODEL
 
-        headers = {
-            "Authorization": f"Bearer {api_key}",
-            "Content-Type": "application/json",
-        }
-
         data = {
             "model": model,
             "messages": [{"role": "user", "content": prompt}],
@@ -73,13 +68,8 @@ class GroqMixin:
         }
 
         try:
-            response = requests.post(
-                url, headers=headers, json=data, timeout=settings.LLM_TIMEOUT
-            )
-            response.raise_for_status()
-
-            result = response.json()
-            content = result["choices"][0]["message"]["content"].strip()
+            content = post_chat_completion(data, label=f"LLM request ({model})")
+            content = content.strip()
 
             # Remove any <think> tags that might be present
             content = re.sub(
