@@ -203,9 +203,7 @@ def process_complete_workflow(episode_id):
         error_msg = f"Error in complete workflow: {str(e)}"
         logger.error(error_msg)
         try:
-            episode = Episode.objects.get(pk=episode_id)
-            episode.error = error_msg
-            episode.save(update_fields=["error"])
+            Episode.objects.get(pk=episode_id).mark_processing_failed(error_msg)
         except Exception:
             pass
         return {"success": False, "error": error_msg}
@@ -269,8 +267,8 @@ def process_recent_episodes_without_transcript():
     task_results = []
     for episode in episodes:
         logger.info(f"Queueing workflow for episode ID: {episode.id} - {episode.title}")
-        async_result = process_complete_workflow.delay(episode.id)
-        task_results.append({"episode_id": episode.id, "task_id": async_result.id})
+        if episode.queue_processing():
+            task_results.append({"episode_id": episode.id})
     logger.info(f"Queued {len(task_results)} episode workflows.")
     return task_results
 

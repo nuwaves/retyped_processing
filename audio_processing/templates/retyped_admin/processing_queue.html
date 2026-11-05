@@ -1,0 +1,19 @@
+{% extends "retyped_admin/base.html" %}
+{% block content %}
+<div id="content-main">
+  <div class="rt-toolbar">
+    <a class="rt-button" href="{% url 'admin:index' %}">← Dashboard</a>
+    {% if tab == "failed" and page.paginator.count %}
+    <form method="post" action="{% url 'admin:queue_episodes' %}">
+      {% csrf_token %}
+      <input type="hidden" name="scope" value="all_failed">
+      <input type="hidden" name="next" value="{{ request.get_full_path }}">
+      <button class="rt-button rt-primary" type="submit">Retry all {{ page.paginator.count }} failed</button>
+    </form>
+    {% endif %}
+  </div>
+  <div data-poll-url="{{ request.get_full_path }}">
+    {% include "retyped_admin/partials/queue_body.html" %}
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,19 @@
+{% extends "retyped_admin/base.html" %}
+{% block content %}
+<div id="content-main">
+  <p>Paste a podcast's RSS feed URL. You'll see a preview before anything is saved.</p>
+  {% if existing %}
+    <p class="errornote">This feed is already added as <a href="{% url 'admin:podcast_episodes' existing.pk %}">{{ existing.name }}</a>.</p>
+  {% endif %}
+  <form method="post">
+    {% csrf_token %}
+    <input type="hidden" name="step" value="preview">
+    <div class="rt-form-row">
+      <label for="{{ form.url.id_for_label }}">{{ form.url.label }}</label>
+      {{ form.url }}
+      {% if form.url.errors and not existing %}{{ form.url.errors }}{% endif %}
+    </div>
+    <button class="rt-button rt-primary" type="submit">Preview feed</button>
+  </form>
+</div>
+{% endblock %}

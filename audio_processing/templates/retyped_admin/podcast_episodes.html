@@ -1,0 +1,71 @@
+{% extends "retyped_admin/base.html" %}
+{% block crumbs %}&rsaquo; <a href="{% url 'admin:audio_processing_podcast_changelist' %}">Podcasts</a> &rsaquo; {{ podcast.name|truncatechars:60 }}{% endblock %}
+{% block content_title %}{% endblock %}
+{% block content %}
+<div id="content-main">
+  <div class="rt-podcast-head">
+    {% if podcast.image_url or podcast.itunes_image_url %}<img src="{{ podcast.image_url|default:podcast.itunes_image_url }}" alt="">{% endif %}
+    <div class="rt-meta">
+      <h1 style="margin:0 0 4px">{{ podcast.name }}</h1>
+      <div class="rt-muted">
+        {% if podcast.author %}{{ podcast.author }} · {% endif %}
+        {{ counts.total }} episode{{ counts.total|pluralize }} ·
+        {% if podcast.last_processed %}feed checked {{ podcast.last_processed|timesince }} ago{% else %}feed not fetched yet{% endif %}
+      </div>
+      <form class="rt-settings" method="post" action="{% url 'admin:podcast_action' podcast.pk %}">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="settings">
+        <label>{{ settings_form.is_active }} {{ settings_form.is_active.label }}</label>
+        <label>{{ settings_form.auto_process }} {{ settings_form.auto_process.label }}</label>
+        <label>{{ settings_form.auto_process_count.label }} {{ settings_form.auto_process_count }}</label>
+        <button class="rt-button rt-small" type="submit">Save settings</button>
+      </form>
+    </div>
+  </div>
+
+  <div class="rt-toolbar">
+    <form method="post" action="{% url 'admin:podcast_action' podcast.pk %}">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="refresh">
+      <button class="rt-button" type="submit">Refresh feed</button>
+    </form>
+    <form method="post" action="{% url 'admin:podcast_action' podcast.pk %}">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="process_newest">
+      <input type="hidden" name="next" value="{{ request.get_full_path }}">
+      <button class="rt-button rt-primary" type="submit">Process newest</button>
+      <input type="number" name="count" value="3" min="1" max="25" aria-label="How many">
+      <span class="rt-muted">unprocessed ({{ counts.idle }} available)</span>
+    </form>
+    <a class="rt-button" href="{% url 'admin:audio_processing_podcast_change' podcast.pk %}">Edit podcast details</a>
+  </div>
+
+  <nav class="rt-tabs">
+    <a href="?" class="{% if not status_filter %}rt-active{% endif %}">All <span class="rt-count">{{ counts.total }}</span></a>
+    <a href="?status=idle" class="{% if status_filter == 'idle' %}rt-active{% endif %}">Not processed <span class="rt-count">{{ counts.idle }}</span></a>
+    <a href="?status=done" class="{% if status_filter == 'done' %}rt-active{% endif %}">Done <span class="rt-count">{{ counts.done }}</span></a>
+    <a href="?status=failed" class="{% if status_filter == 'failed' %}rt-active{% endif %}">Failed <span class="rt-count">{{ counts.failed }}</span></a>
+  </nav>
+
+  <form id="process-selected" method="post" action="{% url 'admin:queue_episodes' %}">
+    {% csrf_token %}
+    <input type="hidden" name="next" value="{{ request.get_full_path }}">
+  </form>
+
+  <section class="rt-panel" style="border-top-left-radius:0">
+    <div data-poll-url="{{ request.get_full_path }}">
+      {% include "retyped_admin/partials/podcast_episode_rows.html" %}
+    </div>
+  </section>
+  <div class="rt-bulkbar">
+    <button class="rt-button rt-primary" type="submit" form="process-selected">Process selected</button>
+    {% if page.has_other_pages %}
+    <span class="rt-muted">
+      {% if page.has_previous %}<a href="?status={{ status_filter }}&page={{ page.previous_page_number }}">← Newer</a>{% endif %}
+      Page {{ page.number }} of {{ page.paginator.num_pages }}
+      {% if page.has_next %}<a href="?status={{ status_filter }}&page={{ page.next_page_number }}">Older →</a>{% endif %}
+    </span>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

@@ -2,13 +2,13 @@ from django.contrib import admin
 from django.contrib.admin import SimpleListFilter
 from django.db import models
 
+from audio_processing.admin.status import status_badge
 from audio_processing.models import Episode
 from audio_processing.tasks.episode_tasks import add_transcript as add_transcript_task
 from audio_processing.tasks.episode_tasks import (
     extract_entities,
     groq_batch_transcribe,
     index_episode_for_search,
-    process_complete_workflow,
     reindex_all_episodes_for_search,
     save_audio_to_s3_task,
     tag_episode_with_topics,
@@ -58,6 +58,7 @@ class EpisodeAdmin(admin.ModelAdmin):
         "title",
         "slug",
         "podcast",
+        "processing_badge",
         "duration_display",
         "has_transcript",
         "has_script",
@@ -86,6 +87,7 @@ class EpisodeAdmin(admin.ModelAdmin):
             return queryset
 
     list_filter = (
+        "processing_status",
         "podcast",
         "episode_type",
         "itunes_explicit",
@@ -106,7 +108,17 @@ class EpisodeAdmin(admin.ModelAdmin):
         "script_transcript",
         "podcast__name",
     )
-    readonly_fields = ("created_at", "updated_at", "audio_length", "pub_date", "error")
+    readonly_fields = (
+        "created_at",
+        "updated_at",
+        "audio_length",
+        "pub_date",
+        "error",
+        "processing_status",
+        "processing_step",
+        "processing_queued_at",
+        "processing_started_at",
+    )
     raw_id_fields = ("podcast",)
 
     def truncated_url(self, obj):
@@ -146,6 +158,10 @@ class EpisodeAdmin(admin.ModelAdmin):
 
     has_summary.boolean = True
     has_summary.short_description = "Has Summary"
+
+    @admin.display(description="Processing", ordering="processing_status")
+    def processing_badge(self, obj):
+        return status_badge(obj)
 
     fieldsets = (
         (
@@ -191,13 +207,25 @@ class EpisodeAdmin(admin.ModelAdmin):
         ),
         ("Rich Content", {"fields": ("content_encoded",), "classes": ("collapse",)}),
         (
+            "Processing Status",
+            {
+                "fields": (
+                    "processing_status",
+                    "processing_step",
+                    "processing_queued_at",
+                    "processing_started_at",
+                    "processing_completed_at",
+                    "error",
+                ),
+            },
+        ),
+        (
             "Processing Content",
             {
                 "fields": (
                     "transcript",
                     "script_transcript",
                     "summary",
-                    "processing_completed_at",
                 ),
                 "classes": ("wide",),
             },
@@ -205,7 +233,7 @@ class EpisodeAdmin(admin.ModelAdmin):
         ("Dates", {"fields": ("release_date", "pub_date"), "classes": ("collapse",)}),
         (
             "System Information",
-            {"fields": ("error", "created_at", "updated_at"), "classes": ("collapse",)},
+            {"fields": ("created_at", "updated_at"), "classes": ("collapse",)},
         ),
     )
 
@@ -478,14 +506,20 @@ class EpisodeAdmin(admin.ModelAdmin):
         total_processed = 0
         total_errors = []
 
+        skipped = 0
         for episode in queryset:
             try:
-                process_complete_workflow.delay(episode.id)
-                total_processed += 1
+                if episode.queue_processing():
+                    total_processed += 1
+                else:
+                    skipped += 1
             except Exception as e:
                 total_errors.append(f"{episode.raw_audio_url[:30]}...: {str(e)}")
 
-        self.message_user(request, f"Processed {total_processed} episodes. ")
+        message = f"Queued {total_processed} episodes for processing."
+        if skipped:
+            message += f" Skipped {skipped} already queued or running."
+        self.message_user(request, message)
 
         if total_errors:
             for error in total_errors[:5]:  # Show first 5 errors

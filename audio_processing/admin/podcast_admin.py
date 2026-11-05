@@ -1,4 +1,7 @@
 from django.contrib import admin
+from django.db.models import Count
+from django.urls import reverse
+from django.utils.html import format_html
 from import_export.admin import ImportExportModelAdmin
 
 from audio_processing.models import Podcast
@@ -17,8 +20,10 @@ class PodcastAdmin(ImportExportModelAdmin):
         "author",
         "language",
         "is_active",
+        "auto_process",
         "last_processed",
         "episode_count",
+        "episodes_link",
     )
     list_filter = (
         "is_active",
@@ -36,17 +41,30 @@ class PodcastAdmin(ImportExportModelAdmin):
         "pub_date",
         "last_build_date",
     )
-    list_editable = ("is_active",)
+    list_editable = ("is_active", "auto_process")
+    change_form_template = "retyped_admin/podcast_change_form.html"
+    change_list_template = "retyped_admin/podcast_change_list.html"
 
+    def get_queryset(self, request):
+        return super().get_queryset(request).annotate(_episode_count=Count("episodes"))
+
+    @admin.display(description="Episode Count", ordering="_episode_count")
     def episode_count(self, obj):
-        return obj.episodes.count()
+        return obj._episode_count
 
-    episode_count.short_description = "Episode Count"
+    @admin.display(description="")
+    def episodes_link(self, obj):
+        url = reverse("admin:podcast_episodes", args=[obj.pk])
+        return format_html('<a href="{}">Manage episodes →</a>', url)
 
     fieldsets = (
         (
             "Basic Information",
             {"fields": ("name", "slug", "url", "description", "is_active", "tags")},
+        ),
+        (
+            "Processing",
+            {"fields": ("auto_process", "auto_process_count")},
         ),
         (
             "Podcast Metadata",

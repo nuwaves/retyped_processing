@@ -50,6 +50,37 @@ class Episode(
         null=True,
         help_text="S3 URI of the uploaded audio file",
     )
+
+    class ProcessingStatus(models.TextChoices):
+        IDLE = "idle", "Not processed"
+        QUEUED = "queued", "Queued"
+        RUNNING = "running", "Running"
+        DONE = "done", "Done"
+        FAILED = "failed", "Failed"
+
+    processing_status = models.CharField(
+        max_length=16,
+        choices=ProcessingStatus.choices,
+        default=ProcessingStatus.IDLE,
+        db_index=True,
+        help_text="Where this episode is in the processing workflow",
+    )
+    processing_step = models.CharField(
+        max_length=32,
+        blank=True,
+        default="",
+        help_text="Workflow step currently running (or the step that failed)",
+    )
+    processing_queued_at = models.DateTimeField(
+        blank=True,
+        null=True,
+        help_text="When the processing workflow was last queued",
+    )
+    processing_started_at = models.DateTimeField(
+        blank=True,
+        null=True,
+        help_text="When the worker last started the processing workflow",
+    )
     processing_completed_at = models.DateTimeField(
         blank=True,
         null=True,
@@ -392,6 +423,9 @@ class Episode(
                 pass
 
         episode = cls.objects.create(**episode_data)
+        episode.created_from_feed = (
+            True  # lets Podcast.process_feed tell new from existing
+        )
         logger.info(
             f"Created episode: {title} - {audio_url} (released: {release_date})"
         )
@@ -593,9 +627,68 @@ class Episode(
             logger.error(f"Unknown transcription method: {method}")
             return None
 
+    @property
+    def is_stalled(self):
+        """True when the workflow has been 'running' longer than Celery's hard time limit."""
+        if (
+            self.processing_status != self.ProcessingStatus.RUNNING
+            or not self.processing_started_at
+        ):
+            return False
+        limit = timezone.timedelta(seconds=settings.CELERY_TASK_TIME_LIMIT)
+        return timezone.now() - self.processing_started_at > limit
+
+    def queue_processing(self, force=False):
+        """
+        Queue the complete processing workflow for this episode.
+        Returns False (and queues nothing) if it is already queued or running,
+        unless force=True or the run has stalled.
+        """
+        from audio_processing.tasks.episode_tasks import process_complete_workflow
+
+        busy = self.processing_status in (
+            self.ProcessingStatus.QUEUED,
+            self.ProcessingStatus.RUNNING,
+        )
+        if busy and not force and not self.is_stalled:
+            return False
+
+        self.processing_status = self.ProcessingStatus.QUEUED
+        self.processing_step = ""
+        self.processing_queued_at = timezone.now()
+        self.error = None
+        self.save(
+            update_fields=[
+                "processing_status",
+                "processing_step",
+                "processing_queued_at",
+                "error",
+                "updated_at",
+            ]
+        )
+        process_complete_workflow.delay(self.id)
+        return True
+
+    def _set_processing_step(self, step):
+        self.processing_step = step
+        self.save(update_fields=["processing_step", "updated_at"])
+
+    def mark_processing_failed(self, error):
+        self.processing_status = self.ProcessingStatus.FAILED
+        self.error = error
+        self.save(
+            update_fields=[
+                "processing_status",
+                "processing_step",
+                "error",
+                "updated_at",
+            ]
+        )
+
     def process_complete_workflow(self):
         """
         Complete workflow: generate transcript, apply tags, create speaker script, generate summary, extract entities, and extract quotes.
+        Records progress in processing_status / processing_step as it goes.
         Returns a summary of what was accomplished.
         """
         results = {
@@ -608,25 +701,42 @@ class Episode(
             "topics_assigned": False,
             "errors": [],
         }
+        self.processing_status = self.ProcessingStatus.RUNNING
+        self.processing_started_at = timezone.now()
+        self.processing_step = ""
+        self.save(
+            update_fields=[
+                "processing_status",
+                "processing_started_at",
+                "processing_step",
+                "updated_at",
+            ]
+        )
+
         # Step 0: Save audio to S3 if not already done
         if not self.s3_audio_url:
+            self._set_processing_step("s3")
             s3_uri = self.upload_audio_to_s3(self.raw_audio_url)
             if s3_uri:
                 logger.info(f"Audio saved to S3: {s3_uri}")
             else:
                 results["errors"].append("Failed to save audio to S3")
+                self.mark_processing_failed("Failed to save audio to S3")
                 return results
 
         # Step 1: Generate transcript if needed
         if not self.transcript:
+            self._set_processing_step("transcript")
             transcript = self.generate_transcript()
             if transcript:
                 results["transcript_generated"] = True
                 logger.info(f"Transcript generated for: {self.raw_audio_url}")
             else:
                 results["errors"].append("Failed to generate transcript")
+                self.mark_processing_failed("Failed to generate transcript")
                 return results
         # Step 2: Apply tags
+        self._set_processing_step("tags")
         applied_tags = self.suggest_and_apply_tags()
         if applied_tags:
             results["tags_applied"] = len(applied_tags)
@@ -634,6 +744,7 @@ class Episode(
         else:
             results["errors"].append("Failed to apply tags")
         # Step 3: Generate speaker script
+        self._set_processing_step("script")
         script = self.generate_speaker_script()
         if script:
             results["script_generated"] = True
@@ -641,6 +752,7 @@ class Episode(
         else:
             results["errors"].append("Failed to generate speaker script")
         # Step 4: Generate episode summary
+        self._set_processing_step("summary")
         summary = self.generate_summary()
         if summary:
             results["summary_generated"] = True
@@ -648,6 +760,7 @@ class Episode(
         else:
             results["errors"].append("Failed to generate episode summary")
         # Step 5: Extract entities
+        self._set_processing_step("entities")
         entities = self.extract_entities()
         if entities:
             results["entities_extracted"] = len(entities)
@@ -657,6 +770,7 @@ class Episode(
         else:
             results["errors"].append("Failed to extract entities")
         # Step 6: Extract key quotes
+        self._set_processing_step("quotes")
         quotes = self.extract_quotes()
         if quotes:
             results["quotes_extracted"] = len(quotes)
@@ -664,6 +778,7 @@ class Episode(
         else:
             results["errors"].append("Failed to extract quotes")
         # Step 7: Assign a topic
+        self._set_processing_step("topics")
         try:
             from audio_processing.models.topic import Topic
 
@@ -672,9 +787,26 @@ class Episode(
                 logger.info(f"Topics assigned for: {self.raw_audio_url}")
         except Exception as e:
             results["errors"].append(f"Failed to assign topics: {str(e)}")
+        # Step 8: Index to search
+        self._set_processing_step("search")
+        try:
+            self.index_to_search()
+        except Exception as e:
+            results["errors"].append(f"Failed to index to search: {str(e)}")
+        self.processing_status = self.ProcessingStatus.DONE
+        self.processing_step = ""
         self.processing_completed_at = timezone.now()
-        self.save(update_fields=["processing_completed_at"])
-        self.index_to_search()
+        # Non-fatal step failures stay visible on the episode.
+        self.error = "; ".join(results["errors"]) or None
+        self.save(
+            update_fields=[
+                "processing_status",
+                "processing_step",
+                "processing_completed_at",
+                "error",
+                "updated_at",
+            ]
+        )
         return results
 
     def get_search_document(self):

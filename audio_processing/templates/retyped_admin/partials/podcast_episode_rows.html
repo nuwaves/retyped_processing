@@ -1,0 +1,30 @@
+{% load retyped_admin %}
+{% if poll %}<span hidden data-keep-polling></span>{% endif %}
+{% if page.object_list %}
+<table>
+  <thead>
+    <tr>
+      <th><input type="checkbox" data-select-all="episode_ids" aria-label="Select all"></th>
+      <th>Episode</th>
+      <th>Released</th>
+      <th>Length</th>
+      <th>Status</th>
+      <th>Error / warnings</th>
+    </tr>
+  </thead>
+  <tbody>
+  {% for episode in page.object_list %}
+    <tr>
+      <td><input type="checkbox" name="episode_ids" value="{{ episode.pk }}" form="process-selected" aria-label="Select {{ episode.title }}"></td>
+      <td><a href="{% url 'admin:audio_processing_episode_change' episode.pk %}">{{ episode.title|truncatechars:80 }}</a></td>
+      <td class="rt-nowrap rt-muted">{{ episode.release_date|date:"M j, Y" }}</td>
+      <td class="rt-nowrap rt-muted">{{ episode.duration|short_duration }}</td>
+      <td>{% status_badge episode %}</td>
+      <td class="rt-error">{{ episode.error|default:""|truncatechars:160 }}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% else %}
+  <p class="rt-empty">{% if status_filter %}No episodes with this status.{% else %}No episodes yet. If you just added this podcast, its feed is being fetched; refresh in a moment.{% endif %}</p>
+{% endif %}

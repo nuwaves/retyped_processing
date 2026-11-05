@@ -1,0 +1,64 @@
+{% load retyped_admin %}
+<span hidden data-keep-polling></span>
+<nav class="rt-tabs">
+  {% for key, label, count in tabs %}
+    <a href="?tab={{ key }}" class="{% if key == tab %}rt-active{% endif %}">{{ label }} <span class="rt-count">{{ count }}</span></a>
+  {% endfor %}
+</nav>
+<section class="rt-panel" style="border-top-left-radius:0">
+  {% if page.object_list %}
+  <table>
+    <thead>
+      <tr>
+        <th>Episode</th>
+        <th>Status</th>
+        <th>{% if tab == "queued" %}Queued{% elif tab == "done" %}Finished{% else %}Started{% endif %}</th>
+        {% if tab == "failed" or tab == "done" %}<th>Error / warnings</th>{% endif %}
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for episode in page.object_list %}
+      <tr>
+        <td>
+          <a href="{% url 'admin:audio_processing_episode_change' episode.pk %}">{{ episode.title|truncatechars:70 }}</a>
+          <div class="rt-muted"><a href="{% url 'admin:podcast_episodes' episode.podcast_id %}">{{ episode.podcast.name|truncatechars:50 }}</a></div>
+        </td>
+        <td>{% status_badge episode %}</td>
+        <td class="rt-nowrap rt-muted">
+          {% if tab == "queued" %}{{ episode.processing_queued_at|timesince }} ago
+          {% elif tab == "done" %}{{ episode.processing_completed_at|timesince }} ago
+          {% elif episode.processing_started_at %}{{ episode.processing_started_at|timesince }} ago{% endif %}
+        </td>
+        {% if tab == "failed" or tab == "done" %}<td class="rt-error">{{ episode.error|default:""|truncatechars:240 }}</td>{% endif %}
+        <td>
+          {% if episode.processing_status == "failed" or episode.is_stalled %}
+          <form method="post" action="{% url 'admin:queue_episodes' %}">
+            {% csrf_token %}
+            <input type="hidden" name="episode_ids" value="{{ episode.pk }}">
+            <input type="hidden" name="next" value="{{ request.get_full_path }}">
+            <button class="rt-button rt-small" type="submit">Retry</button>
+          </form>
+          {% endif %}
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% if page.has_other_pages %}
+  <p class="rt-empty">
+    {% if page.has_previous %}<a href="?tab={{ tab }}&page={{ page.previous_page_number }}">← Newer</a>{% endif %}
+    Page {{ page.number }} of {{ page.paginator.num_pages }}
+    {% if page.has_next %}<a href="?tab={{ tab }}&page={{ page.next_page_number }}">Older →</a>{% endif %}
+  </p>
+  {% endif %}
+  {% else %}
+    <p class="rt-empty">
+      {% if tab == "queued" %}Nothing waiting in the queue.
+      {% elif tab == "running" %}Nothing is being processed right now.
+      {% elif tab == "failed" %}No failed episodes.
+      {% else %}No episodes finished in the last 24 hours.{% endif %}
+    </p>
+  {% endif %}
+</section>
+<p class="rt-muted" style="margin-top:8px">Updates every 5 seconds · last updated {{ now|time:"H:i:s" }}</p>
