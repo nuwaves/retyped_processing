@@ -38,7 +38,7 @@ class FixTruncatedScriptsTest(TestCase):
         self._episode("running", processing_status=Episode.ProcessingStatus.RUNNING)
         out = self._run("--dry-run")
         self.assertIn("1 cut-off script(s)", out)
-        self.assertIn("- cut", out)
+        self.assertIn("cut: script 11 of 50,000", out)
 
     @patch.object(Episode, "index_to_search")
     def test_rewrites_and_reindexes(self, index):
