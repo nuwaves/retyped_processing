@@ -20,6 +20,21 @@ TRANSCRIPTION_TIMEOUT = 900
 # episode needs about 11k output tokens.
 SCRIPT_MAX_TOKENS = 16384
 
+# Transcripts longer than this are formatted in parts. A script for one part
+# then fits well inside SCRIPT_MAX_TOKENS (whole transcripts over ~50k chars
+# came back cut off) and each request finishes far inside LLM_TIMEOUT.
+SCRIPT_CHUNK_CHARS = 30000
+
+# How much of the previous part's script is shown to the next part, so speaker
+# labels carry over.
+SCRIPT_CONTEXT_CHARS = 1500
+
+# "Name: ..." at the start of a script line.
+SPEAKER_LABEL = re.compile(r"^([A-Z][^:\n\[\]]{0,48}):", re.MULTILINE)
+
+# Sentence ends we prefer to split a transcript at.
+SENTENCE_END = re.compile(r"[.!?][\"')\]]*\s+")
+
 # Some models bold the speaker labels ("**Host:**"), which the site shows as
 # literal asterisks.
 BOLD_SPEAKER_LABEL = re.compile(r"^\*\*([^*\n]+?):?\*\*:?", re.MULTILINE)
@@ -28,6 +43,44 @@ BOLD_SPEAKER_LABEL = re.compile(r"^\*\*([^*\n]+?):?\*\*:?", re.MULTILINE)
 def clean_speaker_labels(script):
     """Turn "**Name:**" or "**Name**:" at the start of a line into "Name:"."""
     return BOLD_SPEAKER_LABEL.sub(r"\1:", script)
+
+
+def split_transcript(transcript, max_chars=SCRIPT_CHUNK_CHARS):
+    """
+    Split a transcript into parts of at most max_chars, breaking at a paragraph
+    or sentence end in the second half of each part where there is one, else
+    at whitespace, else hard at max_chars.
+    """
+    parts = []
+    text = transcript.strip()
+    while len(text) > max_chars:
+        window = text[:max_chars]
+        floor = max_chars // 2
+        cut = window.rfind("\n\n", floor)
+        if cut != -1:
+            cut += 2
+        else:
+            ends = [m.end() for m in SENTENCE_END.finditer(window, floor)]
+            if ends:
+                cut = ends[-1]
+            else:
+                space = window.rfind(" ", floor)
+                cut = space + 1 if space != -1 else max_chars
+        parts.append(text[:cut].strip())
+        text = text[cut:].strip()
+    if text:
+        parts.append(text)
+    return parts
+
+
+def speaker_labels(script):
+    """Speaker labels in the order they first appear in a script."""
+    seen = []
+    for name in SPEAKER_LABEL.findall(script):
+        name = name.strip()
+        if name and name not in seen:
+            seen.append(name)
+    return seen
 
 
 logger = logging.getLogger(__name__)
@@ -159,19 +212,38 @@ class GroqMixin:
         logger.info(f"Generating speaker script for: {self.raw_audio_url}")
 
         try:
-            # Get the prompt from prompts file
-            prompt = get_speaker_transcript_prompt(self)
+            # Long transcripts are formatted in parts, each continuing the last,
+            # so the script isn't cut off at SCRIPT_MAX_TOKENS.
+            parts = split_transcript(self.transcript)
+            scripts = []
+            for number, part in enumerate(parts, start=1):
+                previous = "\n\n".join(scripts)
+                prompt = get_speaker_transcript_prompt(
+                    self,
+                    transcript=part,
+                    part=number,
+                    total_parts=len(parts),
+                    known_speakers=speaker_labels(previous),
+                    previous_tail=previous[-SCRIPT_CONTEXT_CHARS:],
+                )
+                part_script = self.get_groq_completion(
+                    prompt=prompt,
+                    model=getattr(config, "SPEAKER_MODEL", None),
+                    max_tokens=SCRIPT_MAX_TOKENS,
+                    temperature=0.3,
+                )
+                if not part_script:
+                    # A script with a gap in it is worse than none: leave the
+                    # field empty so the backfill picks the episode up again.
+                    logger.warning(
+                        f"No script content returned for part {number}/{len(parts)}: {self.raw_audio_url}"
+                    )
+                    return None
+                scripts.append(clean_speaker_labels(part_script))
 
-            # Use the generic completion method
-            script_content = self.get_groq_completion(
-                prompt=prompt,
-                model=getattr(config, "SPEAKER_MODEL", None),
-                max_tokens=SCRIPT_MAX_TOKENS,
-                temperature=0.3,
-            )
+            script_content = "\n\n".join(scripts)
 
             if script_content:
-                script_content = clean_speaker_labels(script_content)
                 self.script_transcript = script_content
                 self.save()
                 logger.info(f"Speaker script generated for: {self.raw_audio_url}")

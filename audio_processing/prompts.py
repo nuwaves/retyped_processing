@@ -35,20 +35,45 @@ Do not include any additional text or explanations.
 Use only the provided tags ids and do not select more than 10 tags."""
 
 
-def get_speaker_transcript_prompt(episode):
+def get_speaker_transcript_prompt(
+    episode, transcript=None, part=1, total_parts=1, known_speakers=(), previous_tail=""
+):
     """
     Generate a prompt for converting a transcript into a speaker-formatted script.
 
+    Long transcripts are sent in parts. For part 2 onwards, pass the speaker
+    names used so far and the end of the previous part's script so labels stay
+    consistent across parts.
+
     Args:
-        transcript_excerpt: The podcast transcript to format
+        episode: The episode (for podcast/episode descriptions)
+        transcript: The transcript text to format; defaults to the whole transcript
+        part, total_parts: Which part this is, 1-based
+        known_speakers: Speaker labels used in earlier parts
+        previous_tail: The last lines of the previous part's script
 
     Returns:
         str: Formatted prompt for speaker identification and script formatting
     """
-    transcript = episode.transcript
+    if transcript is None:
+        transcript = episode.transcript
+
+    continuation = ""
+    if total_parts > 1:
+        continuation = f"""
+This transcript is long, so it is being formatted in parts. This is part {part} of {total_parts}. Format only the text below; do not summarize it or skip any of it.
+"""
+        if part > 1:
+            speakers = ", ".join(known_speakers) if known_speakers else "none yet"
+            continuation += f"""This part continues directly from the previous one. Keep using the same speaker labels: {speakers}.
+The previous part's script ended with the lines below. Do not repeat them; continue from where they stop.
+---
+{previous_tail}
+---
+"""
 
     return f"""You are an AI assistant that converts podcast transcripts into properly formatted scripts with speaker identification.
-
+{continuation}
 Original transcript:
 {transcript}
 
