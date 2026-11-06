@@ -83,6 +83,12 @@ class EpisodeViewSet(
             since = timezone.now() - timezone.timedelta(hours=24)
             qs = qs.filter(podcast__pub_date__gte=since)
 
+        # has_content=true: only episodes with a summary or transcript, for
+        # curated lists that shouldn't fill up with description-only episodes.
+        has_content = req.query_params.get("has_content")
+        if has_content and str(has_content).lower() in ("1", "true", "yes"):
+            qs = qs.filter(Episode.has_content_q())
+
         return qs
 
     @action(detail=False, methods=["get"], url_path="top-by-views")

@@ -407,6 +407,10 @@ class Podcast(models.Model, SearchableMixin):
                 failed_count += 1
         created_count = len(created)
 
+        # Make new episodes searchable now, not only once they're processed.
+        for episode in created:
+            episode.index_to_search()
+
         auto_queued = 0
         if self.auto_process and created:
             auto_queued = self.queue_newest_episodes(

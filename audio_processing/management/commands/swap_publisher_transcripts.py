@@ -102,10 +102,7 @@ class Command(BaseCommand):
                 else:
                     counts["script_kept"] += 1
                     self.stderr.write("  speaker naming failed; kept the old script")
-            try:
-                episode.index_to_search()
-            except Exception as e:
-                self.stderr.write(f"  search re-index failed: {e}")
+            # apply_publisher_transcript re-indexed the episode for search.
 
         verb = "would swap" if options["dry_run"] else "swapped"
         self.stdout.write(

@@ -12,6 +12,7 @@ from django.contrib.postgres.indexes import GinIndex
 from django.contrib.postgres.search import SearchVectorField
 from django.db import models
 from django.utils import timezone
+from django.utils.html import strip_tags
 from django.utils.text import slugify
 
 from audio_processing.models.mixins import (
@@ -898,8 +899,21 @@ class Episode(
             (self.podcast.name if self.podcast else None, "B"),
             (" ".join(tag.name for tag in self.tags.all()), "B"),
             (self.summary, "C"),
+            # Publisher show notes: the only text most unprocessed episodes have.
+            (strip_tags(self.description) if self.description else None, "C"),
             (self.transcript, "D"),
         ]
+
+    @staticmethod
+    def has_content_q():
+        """
+        Filter for episodes with a summary or transcript. Episodes without
+        either only repeat the publisher's show notes, so they are kept out of
+        the sitemap and curated lists and ranked after these in search.
+        """
+        has_summary = models.Q(summary__isnull=False) & ~models.Q(summary="")
+        has_transcript = models.Q(transcript__isnull=False) & ~models.Q(transcript="")
+        return has_summary | has_transcript
 
     def extract_entities(self):
         """

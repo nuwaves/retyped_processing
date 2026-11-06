@@ -473,6 +473,9 @@ class SearchViewSetTest(TestCase):
             podcast=self.podcast,
             raw_audio_url="https://example.com/signals.mp3",
             release_date=now,
+            # Content-less episodes rank after ones with a transcript, so give
+            # this one a transcript to compare release dates alone.
+            transcript="Django signals let decoupled apps react to events.",
         )
         newer.index_to_search()
 

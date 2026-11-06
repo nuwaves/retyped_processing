@@ -380,6 +380,11 @@ def apply_publisher_transcript(episode, transcript):
     )
     if resume:
         process_complete_workflow.delay(episode.id)
+    else:
+        # Make the new transcript searchable. Unprocessed episodes get no
+        # workflow run to do it, so without this search would only ever see
+        # their show notes.
+        episode.index_to_search()
 
 
 def resolve_batch_pending(episodes):
