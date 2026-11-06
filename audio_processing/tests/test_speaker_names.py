@@ -28,6 +28,15 @@ def episode(transcript=TRANSCRIPT, source="publisher:json"):
     )
 
 
+class StubConfigTestCase(SimpleTestCase):
+    """name_speakers reads SPEAKER_MODEL; constance needs a database."""
+
+    def setUp(self):
+        stub = patch.object(sn, "config", SimpleNamespace(SPEAKER_MODEL="m"))
+        stub.start()
+        self.addCleanup(stub.stop)
+
+
 class DetectTurnsTest(SimpleTestCase):
     def test_publisher_transcript_with_turns(self):
         self.assertTrue(sn.has_speaker_turns(episode()))
@@ -51,7 +60,7 @@ class DetectTurnsTest(SimpleTestCase):
         self.assertGreater(samples["Speaker 1"]["share"], samples["Speaker 2"]["share"])
 
 
-class ApplyNamesTest(SimpleTestCase):
+class ApplyNamesTest(StubConfigTestCase):
     def test_only_turn_labels_are_renamed(self):
         script = sn.apply_names(
             TRANSCRIPT, {"Speaker 1": "John Coogan", "Speaker 2": "Jordi Hays"}
@@ -102,7 +111,7 @@ class ApplyNamesTest(SimpleTestCase):
         self.assertIn("Speaker 2: And I'm Jordi Hays.", script)
 
 
-class NameSpeakersTest(SimpleTestCase):
+class NameSpeakersTest(StubConfigTestCase):
     def test_maps_labels_with_one_short_request(self):
         ep = episode()
         ep.get_groq_completion.return_value = (
