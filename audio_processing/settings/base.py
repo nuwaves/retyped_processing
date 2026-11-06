@@ -194,6 +194,12 @@ CONSTANCE_CONFIG = {
         "the price, transcripts within 24 hours. Realtime transcribes right away.",
         "transcription_mode",
     ),
+    "LLM_SERVICE_TIER": (
+        "flex",
+        "DeepInfra service tier for the LLM steps. Flex is 0.8x the price but "
+        "best-effort: a request can wait up to 10 minutes for capacity.",
+        "llm_service_tier",
+    ),
 }
 CONSTANCE_ADDITIONAL_FIELDS = {
     "transcription_mode": [
@@ -201,6 +207,13 @@ CONSTANCE_ADDITIONAL_FIELDS = {
         {
             "widget": "django.forms.Select",
             "choices": (("batch", "Batch"), ("realtime", "Realtime")),
+        },
+    ],
+    "llm_service_tier": [
+        "django.forms.fields.ChoiceField",
+        {
+            "widget": "django.forms.Select",
+            "choices": (("flex", "Flex"), ("standard", "Standard")),
         },
     ],
 }

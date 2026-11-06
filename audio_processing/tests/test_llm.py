@@ -32,7 +32,9 @@ class ChatCompletionTest(TestCase):
         self.assertEqual(url, "https://llm.example.com/v1/chat/completions")
         self.assertEqual(kwargs["headers"]["Authorization"], "Bearer test-key")
         self.assertEqual(kwargs["json"]["model"], "deepseek-ai/DeepSeek-V4-Flash")
-        self.assertEqual(kwargs["timeout"], 600)
+        # Flex is the default tier, so the timeout covers its capacity wait.
+        self.assertEqual(kwargs["json"]["service_tier"], "flex")
+        self.assertEqual(kwargs["timeout"], 600 + llm.FLEX_QUEUE_WAIT)
 
     @override_settings(LLM_API_KEY="")
     def test_returns_none_without_api_key(self):
@@ -92,6 +94,10 @@ class ChatCompletionRetryTest(SimpleTestCase):
         sleep = patch.object(llm.time, "sleep")
         self.sleep = sleep.start()
         self.addCleanup(sleep.stop)
+        # constance reads from the database, which SimpleTestCase blocks.
+        tier = patch.object(llm, "config", MagicMock(LLM_SERVICE_TIER="standard"))
+        tier.start()
+        self.addCleanup(tier.stop)
 
     def test_retries_rate_limit_then_succeeds(self):
         responses = [
@@ -153,3 +159,28 @@ class ChatCompletionRetryTest(SimpleTestCase):
         ):
             self.assertEqual(episode.generate_summary(), "## Summary\nGood.")
         self.assertEqual(episode.summary, "## Summary\nGood.")
+
+
+@override_settings(
+    LLM_API_URL="https://llm.example.com/v1/chat/completions",
+    LLM_API_KEY="test-key",
+    LLM_TIMEOUT=600,
+)
+class ServiceTierTest(SimpleTestCase):
+    def _post(self, tier):
+        with (
+            patch.object(llm, "config", MagicMock(LLM_SERVICE_TIER=tier)),
+            patch.object(llm.requests, "post", return_value=_response()) as post,
+        ):
+            llm.post_chat_completion({"model": "m"})
+        return post.call_args.kwargs
+
+    def test_flex_sets_tier_and_covers_queue_wait(self):
+        kwargs = self._post("flex")
+        self.assertEqual(kwargs["json"], {"model": "m", "service_tier": "flex"})
+        self.assertEqual(kwargs["timeout"], 600 + llm.FLEX_QUEUE_WAIT)
+
+    def test_standard_sends_no_tier(self):
+        kwargs = self._post("standard")
+        self.assertEqual(kwargs["json"], {"model": "m"})
+        self.assertEqual(kwargs["timeout"], 600)
