@@ -100,3 +100,16 @@ class SwapPublisherTranscriptsTest(TestCase):
         unusable.refresh_from_db()
         self.assertIsNotNone(unusable.publisher_transcript_checked_at)
         self.assertEqual(unusable.transcript, "whisper words")
+
+    def test_reparse_redoes_publisher_transcripts(self):
+        episode = self._episode("done", transcript_source="publisher:vtt")
+        with (
+            patch(f"{COMMAND}.best_publisher_transcript", return_value=publisher()),
+            patch.object(Episode, "generate_speaker_script", return_value="A: hi"),
+        ):
+            self._run()
+            episode.refresh_from_db()
+            self.assertEqual(episode.transcript, "whisper words")
+            self._run("--reparse")
+        episode.refresh_from_db()
+        self.assertEqual(episode.transcript_source, "publisher:json")

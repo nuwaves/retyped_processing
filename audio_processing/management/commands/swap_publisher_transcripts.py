@@ -16,6 +16,8 @@ Usage:
 --dry-run still records the feeds' transcript links on episodes, and downloads
 transcripts to report what would happen, but changes no transcripts or scripts.
 Episodes whose links turn out unusable are marked so a rerun skips them.
+--reparse also redoes episodes that already have a publisher transcript, after
+a fix to how transcripts are parsed.
 """
 
 from django.core.management.base import BaseCommand
@@ -40,6 +42,11 @@ class Command(BaseCommand):
         parser.add_argument(
             "--dry-run", action="store_true", help="Report, change no transcripts"
         )
+        parser.add_argument(
+            "--reparse",
+            action="store_true",
+            help="Also redo episodes that already have a publisher transcript",
+        )
 
     def handle(self, *args, **options):
         podcasts = Podcast.objects.filter(is_active=True)
@@ -50,8 +57,11 @@ class Command(BaseCommand):
             if changed:
                 self.stdout.write(f"{podcast.slug}: {changed} episode(s) got links")
 
+        sources = Q(transcript_source="")
+        if options["reparse"]:
+            sources |= Q(transcript_source__startswith="publisher:")
         episodes = (
-            Episode.objects.filter(podcast__in=podcasts, transcript_source="")
+            Episode.objects.filter(sources, podcast__in=podcasts)
             .exclude(Q(transcript__isnull=True) | Q(transcript=""))
             .exclude(transcript_links=[])
             .filter(publisher_transcript_checked_at__isnull=True)
