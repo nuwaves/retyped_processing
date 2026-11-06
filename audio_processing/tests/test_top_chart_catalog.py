@@ -91,16 +91,19 @@ class CatalogEpisodesTestBase(TestCase):
         self.summarized = Episode.objects.create(
             podcast=self.podcast,
             title="Summarized election episode",
+            raw_audio_url="https://example.com/summarized.mp3",
             summary="## Overview\nA summary.",
         )
         self.transcribed = Episode.objects.create(
             podcast=self.podcast,
             title="Transcribed election episode",
+            raw_audio_url="https://example.com/transcribed.mp3",
             transcript="Hello and welcome.",
         )
         self.notes_only = Episode.objects.create(
             podcast=self.podcast,
             title="Notes only episode",
+            raw_audio_url="https://example.com/notes.mp3",
             description="<p>Show notes about the <b>election</b>.</p>",
             summary="",
         )
@@ -166,3 +169,20 @@ class CatalogSearchTest(CatalogEpisodesTestBase):
         self.assertIn("Notes only episode", titles)
         # Episodes with a summary or transcript rank first.
         self.assertEqual(titles[-1], "Notes only episode")
+
+    def test_publisher_transcript_on_unprocessed_episode_is_searchable(self):
+        from types import SimpleNamespace
+
+        from audio_processing.transcript_manager import apply_publisher_transcript
+
+        transcript = SimpleNamespace(
+            text="We talk about zeppelins for an hour.",
+            source="publisher:vtt",
+            format="vtt",
+            has_speakers=False,
+        )
+        apply_publisher_transcript(self.notes_only, transcript)
+
+        url = reverse("v1:api-v1-search")
+        data = APIClient().get(url, {"q": "zeppelins", "type": "episode"}).json()
+        self.assertEqual([e["title"] for e in data["episodes"]], ["Notes only episode"])
