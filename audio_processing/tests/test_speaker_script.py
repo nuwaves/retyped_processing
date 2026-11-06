@@ -4,7 +4,11 @@ from django.test import SimpleTestCase, TestCase
 
 from audio_processing.models import Episode, Podcast
 from audio_processing.models.mixins import groq_mixin
-from audio_processing.models.mixins.groq_mixin import speaker_labels, split_transcript
+from audio_processing.models.mixins.groq_mixin import (
+    last_speaker,
+    speaker_labels,
+    split_transcript,
+)
 from audio_processing.prompts import get_speaker_transcript_prompt
 
 
@@ -26,6 +30,13 @@ class SplitTranscriptTest(SimpleTestCase):
         parts = split_transcript(transcript, max_chars=1000)
         self.assertEqual(parts[0], "a" * 700 + ".")
 
+    def test_prefers_splitting_after_a_question(self):
+        transcript = (
+            "a" * 600 + ". What do you think? " + "b" * 200 + ". " + "c" * 500
+        )
+        parts = split_transcript(transcript, max_chars=1000)
+        self.assertTrue(parts[0].endswith("What do you think?"))
+
     def test_hard_split_without_whitespace(self):
         parts = split_transcript("x" * 2500, max_chars=1000)
         self.assertEqual([len(p) for p in parts], [1000, 1000, 500])
@@ -35,6 +46,11 @@ class SpeakerLabelsTest(SimpleTestCase):
     def test_labels_in_first_seen_order(self):
         script = "John Coogan: Hi.\n\nJordi Hays: Hey.\n\nJohn Coogan: So.\n[Laughter]"
         self.assertEqual(speaker_labels(script), ["John Coogan", "Jordi Hays"])
+
+    def test_last_speaker(self):
+        script = "John Coogan: Hi.\n\nJordi Hays: Hey.\n[Laughter]"
+        self.assertEqual(last_speaker(script), "Jordi Hays")
+        self.assertEqual(last_speaker(""), "")
 
 
 class SpeakerScriptTest(TestCase):
@@ -67,6 +83,7 @@ class SpeakerScriptTest(TestCase):
         self.assertIn("part 2 of 2", second_prompt)
         self.assertIn("Host, Guest", second_prompt)
         self.assertIn("Guest: Yes.", second_prompt)
+        self.assertIn("ended with Guest speaking", second_prompt)
 
     def test_failed_part_saves_nothing(self):
         with patch.object(groq_mixin, "split_transcript", return_value=["one", "two"]), \

@@ -32,7 +32,10 @@ SCRIPT_CONTEXT_CHARS = 1500
 # "Name: ..." at the start of a script line.
 SPEAKER_LABEL = re.compile(r"^([A-Z][^:\n\[\]]{0,48}):", re.MULTILINE)
 
-# Sentence ends we prefer to split a transcript at.
+# Sentence ends we prefer to split a transcript at. Splitting right after a
+# question puts the next speaker's answer at the start of the next part, so a
+# part rarely opens in the middle of someone's turn.
+QUESTION_END = re.compile(r"\?[\"')\]]*\s+")
 SENTENCE_END = re.compile(r"[.!?][\"')\]]*\s+")
 
 # Some models bold the speaker labels ("**Host:**"), which the site shows as
@@ -48,8 +51,8 @@ def clean_speaker_labels(script):
 def split_transcript(transcript, max_chars=SCRIPT_CHUNK_CHARS):
     """
     Split a transcript into parts of at most max_chars, breaking at a paragraph
-    or sentence end in the second half of each part where there is one, else
-    at whitespace, else hard at max_chars.
+    end, else after a question, else at a sentence end, in the second half of
+    each part where there is one; else at whitespace, else hard at max_chars.
     """
     parts = []
     text = transcript.strip()
@@ -60,7 +63,9 @@ def split_transcript(transcript, max_chars=SCRIPT_CHUNK_CHARS):
         if cut != -1:
             cut += 2
         else:
-            ends = [m.end() for m in SENTENCE_END.finditer(window, floor)]
+            ends = [m.end() for m in QUESTION_END.finditer(window, floor)] or [
+                m.end() for m in SENTENCE_END.finditer(window, floor)
+            ]
             if ends:
                 cut = ends[-1]
             else:
@@ -71,6 +76,12 @@ def split_transcript(transcript, max_chars=SCRIPT_CHUNK_CHARS):
     if text:
         parts.append(text)
     return parts
+
+
+def last_speaker(script):
+    """The label of the last speaker line in a script, or "" if there is none."""
+    labels = SPEAKER_LABEL.findall(script)
+    return labels[-1].strip() if labels else ""
 
 
 def speaker_labels(script):
@@ -225,6 +236,7 @@ class GroqMixin:
                     total_parts=len(parts),
                     known_speakers=speaker_labels(previous),
                     previous_tail=previous[-SCRIPT_CONTEXT_CHARS:],
+                    last_speaker=last_speaker(previous),
                 )
                 part_script = self.get_groq_completion(
                     prompt=prompt,

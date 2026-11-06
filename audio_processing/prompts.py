@@ -36,7 +36,13 @@ Use only the provided tags ids and do not select more than 10 tags."""
 
 
 def get_speaker_transcript_prompt(
-    episode, transcript=None, part=1, total_parts=1, known_speakers=(), previous_tail=""
+    episode,
+    transcript=None,
+    part=1,
+    total_parts=1,
+    known_speakers=(),
+    previous_tail="",
+    last_speaker="",
 ):
     """
     Generate a prompt for converting a transcript into a speaker-formatted script.
@@ -51,6 +57,7 @@ def get_speaker_transcript_prompt(
         part, total_parts: Which part this is, 1-based
         known_speakers: Speaker labels used in earlier parts
         previous_tail: The last lines of the previous part's script
+        last_speaker: Who was speaking when the previous part ended
 
     Returns:
         str: Formatted prompt for speaker identification and script formatting
@@ -70,6 +77,9 @@ The previous part's script ended with the lines below. Do not repeat them; conti
 ---
 {previous_tail}
 ---
+"""
+            if last_speaker:
+                continuation += f"""The previous part ended with {last_speaker} speaking. The transcript was split at an arbitrary point, so the opening of this part may be {last_speaker} still talking or another speaker replying. Decide from the text: if the first sentences continue {last_speaker}'s thought, label them {last_speaker}; if they answer or react to it, label them with whoever is replying.
 """
 
     return f"""You are an AI assistant that converts podcast transcripts into properly formatted scripts with speaker identification.
