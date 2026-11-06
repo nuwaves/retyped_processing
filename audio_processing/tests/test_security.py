@@ -1,4 +1,3 @@
-import base64
 from unittest.mock import patch
 
 from django.contrib.auth.models import User
@@ -6,7 +5,6 @@ from django.test import TestCase
 from rest_framework.test import APIClient
 
 from audio_processing.models import Episode, Podcast
-from audio_processing.serializers.episodes import ANONYMOUS_TRANSCRIPT_PREVIEW_CHARS
 from audio_processing.tasks.podcast_tasks import index_podcast_for_search
 from audio_processing.utils import sanitize_html_content
 
@@ -80,27 +78,16 @@ class EpisodeSerializerExposureTest(TestCase):
         self.assertNotIn("s3_audio_url", response.data)
         self.assertEqual(response.data["raw_audio_url"], self.episode.raw_audio_url)
 
-    def test_anonymous_users_get_transcript_preview(self):
+    def test_anonymous_users_get_full_transcript(self):
         response = self.client.get(self.url)
-        self.assertEqual(
-            len(response.data["transcript"]), ANONYMOUS_TRANSCRIPT_PREVIEW_CHARS
-        )
-        self.assertEqual(
-            len(response.data["script_transcript"]),
-            ANONYMOUS_TRANSCRIPT_PREVIEW_CHARS,
-        )
+        self.assertEqual(response.data["transcript"], self.transcript)
+        self.assertEqual(response.data["script_transcript"], self.transcript)
 
     def test_authenticated_users_get_full_transcript(self):
         self.client.force_authenticate(user=self.user)
         response = self.client.get(self.url)
         self.assertEqual(response.data["transcript"], self.transcript)
         self.assertEqual(response.data["script_transcript"], self.transcript)
-
-    def test_basic_auth_credentials_do_not_authenticate(self):
-        token = base64.b64encode(b"reader:testpass").decode()
-        self.client.credentials(HTTP_AUTHORIZATION=f"Basic {token}")
-        response = self.client.get(self.url)
-        self.assertNotEqual(response.data.get("transcript"), self.transcript)
 
     def test_episode_description_is_sanitized(self):
         response = self.client.get(self.url)

@@ -9,9 +9,6 @@ from .quotes import QuoteSerializer
 from .tags import TagSerializer
 from .topics import TopicSerializer
 
-# Signed-out visitors get a transcript preview this long; the frontend blurs it.
-ANONYMOUS_TRANSCRIPT_PREVIEW_CHARS = 200
-
 
 class EpisodeSerializer(serializers.ModelSerializer):
     tags = serializers.SerializerMethodField()
@@ -41,15 +38,6 @@ class EpisodeSerializer(serializers.ModelSerializer):
         if not obj.image_url:
             return obj.podcast.image_url
         return obj.image_url
-
-    def to_representation(self, instance):
-        data = super().to_representation(instance)
-        request = self.context.get("request")
-        if not (request and request.user.is_authenticated):
-            for field in ("transcript", "script_transcript"):
-                if data.get(field):
-                    data[field] = data[field][:ANONYMOUS_TRANSCRIPT_PREVIEW_CHARS]
-        return data
 
     class Meta:
         model = Episode
