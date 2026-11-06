@@ -3,11 +3,17 @@ import time
 from datetime import datetime
 
 import feedparser
+import requests
+from django.conf import settings
 from django.db import models
 from django.utils import timezone
 
 from audio_processing.models.mixins import (
     SearchableMixin,
+)
+from audio_processing.transcript_manager import (
+    USER_AGENT,
+    extract_transcript_links,
 )
 
 logger = logging.getLogger(__name__)
@@ -137,7 +143,11 @@ class Podcast(models.Model, SearchableMixin):
         """
         logger.info(f"Fetching RSS feed: {self.url}")
         try:
-            feed = feedparser.parse(self.url)
+            # Download the XML ourselves so the transcript links can be read
+            # from it too: feedparser keeps only one per episode.
+            feed_xml = self._download_feed()
+            feed = feedparser.parse(feed_xml)
+            feed.transcript_links = extract_transcript_links(feed_xml)
 
             if feed.bozo:
                 logger.warning(f"Feed has parsing issues: {self.url}")
@@ -151,6 +161,36 @@ class Podcast(models.Model, SearchableMixin):
         except Exception as e:
             logger.error(f"Failed to fetch feed {self.url}: {str(e)}")
             return None
+
+    def _download_feed(self):
+        resp = requests.get(
+            self.url,
+            timeout=settings.HTTP_TIMEOUT,
+            headers={"User-Agent": USER_AGENT},
+        )
+        resp.raise_for_status()
+        return resp.content
+
+    def refresh_transcript_links(self):
+        """
+        Re-read the feed only for its transcript links and record them on the
+        matching episodes. Returns how many episodes changed, or None if the
+        feed couldn't be read.
+        """
+        try:
+            feed_xml = self._download_feed()
+        except requests.RequestException as e:
+            logger.warning(f"Could not refresh transcript links for {self.url}: {e}")
+            return None
+        links_by_key = extract_transcript_links(feed_xml)
+        changed = 0
+        for episode in self.episodes.only("id", "raw_audio_url", "transcript_links"):
+            # Episodes don't store their guid, so match on the audio URL.
+            links = links_by_key.get(episode.raw_audio_url)
+            if links and links != episode.transcript_links:
+                episode.set_transcript_links(links)
+                changed += 1
+        return changed
 
     def update_from_feed(self, feed):
         """
@@ -352,7 +392,9 @@ class Podcast(models.Model, SearchableMixin):
 
         for entry in feed.entries:
             try:
-                result = Episode.create_from_entry(self, entry)
+                result = Episode.create_from_entry(
+                    self, entry, getattr(feed, "transcript_links", None)
+                )
                 if result is None:
                     failed_count += 1
                 elif getattr(result, "created_from_feed", False):

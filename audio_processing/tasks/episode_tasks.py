@@ -351,3 +351,14 @@ def backfill_topics_for_recent_episodes():
 
     logger.info(f"Queued topic tagging for {len(queued)} episodes")
     return {"queued": len(queued), "episodes": queued}
+
+
+@shared_task
+def find_publisher_transcripts_task():
+    """
+    Hourly: pick up transcripts publishers add after release and use publisher
+    transcripts for any episode that lists one but has no transcript yet.
+    """
+    from audio_processing.transcript_manager import find_publisher_transcripts
+
+    return find_publisher_transcripts()

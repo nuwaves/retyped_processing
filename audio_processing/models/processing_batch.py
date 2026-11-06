@@ -8,6 +8,7 @@ from django.db import models
 from django.utils import timezone
 
 from audio_processing.models.episode import Episode
+from audio_processing.transcript_manager import resolve_batch_pending
 
 logger = logging.getLogger(__name__)
 
@@ -115,13 +116,18 @@ class ProcessingBatch(models.Model):
         Put episodes queued for batch transcription into Groq batch jobs.
         Returns the batches created.
         """
+        pending = Episode.objects.filter(
+            processing_status=Episode.ProcessingStatus.QUEUED,
+            processing_step=Episode.BATCH_PENDING_STEP,
+        )
+        # Episodes the publisher has a transcript for skip speech-to-text, and
+        # new episodes of podcasts that usually publish one wait for it.
+        held = resolve_batch_pending(pending.select_related("podcast"))
+
         batches = []
         for _ in range(MAX_BATCHES_PER_RUN):
             ids = list(
-                Episode.objects.filter(
-                    processing_status=Episode.ProcessingStatus.QUEUED,
-                    processing_step=Episode.BATCH_PENDING_STEP,
-                )
+                pending.exclude(pk__in=held)
                 .order_by("processing_queued_at", "id")
                 .values_list("id", flat=True)[:MAX_REQUESTS_PER_BATCH]
             )

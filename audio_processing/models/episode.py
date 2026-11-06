@@ -18,6 +18,11 @@ from audio_processing.models.mixins import (
     SummarizableMixin,
     TaggableMixin,
 )
+from audio_processing.transcript_manager import (
+    apply_publisher_transcript,
+    best_publisher_transcript,
+    links_for_entry,
+)
 from audio_processing.utils.storage import (
     audio_download_url,
     get_s3_client,
@@ -154,6 +159,23 @@ class Episode(
     has_public_transcript = models.BooleanField(
         default=False, help_text="Whether the episode has a public transcript"
     )
+    transcript_links = models.JSONField(
+        blank=True,
+        default=list,
+        help_text="Transcripts the feed publishes for this episode: [{url, type}]",
+    )
+    transcript_source = models.CharField(
+        max_length=32,
+        blank=True,
+        default="",
+        help_text='Where the transcript came from, e.g. "publisher:json"; '
+        "blank for our own speech-to-text",
+    )
+    publisher_transcript_checked_at = models.DateTimeField(
+        blank=True,
+        null=True,
+        help_text="When the feed's transcript links were last found unusable",
+    )
 
     # iTunes specific
     itunes_explicit = models.BooleanField(
@@ -244,9 +266,11 @@ class Episode(
         return "/shows/" + self.podcast.slug + "/" + self.slug
 
     @classmethod
-    def create_from_entry(cls, podcast, entry):
+    def create_from_entry(cls, podcast, entry, transcript_links=None):
         """
         Creates a podcast episode from an RSS entry.
+        transcript_links maps guid/audio URL to the feed's transcript links
+        (see transcript_manager.extract_transcript_links).
         Returns the created/existing Episode object or None if failed.
         """
         logger = logging.getLogger(__name__)
@@ -341,7 +365,9 @@ class Episode(
         existing_episode = cls.objects.filter(title=title, podcast=podcast).first()
         if not existing_episode:
             existing_episode = cls.objects.filter(raw_audio_url=audio_url).first()
+        links = links_for_entry(transcript_links or {}, entry, audio_url)
         if existing_episode:
+            existing_episode.set_transcript_links(links)
             # Update missing fields
             updated = podcast._update_existing_episode(
                 existing_episode,
@@ -366,6 +392,7 @@ class Episode(
             "release_date": release_date,
             "pub_date": pub_date,
             "image_url": image_url,
+            "transcript_links": links,
         }
 
         # Add optional fields from entry
@@ -431,6 +458,19 @@ class Episode(
             f"Created episode: {title} - {audio_url} (released: {release_date})"
         )
         return episode
+
+    def set_transcript_links(self, links):
+        """
+        Record the feed's transcript links. A change clears the "found
+        unusable" mark so the hourly job tries the new links.
+        """
+        if links == self.transcript_links:
+            return
+        self.transcript_links = links
+        self.publisher_transcript_checked_at = None
+        type(self).objects.filter(pk=self.pk).update(
+            transcript_links=links, publisher_transcript_checked_at=None
+        )
 
     @property
     def public_transcript_allowed(self):
@@ -597,6 +637,14 @@ class Episode(
         logger.info(
             f"Generating transcript for: {self.raw_audio_url} using method: {method}"
         )
+
+        # The publisher's own transcript, when the feed lists a usable one,
+        # is free and often has speaker turns.
+        if self.transcript_links:
+            publisher = best_publisher_transcript(self)
+            if publisher:
+                apply_publisher_transcript(self, publisher)
+                return self.transcript
 
         if method == "auto":
             # Auto-select based on available configuration
