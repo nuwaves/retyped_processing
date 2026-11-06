@@ -2,6 +2,7 @@ import logging
 import time
 
 import requests
+from constance import config
 from django.conf import settings
 
 logger = logging.getLogger(__name__)
@@ -19,6 +20,19 @@ MAX_RETRY_AFTER = 120
 # 429 means we are being rate limited; 5xx are provider-side failures. Both
 # tend to clear up within a minute, which is what bursts of episodes hit.
 RETRYABLE_STATUS = {429, 500, 502, 503, 504}
+
+# DeepInfra holds a flex request for up to this long waiting for capacity,
+# then answers 429 (retried above). The read timeout has to cover that wait
+# on top of the time to generate.
+FLEX_QUEUE_WAIT = 600
+
+
+def _apply_service_tier(data):
+    """Add service_tier to the request and return the read timeout to use."""
+    if config.LLM_SERVICE_TIER == "flex":
+        data = {**data, "service_tier": "flex"}
+        return data, settings.LLM_TIMEOUT + FLEX_QUEUE_WAIT
+    return data, settings.LLM_TIMEOUT
 
 
 class EmptyCompletion(Exception):
@@ -52,6 +66,7 @@ def post_chat_completion(data, label="LLM request"):
         "Authorization": f"Bearer {settings.LLM_API_KEY}",
         "Content-Type": "application/json",
     }
+    data, timeout = _apply_service_tier(data)
 
     for attempt in range(1, MAX_ATTEMPTS + 1):
         response = None
@@ -60,7 +75,7 @@ def post_chat_completion(data, label="LLM request"):
                 settings.LLM_API_URL,
                 headers=headers,
                 json=data,
-                timeout=settings.LLM_TIMEOUT,
+                timeout=timeout,
             )
             response.raise_for_status()
             content = response.json()["choices"][0]["message"]["content"]
