@@ -5,6 +5,8 @@ from datetime import datetime
 import feedparser
 import requests
 from django.conf import settings
+from django.contrib.postgres.indexes import GinIndex
+from django.contrib.postgres.search import SearchVectorField
 from django.db import models
 from django.utils import timezone
 
@@ -23,9 +25,6 @@ class Podcast(models.Model, SearchableMixin):
     slug = models.SlugField(
         max_length=255, unique=True, blank=True, help_text="Unique slug for podcast"
     )
-    # Search configuration
-    SEARCH_INDEX_UID = "podcasts"
-
     # Basic info
     name = models.CharField(max_length=1000, help_text="Friendly name for the podcast")
     url = models.URLField(unique=True, help_text="RSS feed URL")
@@ -109,11 +108,13 @@ class Podcast(models.Model, SearchableMixin):
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True, db_index=True)
+    search_vector = SearchVectorField(null=True, editable=False)
 
     class Meta:
         verbose_name = "Podcast"
         verbose_name_plural = "Podcasts"
         ordering = ["-created_at"]
+        indexes = [GinIndex(fields=["search_vector"], name="podcast_search_vector_gin")]
 
     def __str__(self):
         return self.name
@@ -536,36 +537,14 @@ class Podcast(models.Model, SearchableMixin):
 
         return slug
 
-    def get_search_document(self):
-        """
-        Prepare podcast data for search indexing.
-
-        Returns:
-            dict: Document data to be indexed, or None if not indexable
-        """
-        # Check if we have minimum required data
-        if not self.name or not self.name.strip():
-            logger.warning(f"No name available for podcast search indexing: {self.url}")
-            return None
-
-        # Prepare document data
-        return {
-            "id": self.id,
-            "name": self.name,
-            "description": self.description or "",
-            "subtitle": self.subtitle or "",
-            "summary": self.summary or "",
-            "author": self.author or "",
-            "language": self.language or "",
-            "itunes_categories": self.itunes_categories or [],
-            "url": self.url,
-            "image_url": self.image_url or "",
-            "owner_name": self.owner_name or "",
-            "owner_email": self.owner_email or "",
-            "pub_date": self.pub_date.isoformat() if self.pub_date else None,
-            "created_at": self.created_at.isoformat(),
-            "updated_at": self.updated_at.isoformat(),
-            "is_active": self.is_active,
-            "episode_count": self.episodes.count(),
-            "tags": [tag.name for tag in self.tags.all()],
-        }
+    def get_search_fields(self):
+        """Text to index for full-text search, as (text, weight) pairs."""
+        return [
+            (self.name, "A"),
+            (self.author, "B"),
+            (self.owner_name, "B"),
+            (" ".join(tag.name for tag in self.tags.all()), "B"),
+            (self.subtitle, "C"),
+            (self.summary, "C"),
+            (self.description, "C"),
+        ]

@@ -1,121 +1,80 @@
 import logging
+import operator
+from functools import reduce
 
-from django.conf import settings
-from meilisearch import Client
+from django.contrib.postgres.search import SearchVector
+from django.db import transaction
+from django.db.models import TextField, Value
 
 logger = logging.getLogger(__name__)
+
+# Postgres text-search configuration used for indexing and querying.
+SEARCH_CONFIG = "english"
+
+# A tsvector can't exceed 1MB. Cap each field so very long transcripts
+# still index (the first 200k characters is several hours of speech).
+MAX_FIELD_CHARS = 200_000
 
 
 class SearchableMixin:
     """
-    Mixin to provide search indexing functionality for models.
+    Keeps a model's Postgres full-text ``search_vector`` column up to date.
 
-    Models using this mixin should implement get_search_document() method
-    to define what data should be indexed.
+    Models using this mixin need a ``search_vector`` SearchVectorField
+    (with a GIN index) and must implement get_search_fields().
     """
 
-    def _get_meili_client(self):
+    def get_search_fields(self):
         """
-        Get the MeiliSearch client instance.
+        Return the text to index as a list of (text, weight) pairs.
 
-        Returns:
-            Client: MeiliSearch client
-        """
-        return Client(settings.MEILISEARCH_URL, settings.MEILISEARCH_API_KEY)
-
-    def index_to_search(self, index_uid=None, sync=True):
-        """
-        Index this instance's data to Meilisearch for search functionality.
-
-        Args:
-            index_uid (str): The Meilisearch index to post to.
-                           If None, uses the model's default index.
-
-        Returns:
-            dict: Response from Meilisearch API or None if failed
-        """
-        try:
-            # Get the index UID - either provided or use model's default
-            if index_uid is None:
-                index_uid = getattr(
-                    self, "SEARCH_INDEX_UID", self._meta.model_name + "s"
-                )
-
-            # Get document data from the model
-            document = self.get_search_document()
-            if not document:
-                logger.warning(
-                    f"No search document data available for indexing: {self}"
-                )
-                return None
-
-            client = self._get_meili_client()
-            index = client.index(index_uid)
-
-            # Make the API request
-            logger.info(f"Indexing {self._meta.model_name} to Meilisearch: {self}...")
-            task = index.add_documents([document])
-
-            if sync:
-                completed_task = client.wait_for_task(task.task_uid)
-                logger.info(
-                    f"Successfully indexed {self._meta.model_name} to Meilisearch: {completed_task}"
-                )
-                return completed_task
-            else:
-                logger.info(
-                    f"Indexing {self._meta.model_name} to Meilisearch initiated: {task.task_uid}"
-                )
-                return {"task_uid": task.task_uid}
-
-        except Exception as e:
-            logger.error(
-                f"Failed to index {self._meta.model_name} to Meilisearch: {str(e)}"
-            )
-            return None
-
-    def get_search_document(self):
-        """
-        Override this method in your model to define what data should be indexed.
-
-        Returns:
-            dict: Document data to be indexed, or None if not indexable
+        Weight is "A" (most important) through "D" (least important);
+        it controls ranking, not whether a document matches.
         """
         raise NotImplementedError(
-            f"Model {self._meta.model_name} using SearchableMixin must implement get_search_document() method"
+            f"Model {self._meta.model_name} using SearchableMixin must implement get_search_fields()"
         )
 
-    def remove_from_search(self, index_uid=None):
-        """
-        Remove this instance from the search index.
-
-        Args:
-            index_uid (str): The Meilisearch index to remove from.
-                           If None, uses the model's default index.
-
-        Returns:
-            dict: Response from Meilisearch API or None if failed
-        """
-        try:
-            # Get the index UID - either provided or use model's default
-            if index_uid is None:
-                index_uid = getattr(
-                    self, "SEARCH_INDEX_UID", self._meta.model_name + "s"
-                )
-
-            client = self._get_meili_client()
-            index = client.index(index_uid)
-
-            # Make the API request
-            logger.info(f"Removing {self._meta.model_name} from Meilisearch: {self}...")
-            result = index.delete_document(str(self.id))
-            logger.info(
-                f"Successfully removed {self._meta.model_name} from Meilisearch: {result}"
+    def build_search_vector(self):
+        """Return a SearchVector expression for this instance, or None."""
+        parts = [
+            SearchVector(
+                Value(str(text)[:MAX_FIELD_CHARS], output_field=TextField()),
+                weight=weight,
+                config=SEARCH_CONFIG,
             )
-            return result
+            for text, weight in self.get_search_fields()
+            if text
+        ]
+        if not parts:
+            return None
+        return reduce(operator.add, parts)
 
+    def index_to_search(self):
+        """
+        Recompute and store this instance's search vector.
+
+        Writes with a queryset update so it doesn't call save() (and its
+        side effects) again. Runs in a savepoint so a failure here can't
+        break the caller's transaction. Returns True on success.
+        """
+        if self.pk is None:
+            return False
+        try:
+            with transaction.atomic():
+                type(self)._base_manager.filter(pk=self.pk).update(
+                    search_vector=self.build_search_vector()
+                )
+            return True
         except Exception as e:
             logger.error(
-                f"Failed to remove {self._meta.model_name} from Meilisearch: {str(e)}"
+                f"Failed to index {self._meta.model_name} {self.pk} for search: {e}"
             )
-            return None
+            return False
+
+    def remove_from_search(self):
+        """Clear this instance's search vector so it no longer matches searches."""
+        if self.pk is None:
+            return False
+        type(self)._base_manager.filter(pk=self.pk).update(search_vector=None)
+        return True

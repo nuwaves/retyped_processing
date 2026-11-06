@@ -69,10 +69,6 @@ STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 MEDIA_ROOT = os.path.join(BASE_DIR, "media")
 MEDIA_URL = "/media/"
 
-# Production-specific Meilisearch (cloud instance)
-if not MEILISEARCH_URL:
-    MEILISEARCH_URL = "https://edge.meilisearch.com"
-
 # Cache configuration for production
 # CACHES = {
 #     'default': {

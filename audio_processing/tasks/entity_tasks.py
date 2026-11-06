@@ -8,7 +8,7 @@ logger = logging.getLogger(__name__)
 @shared_task
 def index_entity_for_search(entity_id):
     """
-    Celery task to index a single entity for search (e.g., Meilisearch/Elasticsearch).
+    Celery task to index a single entity for full-text search.
     """
     from audio_processing.models.entity import Entity
 

@@ -8,6 +8,8 @@ import boto3
 import requests
 from constance import config
 from django.conf import settings
+from django.contrib.postgres.indexes import GinIndex
+from django.contrib.postgres.search import SearchVectorField
 from django.db import models
 from django.utils import timezone
 from django.utils.text import slugify
@@ -101,8 +103,6 @@ class Episode(
         blank=True,
         help_text="Unique slug for episode, prefixed with podcast slug",
     )
-    # Search configuration
-    SEARCH_INDEX_UID = "episodes"
     # Relationship
     podcast = models.ForeignKey(
         "Podcast",
@@ -236,6 +236,10 @@ class Episode(
         related_name="episodes",
         help_text="Topics associated with this episode",
     )
+    search_vector = SearchVectorField(null=True, editable=False)
+
+    class Meta:
+        indexes = [GinIndex(fields=["search_vector"], name="episode_search_vector_gin")]
 
     def __str__(self):
         if self.title:
@@ -887,28 +891,15 @@ class Episode(
         )
         return results
 
-    def get_search_document(self):
-        """
-        Prepare episode data for search indexing.
-
-        Returns:
-            dict: Document data to be indexed, or None if not indexable
-        """
-        # Prepare document data
-        return {
-            "id": self.id,
-            "title": self.title or "Untitled Episode",
-            "transcript": self.transcript,
-            "summary": self.summary or "",
-            "raw_audio_url": self.raw_audio_url,
-            "release_date": self.release_date.isoformat()
-            if self.release_date
-            else None,
-            "created_at": self.created_at.isoformat(),
-            "updated_at": self.updated_at.isoformat(),
-            "podcast_name": self.podcast.name if self.podcast else None,
-            "tags": [tag.name for tag in self.tags.all()],
-        }
+    def get_search_fields(self):
+        """Text to index for full-text search, as (text, weight) pairs."""
+        return [
+            (self.title, "A"),
+            (self.podcast.name if self.podcast else None, "B"),
+            (" ".join(tag.name for tag in self.tags.all()), "B"),
+            (self.summary, "C"),
+            (self.transcript, "D"),
+        ]
 
     def extract_entities(self):
         """

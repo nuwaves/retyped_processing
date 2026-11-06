@@ -276,7 +276,7 @@ def process_recent_episodes_without_transcript():
 @shared_task
 def index_episode_for_search(episode_id):
     """
-    Celery task to index a single episode for search (e.g., Meilisearch/Elasticsearch).
+    Celery task to index a single episode for full-text search.
     """
     from audio_processing.models import Episode
 

@@ -69,7 +69,7 @@ def get_podcast_summary(podcast_id):
 @shared_task
 def index_podcast_for_search(podcast_id):
     """
-    Celery task to index a single podcast for search (e.g., Meilisearch/Elasticsearch).
+    Celery task to index a single podcast for full-text search.
     """
     from audio_processing.models import Podcast
 

@@ -2,6 +2,8 @@ import json
 import logging
 import re
 
+from django.contrib.postgres.indexes import GinIndex
+from django.contrib.postgres.search import SearchVectorField
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 
@@ -13,8 +15,6 @@ logger = logging.getLogger(__name__)
 
 
 class Entity(models.Model, GroqMixin, SearchableMixin):
-    SEARCH_INDEX_UID = "entities"
-
     class EntityType(models.TextChoices):
         PERSON = "PERSON", _("Person")
         ORGANIZATION = "ORGANIZATION", _("Organization")
@@ -24,9 +24,11 @@ class Entity(models.Model, GroqMixin, SearchableMixin):
     type = models.CharField(max_length=20, choices=EntityType.choices)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    search_vector = SearchVectorField(null=True, editable=False)
 
     class Meta:
         unique_together = ("name", "type")
+        indexes = [GinIndex(fields=["search_vector"], name="entity_search_vector_gin")]
 
     def __str__(self):
         return f"{self.name} ({self.type})"
@@ -40,17 +42,9 @@ class Entity(models.Model, GroqMixin, SearchableMixin):
         except Exception:
             pass
 
-    def get_search_document(self):
-        """
-        Returns a dictionary representing the entity for search indexing.
-        """
-        return {
-            "id": self.id,
-            "name": self.name,
-            "type": self.type,
-            "created_at": self.created_at.isoformat() if self.created_at else None,
-            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
-        }
+    def get_search_fields(self):
+        """Text to index for full-text search, as (text, weight) pairs."""
+        return [(self.name, "A")]
 
     @classmethod
     def entities_from_text(cls, text, related_obj=None):
