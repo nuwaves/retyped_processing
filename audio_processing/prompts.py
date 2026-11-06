@@ -80,6 +80,48 @@ Episode description: {episode.description}
 """
 
 
+def get_speaker_names_prompt(episode, intro, samples):
+    """
+    Ask which person each "Speaker N" label in a publisher transcript is.
+
+    Args:
+        episode: The episode (for show and episode descriptions)
+        intro: The opening of the transcript, where people introduce themselves
+        samples: {label: {"share": percent of words, "lines": [text, ...]}}
+    """
+    speakers = "\n\n".join(
+        f"{label} ({sample['share']}% of the words):\n"
+        + "\n".join(f"- {line}" for line in sample["lines"])
+        for label, sample in samples.items()
+    )
+    answer = json.dumps({label: "Full Name or null" for label in samples})
+    return f"""This podcast transcript already marks who is speaking with labels like "Speaker 1". Work out the real name of the person behind each label.
+
+Podcast: {episode.podcast.name}
+Podcast description: {episode.podcast.description}
+Podcast summary: {episode.podcast.summary}
+Episode title: {episode.title}
+Episode description: {episode.description}
+
+Opening of the transcript:
+{intro}
+
+Longest lines from each speaker:
+
+{speakers}
+
+Guidelines:
+- Use introductions ("I'm...", "my guest today is..."), people addressed by name, and who the show and episode descriptions say takes part.
+- The hosts usually speak the most; guests named in the episode description are likely the other main speakers.
+- Each person gets at most one label unless the lines clearly show two labels are the same person.
+- Give the full name as commonly written, e.g. "John Coogan".
+- Only use a name that appears above. Never guess a name for someone who isn't introduced or described.
+- Use null (not the string "null") when you are not confident. A wrong name is worse than none.
+
+Respond with only this JSON object, filled in:
+{answer}"""
+
+
 def get_episode_summary_prompt(transcript, podcast_description, episode_description):
     """
     Generate a prompt for creating an episode summary from a transcript.

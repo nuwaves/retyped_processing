@@ -10,6 +10,7 @@ from django.conf import settings
 
 from audio_processing.models.mixins.audio_chunking import transcribe_audio_in_chunks
 from audio_processing.prompts import get_speaker_transcript_prompt
+from audio_processing.speaker_names import has_speaker_turns, name_speakers
 from audio_processing.utils.llm import post_chat_completion
 from audio_processing.utils.storage import audio_download_url
 
@@ -157,6 +158,14 @@ class GroqMixin:
             return None
 
         logger.info(f"Generating speaker script for: {self.raw_audio_url}")
+
+        if has_speaker_turns(self):
+            # Turns are already marked; only the names are missing.
+            script_content = name_speakers(self)
+            if script_content:
+                self.script_transcript = script_content
+                self.save()
+            return script_content
 
         try:
             # Get the prompt from prompts file
