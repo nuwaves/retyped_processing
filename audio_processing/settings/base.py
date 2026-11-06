@@ -200,6 +200,12 @@ CONSTANCE_CONFIG = {
         "own speech-to-text runs, for podcasts that usually publish one. 0 "
         "turns waiting off.",
     ),
+    "LLM_SERVICE_TIER": (
+        "flex",
+        "DeepInfra service tier for the LLM steps. Flex is 0.8x the price but "
+        "best-effort: a request can wait up to 10 minutes for capacity.",
+        "llm_service_tier",
+    ),
 }
 CONSTANCE_ADDITIONAL_FIELDS = {
     "transcription_mode": [
@@ -207,6 +213,13 @@ CONSTANCE_ADDITIONAL_FIELDS = {
         {
             "widget": "django.forms.Select",
             "choices": (("batch", "Batch"), ("realtime", "Realtime")),
+        },
+    ],
+    "llm_service_tier": [
+        "django.forms.fields.ChoiceField",
+        {
+            "widget": "django.forms.Select",
+            "choices": (("flex", "Flex"), ("standard", "Standard")),
         },
     ],
 }
