@@ -209,9 +209,13 @@ def parse_json_transcript(content):
 
 
 def parse_cue_transcript(content):
-    """WebVTT or SRT cues. VTT voice tags (<v Name>) become speakers."""
+    """
+    WebVTT or SRT cues. VTT voice tags (<v Name>) become speakers; a cue
+    without one continues the previous speaker, as captioning tools only tag
+    some cues.
+    """
     blocks = re.split(r"\n\s*\n", content.replace("\r\n", "\n"))
-    raw, end = [], None
+    raw, end, speaker = [], None, None
     for block in blocks:
         lines = block.strip().split("\n")
         for index, line in enumerate(lines):
@@ -221,7 +225,9 @@ def parse_cue_transcript(content):
             end = max(end or 0, _seconds(*match.groups()[4:]))
             text = " ".join(lines[index + 1 :])
             voice = VOICE.search(text)
-            raw.append((voice.group(1) if voice else None, TAG.sub("", text)))
+            if voice:
+                speaker = voice.group(1)
+            raw.append((speaker, TAG.sub("", text)))
             break
     zero_based = _zero_based(name for name, _ in raw)
     return [(normalize_speaker(name, zero_based), text) for name, text in raw], end

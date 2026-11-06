@@ -101,6 +101,20 @@ class ParseTranscriptTest(SimpleTestCase):
         self.assertTrue(speakers)
         self.assertAlmostEqual(end, 3607.921)
 
+    def test_untagged_vtt_cues_continue_the_previous_speaker(self):
+        vtt = (
+            "WEBVTT\n\n1\n00:00:00.269 --> 00:00:02.090\n<v SPEAKER_00> Thanks.\n\n"
+            "2\n00:00:03.410 --> 00:00:05.011\nSo just in a second,\n\n"
+            "3\n00:00:05.051 --> 00:00:07.892\n<v SPEAKER_02>Yeah.\n\n"
+            "4\n00:00:07.912 --> 00:00:08.272\nI mean it.\n"
+        )
+        text, speakers, _ = tm.parse_transcript(vtt, "vtt")
+        self.assertEqual(
+            text,
+            "Speaker 1: Thanks. So just in a second,\n\nSpeaker 3: Yeah. I mean it.",
+        )
+        self.assertTrue(speakers)
+
     def test_srt_without_speakers_is_plain_text(self):
         text, speakers, end = tm.parse_transcript(SRT, "srt")
         self.assertEqual(text, "Hello there general")
