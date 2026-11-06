@@ -18,6 +18,14 @@ STATIC_PAGES = [
 ]
 
 
+def sitemap_episodes():
+    """
+    Episodes to list in the sitemap: those with a summary or transcript.
+    Episodes with only publisher show notes are noindexed on the frontend.
+    """
+    return Episode.objects.filter(Episode.has_content_q()).exclude(slug="")
+
+
 def sitemap_index_view(request):
     """Return a sitemap index XML linking to all paginated sitemaps."""
     # Cache the sitemap index for 1 hour to avoid expensive queries on every request
@@ -34,7 +42,7 @@ def sitemap_index_view(request):
 
     # Use cached counts to avoid hitting database on every index request
     episode_count = cache.get_or_set(
-        "episode_count", lambda: Episode.objects.count(), 3600
+        "sitemap_episode_count", lambda: sitemap_episodes().count(), 3600
     )
     podcast_count = cache.get_or_set(
         "podcast_count", lambda: Podcast.objects.count(), 3600
@@ -117,12 +125,16 @@ class EpisodeSitemap(Sitemap):
     def items(self):
         offset = (self.page - 1) * EPISODE_SITEMAP_PAGE_SIZE
         # Only load essential fields to reduce memory usage
-        return Episode.objects.only("id", "slug", "updated_at").order_by("-updated_at")[
-            offset : offset + EPISODE_SITEMAP_PAGE_SIZE
-        ]
+        return (
+            sitemap_episodes()
+            .select_related("podcast")
+            .only("id", "slug", "updated_at", "podcast__slug")
+            .order_by("-updated_at", "-id")[offset : offset + EPISODE_SITEMAP_PAGE_SIZE]
+        )
 
     def location(self, obj):
-        return f"/episodes/{obj.slug}" if obj.slug else f"/episodes/{obj.id}"
+        # Matches the frontend route /shows/[showSlug]/[episodeSlug].
+        return f"/shows/{obj.podcast.slug}/{obj.slug}"
 
     def lastmod(self, obj):
         return obj.updated_at
@@ -138,12 +150,15 @@ class PodcastSitemap(Sitemap):
     def items(self):
         offset = (self.page - 1) * PODCAST_SITEMAP_PAGE_SIZE
         # Only load essential fields to reduce memory usage
-        return Podcast.objects.only("id", "slug", "updated_at").order_by("-updated_at")[
-            offset : offset + PODCAST_SITEMAP_PAGE_SIZE
-        ]
+        return (
+            Podcast.objects.exclude(slug="")
+            .only("id", "slug", "updated_at")
+            .order_by("-updated_at", "-id")[offset : offset + PODCAST_SITEMAP_PAGE_SIZE]
+        )
 
     def location(self, obj):
-        return f"/podcasts/{obj.slug}" if obj.slug else f"/podcasts/{obj.id}"
+        # Matches the frontend route /shows/[showSlug].
+        return f"/shows/{obj.slug}"
 
     def lastmod(self, obj):
         return obj.updated_at

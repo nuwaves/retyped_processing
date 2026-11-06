@@ -1,7 +1,7 @@
 import re
 
 from django.contrib.postgres.search import SearchQuery, SearchRank
-from django.db.models import Count, F
+from django.db.models import BooleanField, Case, Count, F, Value, When
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -98,10 +98,24 @@ class SearchViewSet(viewsets.GenericViewSet):
                         id__in=Episode.objects.filter(topics__slug__in=topic_filters)
                     )
 
+                # Episodes with a summary or transcript first, newest first
+                # within each group, so description-only catalog episodes
+                # don't push processed ones out of the results.
                 episodes = list(
                     episodes_queryset.select_related("podcast")
                     .prefetch_related("tags", "topics")
-                    .order_by(F("release_date").desc(nulls_last=True), "-id")[:limit]
+                    .annotate(
+                        has_content=Case(
+                            When(Episode.has_content_q(), then=Value(True)),
+                            default=Value(False),
+                            output_field=BooleanField(),
+                        )
+                    )
+                    .order_by(
+                        "-has_content",
+                        F("release_date").desc(nulls_last=True),
+                        "-id",
+                    )[:limit]
                 )
             search_results["episodes"] = episodes
             episode_ids = [episode.id for episode in episodes]

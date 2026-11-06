@@ -125,3 +125,14 @@ def import_podcast(podcast_id, process_latest=0):
     already = podcast.episodes.exclude(processing_status="idle").count()
     summary["queued"] = podcast.queue_newest_episodes(max(process_latest - already, 0))
     return summary
+
+
+@shared_task
+def import_top_chart_podcasts(country="us", limit=100):
+    """
+    Weekly: add shows that entered Apple's top chart, importing every episode
+    without processing any. Shows that leave the chart are kept.
+    """
+    from audio_processing.chart_import import import_top_chart
+
+    return import_top_chart(country=country, limit=limit)
