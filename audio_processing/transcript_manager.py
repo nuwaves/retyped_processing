@@ -380,10 +380,10 @@ def apply_publisher_transcript(episode, transcript):
     )
     if resume:
         process_complete_workflow.delay(episode.id)
-    elif episode.processing_status == Episode.ProcessingStatus.IDLE:
-        # Unprocessed episodes get no workflow run, so index the transcript
-        # here; otherwise search would only ever see their show notes.
-        # (The workflow and swap_publisher_transcripts index on their own.)
+    else:
+        # Make the new transcript searchable. Unprocessed episodes get no
+        # workflow run to do it, so without this search would only ever see
+        # their show notes.
         episode.index_to_search()
 
 
