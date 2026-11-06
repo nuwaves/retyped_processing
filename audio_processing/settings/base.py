@@ -194,6 +194,12 @@ CONSTANCE_CONFIG = {
         "the price, transcripts within 24 hours. Realtime transcribes right away.",
         "transcription_mode",
     ),
+    "PUBLISHER_TRANSCRIPT_WAIT_HOURS": (
+        12,
+        "Hours a new episode waits for the publisher's transcript before our "
+        "own speech-to-text runs, for podcasts that usually publish one. 0 "
+        "turns waiting off.",
+    ),
     "LLM_SERVICE_TIER": (
         "flex",
         "DeepInfra service tier for the LLM steps. Flex is 0.8x the price but "

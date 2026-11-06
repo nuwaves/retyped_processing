@@ -130,11 +130,14 @@ class PodcastFeedProcessingTest(TestCase):
         mock_parse.return_value = mock_feed
 
         # Mock the update_from_feed method to avoid complex mocking
-        with patch.object(self.podcast, "update_from_feed") as mock_update:
+        with (
+            patch.object(self.podcast, "update_from_feed") as mock_update,
+            patch.object(Podcast, "_download_feed", return_value=b"<rss/>"),
+        ):
             result = self.podcast.fetch_feed()
 
         self.assertIsNotNone(result)
-        mock_parse.assert_called_once_with(self.podcast.url)
+        mock_parse.assert_called_once_with(b"<rss/>")
         mock_update.assert_called_once_with(mock_feed)
 
     @patch("audio_processing.models.podcast.feedparser.parse")
@@ -142,7 +145,8 @@ class PodcastFeedProcessingTest(TestCase):
         """Test feed fetching with error."""
         mock_parse.side_effect = Exception("Network error")
 
-        result = self.podcast.fetch_feed()
+        with patch.object(Podcast, "_download_feed", return_value=b"<rss/>"):
+            result = self.podcast.fetch_feed()
 
         self.assertIsNone(result)
 
