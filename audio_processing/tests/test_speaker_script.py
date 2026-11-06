@@ -14,7 +14,9 @@ from audio_processing.prompts import get_speaker_transcript_prompt
 
 class SplitTranscriptTest(SimpleTestCase):
     def test_short_transcript_is_one_part(self):
-        self.assertEqual(split_transcript("Hello there.", max_chars=100), ["Hello there."])
+        self.assertEqual(
+            split_transcript("Hello there.", max_chars=100), ["Hello there."]
+        )
 
     def test_parts_fit_and_keep_all_text(self):
         sentence = "This is a sentence about startups. "
@@ -31,9 +33,7 @@ class SplitTranscriptTest(SimpleTestCase):
         self.assertEqual(parts[0], "a" * 700 + ".")
 
     def test_prefers_splitting_after_a_question(self):
-        transcript = (
-            "a" * 600 + ". What do you think? " + "b" * 200 + ". " + "c" * 500
-        )
+        transcript = "a" * 600 + ". What do you think? " + "b" * 200 + ". " + "c" * 500
         parts = split_transcript(transcript, max_chars=1000)
         self.assertTrue(parts[0].endswith("What do you think?"))
 
@@ -70,8 +70,10 @@ class SpeakerScriptTest(TestCase):
 
     def test_formats_long_transcripts_in_parts(self):
         replies = ["Host: First part.\n\nGuest: Yes.", "**Host:** Second part."]
-        with patch.object(groq_mixin, "split_transcript", return_value=["one", "two"]), \
-                patch.object(Episode, "get_groq_completion", side_effect=replies) as llm:
+        with (
+            patch.object(groq_mixin, "split_transcript", return_value=["one", "two"]),
+            patch.object(Episode, "get_groq_completion", side_effect=replies) as llm,
+        ):
             script = self.episode.generate_speaker_script()
 
         self.assertEqual(
@@ -86,8 +88,12 @@ class SpeakerScriptTest(TestCase):
         self.assertIn("ended with Guest speaking", second_prompt)
 
     def test_failed_part_saves_nothing(self):
-        with patch.object(groq_mixin, "split_transcript", return_value=["one", "two"]), \
-                patch.object(Episode, "get_groq_completion", side_effect=["Host: Hi.", None]):
+        with (
+            patch.object(groq_mixin, "split_transcript", return_value=["one", "two"]),
+            patch.object(
+                Episode, "get_groq_completion", side_effect=["Host: Hi.", None]
+            ),
+        ):
             self.assertIsNone(self.episode.generate_speaker_script())
 
         self.episode.refresh_from_db()

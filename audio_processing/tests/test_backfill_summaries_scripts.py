@@ -1,4 +1,5 @@
-from datetime import datetime, timezone as dt_timezone
+from datetime import UTC, datetime
+from datetime import timezone as dt_timezone
 from io import StringIO
 from unittest.mock import patch
 
@@ -8,8 +9,8 @@ from django.test import TestCase
 
 from audio_processing.models import Episode, Podcast
 
-IN_WINDOW = datetime(2026, 11, 5, 1, 0, tzinfo=dt_timezone.utc)
-OUT_OF_WINDOW = datetime(2026, 11, 5, 3, 0, tzinfo=dt_timezone.utc)
+IN_WINDOW = datetime(2026, 11, 5, 1, 0, tzinfo=UTC)
+OUT_OF_WINDOW = datetime(2026, 11, 5, 3, 0, tzinfo=UTC)
 
 
 class BackfillSummariesScriptsTest(TestCase):

@@ -13,7 +13,7 @@ Times without an offset are read as UTC. The window filters on when processing
 completed.
 """
 
-from datetime import timezone as dt_timezone
+from datetime import UTC
 
 from django.core.management.base import BaseCommand, CommandError
 from django.db.models import Q
@@ -27,7 +27,7 @@ def _parse_time(value, name):
     if parsed is None:
         raise CommandError(f"--{name} is not a valid datetime: {value!r}")
     if parsed.tzinfo is None:
-        parsed = parsed.replace(tzinfo=dt_timezone.utc)
+        parsed = parsed.replace(tzinfo=UTC)
     return parsed
 
 
@@ -76,7 +76,9 @@ class Command(BaseCommand):
                 missing.append("script")
             if not episode.summary:
                 missing.append("summary")
-            self.stdout.write(f"- {episode.slug} (id {episode.id}): {', '.join(missing)}")
+            self.stdout.write(
+                f"- {episode.slug} (id {episode.id}): {', '.join(missing)}"
+            )
             if options["dry_run"]:
                 continue
 
