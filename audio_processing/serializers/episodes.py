@@ -9,6 +9,7 @@ from .quotes import QuoteSerializer
 from .tags import TagSerializer
 from .topics import TopicSerializer
 
+
 class EpisodeSerializer(serializers.ModelSerializer):
     tags = serializers.SerializerMethodField()
     podcast = PodcastListSerializer()
