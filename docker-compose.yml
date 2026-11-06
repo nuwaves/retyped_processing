@@ -32,21 +32,6 @@ services:
     networks:
       - retyped-local
 
-  meilisearch:
-    image: getmeili/meilisearch:v1.16
-    ports:
-      - "7700:7700"
-    volumes:
-      - meilidata:/meili_data
-    environment:
-      MEILI_MASTER_KEY: 'test767ff88c4893803599b546731d95'
-    healthcheck:
-      test: set -o pipefail;curl -fsS http://localhost:7700/health | grep -q '{"status":"available"}'
-      retries: 3
-      timeout: 5s
-    networks:
-      - retyped-local
-
 
   #worker:
   #  <<: *web
@@ -58,7 +43,6 @@ services:
 
 volumes:
   dbdata:
-  meilidata:
 
 networks:
   retyped-local:

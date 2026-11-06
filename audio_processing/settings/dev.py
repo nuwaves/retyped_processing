@@ -32,10 +32,6 @@ LOGGING["handlers"]["console"]["level"] = "DEBUG"
 LOGGING["loggers"]["django"]["level"] = "INFO"
 LOGGING["loggers"]["audio_processing"]["level"] = "DEBUG"
 
-# Development-specific Meilisearch (local instance)
-if not MEILISEARCH_URL:
-    MEILISEARCH_URL = "http://localhost:7700"
-
 # Email backend for development (console)
 EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 

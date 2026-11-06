@@ -1,14 +1,11 @@
-import time
-
-from django.conf import settings
 from django.contrib.auth.models import User
 from django.test import TestCase
 from django.urls import reverse
-from meilisearch import Client
 from rest_framework import status
 from rest_framework.test import APIClient
 
 from ..models import Episode, Podcast, Tag
+from ..models.entity import Entity
 from ..models.topic import Topic
 
 
@@ -17,22 +14,6 @@ class SearchViewSetTest(TestCase):
 
     def setUp(self):
         """Set up test data."""
-
-        self.search_client = Client(
-            settings.MEILISEARCH_URL, settings.MEILISEARCH_API_KEY
-        )
-
-        # Create episodes index with sortable attributes
-        self.search_client.create_index("episodes", {"primaryKey": "id"})
-        episodes_index = self.search_client.index("episodes")
-        task = episodes_index.update_sortable_attributes(["release_date"])
-        # Wait for the settings update to complete
-        self.search_client.wait_for_task(task.task_uid)
-
-        self.search_client.create_index("podcasts", {"primaryKey": "id"})
-        self.search_client.create_index("entities", {"primaryKey": "id"})
-        self.search_client.create_index("tags", {"primaryKey": "id"})
-
         self.client = APIClient()
 
         # Create test user
@@ -64,8 +45,6 @@ class SearchViewSetTest(TestCase):
             slug="python",
             description="Python programming language content",
         )
-        if hasattr(self.tag, "index_to_search"):
-            self.tag.index_to_search()
 
         # Create test tags and topics
         self.tag_django = Tag.objects.create(
@@ -90,8 +69,9 @@ class SearchViewSetTest(TestCase):
         self.episode.topics.add(self.topic)
         self.podcast.tags.add(self.tag_django)
 
-        # Wait a moment for Meilisearch to make documents searchable
-        time.sleep(1)
+        # Tags are part of the indexed text, so reindex after adding them
+        self.podcast.index_to_search()
+        self.episode.index_to_search()
 
     def test_search_all_content_types(self):
         """Test searching across all content types."""
@@ -376,3 +356,128 @@ class SearchViewSetTest(TestCase):
         for episode in data["episodes"]:
             tag_slugs = [tag["slug"] for tag in episode["tags"]]
             self.assertIn("django", tag_slugs)
+
+    def test_search_matches_transcript_text(self):
+        """Words that only appear in the transcript still match."""
+        url = reverse("v1:api-v1-search")
+        response = self.client.get(url, {"q": "effectively", "type": "episode"})
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        titles = [episode["title"] for episode in response.json()["episodes"]]
+        self.assertEqual(titles, ["Introduction to Django Models"])
+
+    def test_search_uses_stemming(self):
+        """'model' matches an episode about 'Models'."""
+        url = reverse("v1:api-v1-search")
+        response = self.client.get(url, {"q": "model", "type": "episode"})
+
+        self.assertEqual(len(response.json()["episodes"]), 1)
+
+    def test_search_prefix_matches_last_word(self):
+        """A partly typed last word still matches ('djan' -> 'django')."""
+        url = reverse("v1:api-v1-search")
+        response = self.client.get(url, {"q": "djan"})
+
+        data = response.json()
+        self.assertEqual(len(data["episodes"]), 1)
+        self.assertEqual(len(data["podcasts"]), 1)
+
+    def test_search_requires_every_word(self):
+        """All words must match, not just one of them."""
+        url = reverse("v1:api-v1-search")
+        response = self.client.get(url, {"q": "django kubernetes"})
+
+        data = response.json()
+        self.assertEqual(data["episodes"], [])
+        self.assertEqual(data["podcasts"], [])
+
+    def test_search_ignores_punctuation(self):
+        """Query syntax characters can't break the query."""
+        url = reverse("v1:api-v1-search")
+        response = self.client.get(url, {"q": "django & (models) | !:*"})
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.json()["episodes"]), 1)
+
+    def test_search_query_without_words_returns_nothing(self):
+        url = reverse("v1:api-v1-search")
+        response = self.client.get(url, {"q": "&&& !!!"})
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        data = response.json()
+        self.assertEqual(data["episodes"], [])
+        self.assertEqual(data["podcasts"], [])
+        self.assertEqual(data["entities"], [])
+
+    def test_unindexed_rows_do_not_match(self):
+        """Rows only show up in search once they've been indexed."""
+        other = Episode.objects.create(
+            title="Django Deployment",
+            podcast=self.podcast,
+            raw_audio_url="https://example.com/deploy.mp3",
+        )
+        other.remove_from_search()
+
+        url = reverse("v1:api-v1-search")
+        response = self.client.get(url, {"q": "deployment", "type": "episode"})
+        self.assertEqual(response.json()["episodes"], [])
+
+        other.index_to_search()
+        response = self.client.get(url, {"q": "deployment", "type": "episode"})
+        self.assertEqual(len(response.json()["episodes"]), 1)
+
+    def test_tag_filter_applies_before_limit(self):
+        """
+        Tag filters narrow the matches before the limit is applied, so a
+        tagged episode isn't lost behind more recent untagged ones.
+        """
+        for i in range(3):
+            newer = Episode.objects.create(
+                title=f"Django News {i}",
+                podcast=self.podcast,
+                raw_audio_url=f"https://example.com/news-{i}.mp3",
+                release_date=self.episode.release_date,
+            )
+            newer.index_to_search()
+
+        url = reverse("v1:api-v1-search")
+        response = self.client.get(
+            url,
+            {"q": "django", "type": "episode", "tags": "web-development", "limit": "1"},
+        )
+
+        titles = [episode["title"] for episode in response.json()["episodes"]]
+        self.assertEqual(titles, ["Introduction to Django Models"])
+
+    def test_search_finds_entities(self):
+        entity = Entity.objects.create(name="Guido van Rossum", type="PERSON")
+        entity.index_to_search()
+
+        url = reverse("v1:api-v1-search")
+        response = self.client.get(url, {"q": "guido", "type": "entity"})
+
+        names = [e["name"] for e in response.json()["entities"]]
+        self.assertEqual(names, ["Guido van Rossum"])
+
+    def test_episodes_sorted_newest_first(self):
+        from datetime import timedelta
+
+        from django.utils import timezone
+
+        now = timezone.now()
+        Episode.objects.filter(pk=self.episode.pk).update(
+            release_date=now - timedelta(days=10)
+        )
+        newer = Episode.objects.create(
+            title="Django Signals",
+            podcast=self.podcast,
+            raw_audio_url="https://example.com/signals.mp3",
+            release_date=now,
+        )
+        newer.index_to_search()
+
+        url = reverse("v1:api-v1-search")
+        response = self.client.get(url, {"q": "django", "type": "episode"})
+
+        titles = [episode["title"] for episode in response.json()["episodes"]]
+        self.assertEqual(titles, ["Django Signals", "Introduction to Django Models"])

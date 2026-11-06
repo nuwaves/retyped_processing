@@ -173,10 +173,6 @@ if CELERY_BROKER_URL.startswith("redis"):
         "visibility_timeout": CELERY_TASK_TIME_LIMIT + 600
     }
 
-# Meilisearch settings
-MEILISEARCH_URL = os.environ.get("MEILISEARCH_URL", "")
-MEILISEARCH_API_KEY = os.environ.get("MEILISEARCH_API_KEY", "")
-
 # Constance settings
 CHAT_MODEL = "deepseek-ai/DeepSeek-V4-Flash"
 CONSTANCE_CONFIG = {

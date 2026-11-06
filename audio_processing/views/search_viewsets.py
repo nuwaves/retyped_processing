@@ -1,19 +1,42 @@
-import meilisearch
-from django.conf import settings
-from django.db.models import Count
+import re
+
+from django.contrib.postgres.search import SearchQuery, SearchRank
+from django.db.models import Count, F
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
 from ..models import Episode, Podcast, Tag
 from ..models.entity import Entity
+from ..models.mixins.searchable_mixin import SEARCH_CONFIG
 from ..models.topic import Topic
 from ..serializers import SearchResultsSerializer
 
-client = meilisearch.Client(settings.MEILISEARCH_URL, settings.MEILISEARCH_API_KEY)
-episodes_index = client.index("episodes")
-podcasts_index = client.index("podcasts")
-entities_index = client.index("entities")
+DEFAULT_LIMIT = 20
+MAX_LIMIT = 100
+
+
+def build_search_query(text):
+    """
+    Turn user input into a Postgres tsquery: every word must match, and the
+    last word also matches as a prefix ("djan" finds "django").
+
+    Returns None if the input has no searchable words.
+    """
+    words = re.findall(r"\w+", text)
+    if not words:
+        return None
+    terms = [f"'{word}'" for word in words]
+    terms[-1] += ":*"
+    return SearchQuery(" & ".join(terms), search_type="raw", config=SEARCH_CONFIG)
+
+
+def parse_limit(value):
+    try:
+        limit = int(value)
+    except (TypeError, ValueError):
+        return DEFAULT_LIMIT
+    return max(1, min(limit, MAX_LIMIT))
 
 
 class SearchViewSet(viewsets.GenericViewSet):
@@ -35,6 +58,7 @@ class SearchViewSet(viewsets.GenericViewSet):
         - type: Content type to search ('podcast', 'episode', 'tag', 'entity', 'all') - default: 'all'
         - tags: Comma-separated tag slugs or IDs to filter by (e.g., 'python,django')
         - topics: Comma-separated topic slugs or IDs to filter by (e.g., 'web-frameworks')
+        - limit: Max results per content type (default 20, max 100)
         """
         query = request.query_params.get("q", "")
         search_type = request.query_params.get("type", "all")
@@ -50,56 +74,68 @@ class SearchViewSet(viewsets.GenericViewSet):
         # Parse filter parameters
         tag_filters = [t.strip() for t in tags_param.split(",") if t.strip()]
         topic_filters = [t.strip() for t in topics_param.split(",") if t.strip()]
+        limit = parse_limit(request.query_params.get("limit"))
+        search_query = build_search_query(query)
 
-        # Perform search using MeiliSearch
         search_results = {}
         episode_ids = []
         podcast_ids = []
 
         if search_type in ["episode", "all"]:
-            episode_results = episodes_index.search(
-                query, {"sort": ["release_date:desc"]}
-            )
-            episode_ids = [hit["id"] for hit in episode_results.get("hits", [])]
-            episodes_queryset = Episode.objects.filter(
-                id__in=episode_ids
-            ).prefetch_related("tags", "topics", "podcast")
+            episodes = []
+            if search_query is not None:
+                episodes_queryset = Episode.objects.filter(search_vector=search_query)
 
-            # Apply tag filters (OR logic - episodes must have at least one of the specified tags)
-            if tag_filters:
-                episodes_queryset = episodes_queryset.filter(tags__slug__in=tag_filters)
+                # Tag filter (OR logic - at least one of the tags)
+                if tag_filters:
+                    episodes_queryset = episodes_queryset.filter(
+                        id__in=Episode.objects.filter(tags__slug__in=tag_filters)
+                    )
 
-            # Apply topic filters (OR logic - episodes must have at least one of the specified topics)
-            if topic_filters:
-                episodes_queryset = episodes_queryset.filter(
-                    topics__slug__in=topic_filters
+                # Topic filter (OR logic - at least one of the topics)
+                if topic_filters:
+                    episodes_queryset = episodes_queryset.filter(
+                        id__in=Episode.objects.filter(topics__slug__in=topic_filters)
+                    )
+
+                episodes = list(
+                    episodes_queryset.select_related("podcast")
+                    .prefetch_related("tags", "topics")
+                    .order_by(F("release_date").desc(nulls_last=True), "-id")[:limit]
                 )
-
-            search_results["episodes"] = episodes_queryset.distinct().order_by(
-                "-release_date"
-            )
-            # Update episode_ids to reflect filtered results for aggregations
-            episode_ids = list(search_results["episodes"].values_list("id", flat=True))
+            search_results["episodes"] = episodes
+            episode_ids = [episode.id for episode in episodes]
 
         if search_type in ["podcast", "all"]:
-            podcast_results = podcasts_index.search(query)
-            podcast_ids = [hit["id"] for hit in podcast_results.get("hits", [])]
-            podcasts_queryset = Podcast.objects.filter(
-                id__in=podcast_ids
-            ).prefetch_related("tags")
+            podcasts = []
+            if search_query is not None:
+                podcasts_queryset = Podcast.objects.filter(search_vector=search_query)
 
-            # Apply tag filters (podcasts don't have topics, only tags)
-            if tag_filters:
-                podcasts_queryset = podcasts_queryset.filter(tags__slug__in=tag_filters)
+                # Tag filter (podcasts don't have topics, only tags)
+                if tag_filters:
+                    podcasts_queryset = podcasts_queryset.filter(
+                        id__in=Podcast.objects.filter(tags__slug__in=tag_filters)
+                    )
 
-            search_results["podcasts"] = podcasts_queryset.distinct()
-            # Update podcast_ids to reflect filtered results for aggregations
-            podcast_ids = list(search_results["podcasts"].values_list("id", flat=True))
+                podcasts = list(
+                    podcasts_queryset.annotate(
+                        rank=SearchRank(F("search_vector"), search_query)
+                    )
+                    .prefetch_related("tags")
+                    .order_by("-rank", "-id")[:limit]
+                )
+            search_results["podcasts"] = podcasts
+            podcast_ids = [podcast.id for podcast in podcasts]
 
         if search_type in ["entity", "all"]:
-            entity_results = entities_index.search(query)
-            entity_ids = [hit["id"] for hit in entity_results.get("hits", [])]
-            search_results["entities"] = Entity.objects.filter(id__in=entity_ids)
+            entities = []
+            if search_query is not None:
+                entities = list(
+                    Entity.objects.filter(search_vector=search_query)
+                    .annotate(rank=SearchRank(F("search_vector"), search_query))
+                    .order_by("-rank", "-id")[:limit]
+                )
+            search_results["entities"] = entities
 
         # Aggregate unique tags and topics from results
         aggregations = {}

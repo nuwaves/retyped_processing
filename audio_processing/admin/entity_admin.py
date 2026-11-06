@@ -39,7 +39,7 @@ class EntityAdmin(admin.ModelAdmin):
         if success_count > 0:
             self.message_user(
                 request,
-                f"Successfully indexed {success_count} entity(ies) to Meilisearch.",
+                f"Successfully indexed {success_count} entity(ies) for search.",
             )
         if error_count > 0:
             self.message_user(
