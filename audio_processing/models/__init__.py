@@ -1,5 +1,6 @@
 from .bookmark import Bookmark
 from .claim_verification import ClaimVerification
+from .content_request import ContentRequest
 from .entity import Entity
 from .episode import Episode
 from .follow import Follow
@@ -26,4 +27,5 @@ __all__ = [
     "Bookmark",
     "PodcastClaim",
     "ClaimVerification",
+    "ContentRequest",
 ]
