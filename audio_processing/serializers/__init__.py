@@ -8,6 +8,7 @@ from .episodes import (
     EpisodeAnalyticsSerializer,
     EpisodeListSerializer,
     EpisodeSerializer,
+    RelatedEpisodeSerializer,
 )
 from .follows import FollowSerializer
 from .podcast_claims import PodcastClaimSerializer
@@ -25,6 +26,7 @@ __all__ = [
     "EpisodeListSerializer",
     "EpisodeSerializer",
     "EpisodeAnalyticsSerializer",
+    "RelatedEpisodeSerializer",
     "PodcastListSerializer",
     "PodcastSerializer",
     "PodcastAnalyticsSerializer",

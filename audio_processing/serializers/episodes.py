@@ -99,3 +99,32 @@ class EpisodeAnalyticsSerializer(EpisodeListSerializer):
 
     class Meta(EpisodeListSerializer.Meta):
         fields = EpisodeListSerializer.Meta.fields + ["total_views"]
+
+
+class RelatedPodcastSerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    slug = serializers.CharField()
+    name = serializers.CharField()
+    image_url = serializers.CharField(allow_null=True)
+
+
+class RelatedEpisodeSerializer(serializers.ModelSerializer):
+    """Slim episode for sidebar recommendations: no per-row counts or HTML."""
+
+    podcast = RelatedPodcastSerializer()
+    image_url = serializers.SerializerMethodField()
+
+    def get_image_url(self, obj):
+        return obj.image_url or obj.podcast.image_url
+
+    class Meta:
+        model = Episode
+        fields = [
+            "id",
+            "slug",
+            "title",
+            "release_date",
+            "duration",
+            "image_url",
+            "podcast",
+        ]

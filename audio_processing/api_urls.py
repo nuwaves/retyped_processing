@@ -89,6 +89,11 @@ api_v1_patterns = [
         name="api-v1-episodes-list",
     ),
     path(
+        "episodes/<slug:slug>/related/",
+        EpisodeViewSet.as_view({"get": "related"}),
+        name="api-v1-episodes-related",
+    ),
+    path(
         "episodes/<slug:slug>/",
         EpisodeViewSet.as_view({"get": "retrieve"}),
         name="api-v1-episodes-retrieve-slug",
