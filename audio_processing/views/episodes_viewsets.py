@@ -6,12 +6,14 @@ from rest_framework.response import Response
 
 from audio_processing.api_filters import MultiTagFilterBackend
 from audio_processing.utils.analytics import get_top_by_views
+from audio_processing.utils.related import episode_entities, related_episodes
 
 from ..models import Episode
 from ..serializers import (
     EpisodeAnalyticsSerializer,
     EpisodeListSerializer,
     EpisodeSerializer,
+    RelatedEpisodeSerializer,
 )
 
 
@@ -101,6 +103,33 @@ class EpisodeViewSet(
             return self.get_paginated_response(serialized_data.data)
         serialized_data = EpisodeAnalyticsSerializer(tops_queryset, many=True)
         return Response(serialized_data.data, status=status.HTTP_200_OK)
+
+    @action(detail=True, methods=["get"], url_path="related")
+    def related(self, request, slug=None):
+        """
+        Sidebar data for an episode page: recommended episodes, plus the
+        episode's topics and the people/companies it mentions for links.
+        """
+        episode = self.get_object()
+        try:
+            limit = min(max(int(request.query_params.get("limit", 5)), 1), 12)
+        except ValueError:
+            limit = 5
+        return Response(
+            {
+                "episodes": RelatedEpisodeSerializer(
+                    related_episodes(episode, limit=limit), many=True
+                ).data,
+                "topics": [
+                    {"id": topic.id, "name": topic.name, "slug": topic.slug}
+                    for topic in episode.topics.filter(is_enabled=True)
+                ],
+                "entities": [
+                    {"id": entity.id, "name": entity.name, "type": entity.type}
+                    for entity in episode_entities(episode)
+                ],
+            }
+        )
 
     def get_serializer_class(self):
         request = getattr(self, "request", None)
