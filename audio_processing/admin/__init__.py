@@ -2,7 +2,7 @@
 
 from django.contrib import admin
 
-from audio_processing.models import Bookmark, Follow
+from audio_processing.models import Bookmark, ContentRequest, Follow
 
 from . import (
     entity_admin,  # noqa: F401
@@ -18,3 +18,12 @@ from . import (
 
 admin.site.register(Follow)
 admin.site.register(Bookmark)
+
+
+@admin.register(ContentRequest)
+class ContentRequestAdmin(admin.ModelAdmin):
+    list_display = ("episode", "user", "created_at")
+    list_select_related = ("episode", "user")
+    search_fields = ("episode__title", "user__email", "user__username")
+    raw_id_fields = ("episode", "user")
+    date_hierarchy = "created_at"

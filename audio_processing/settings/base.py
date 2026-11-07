@@ -202,6 +202,16 @@ CONSTANCE_CONFIG = {
         "best-effort: a request can wait up to 10 minutes for capacity.",
         "llm_service_tier",
     ),
+    "CONTENT_REQUESTS_PER_DAY": (
+        1,
+        "Episodes a signed-in free user can ask us to transcribe and summarize "
+        "per day. Staff have no limit.",
+    ),
+    "CONTENT_REQUESTS_PER_MONTH": (
+        5,
+        "Episodes a signed-in free user can ask us to transcribe and summarize "
+        "per calendar month. Staff have no limit.",
+    ),
 }
 CONSTANCE_ADDITIONAL_FIELDS = {
     "transcription_mode": [

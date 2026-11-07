@@ -9,6 +9,7 @@ from django.urls import path
 from .views import EpisodeViewSet, PodcastViewSet, TagsViewSet
 from .views.bookmarks_viewsets import BookmarkViewSet
 from .views.claim_verification_viewsets import ClaimVerificationView
+from .views.content_request_views import EpisodeContentRequestView
 from .views.entity_viewsets import EntityViewSet
 from .views.feed_viewsets import FeedViewSet
 from .views.follows_viewsets import FollowViewSet
@@ -92,6 +93,11 @@ api_v1_patterns = [
         "episodes/<slug:slug>/",
         EpisodeViewSet.as_view({"get": "retrieve"}),
         name="api-v1-episodes-retrieve-slug",
+    ),
+    path(
+        "episodes/<slug:slug>/content-request/",
+        EpisodeContentRequestView.as_view(),
+        name="api-v1-episodes-content-request",
     ),
     # Podcasts endpoints
     path(
