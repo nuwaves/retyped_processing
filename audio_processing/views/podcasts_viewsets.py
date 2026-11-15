@@ -1,11 +1,11 @@
 from django.utils import timezone
 from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework import filters, mixins, permissions, status, viewsets
+from rest_framework import filters, mixins, permissions, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
 from audio_processing.api_filters import MultiTagFilterBackend
-from audio_processing.utils.analytics import get_top_by_views
+from audio_processing.utils.analytics import cached_top_by_views, get_top_by_views
 
 from ..models import Podcast
 from ..serializers import (
@@ -55,13 +55,16 @@ class PodcastViewSet(
     @action(detail=False, methods=["get"], url_path="top-by-views")
     def top_by_views(self, request):
         timeframe = request.query_params.get("timeframe", "all")
-        tops_queryset = get_top_by_views("podcast", Podcast, request, timeframe)
-        page = self.paginate_queryset(tops_queryset)
-        if page is not None:
-            serialized_data = PodcastAnalyticsSerializer(page, many=True)
-            return self.get_paginated_response(serialized_data.data)
-        serialized_data = PodcastAnalyticsSerializer(tops_queryset, many=True)
-        return Response(serialized_data.data, status=status.HTTP_200_OK)
+
+        def build():
+            tops_queryset = get_top_by_views("podcast", Podcast, request, timeframe)
+            page = self.paginate_queryset(tops_queryset)
+            if page is not None:
+                serialized_data = PodcastAnalyticsSerializer(page, many=True)
+                return self.get_paginated_response(serialized_data.data).data
+            return PodcastAnalyticsSerializer(tops_queryset, many=True).data
+
+        return Response(cached_top_by_views(request, build))
 
     @action(detail=True, methods=["get"], url_path="podcast-episodes")
     def all_episodes(self, request, slug):

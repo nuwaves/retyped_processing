@@ -1,4 +1,5 @@
 from django.contrib.auth.models import User
+from django.core.cache import cache
 from django.test import TestCase
 from django.urls import reverse
 from rest_framework import status
@@ -10,6 +11,7 @@ from audio_processing.models.user_analytics import UserAnalytics
 
 class EpisodeViewSetAPITest(TestCase):
     def setUp(self):
+        cache.clear()
         self.client = APIClient()
         self.user = User.objects.create_user(username="testuser", password="testpass")
         self.podcast = Podcast.objects.create(
@@ -67,6 +69,7 @@ class EpisodeViewSetAPITest(TestCase):
 
 class EpisodeViewSetAPITest(TestCase):
     def setUp(self):
+        cache.clear()
         self.client = APIClient()
         self.user = User.objects.create_user(username="testuser", password="testpass")
         self.podcast = Podcast.objects.create(
