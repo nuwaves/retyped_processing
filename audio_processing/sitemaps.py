@@ -2,6 +2,7 @@ from xml.etree.ElementTree import Element, SubElement, tostring
 
 from django.conf import settings
 from django.contrib.sitemaps import Sitemap
+from django.contrib.sites.shortcuts import get_current_site
 from django.core.cache import cache
 from django.http import HttpResponse
 from django.utils import timezone
@@ -29,12 +30,14 @@ def sitemap_episodes():
 def sitemap_index_view(request):
     """Return a sitemap index XML linking to all paginated sitemaps."""
     # Cache the sitemap index for 1 hour to avoid expensive queries on every request
-    cache_key = "sitemap_index_xml"
+    cache_key = "sitemap_index_xml_v2"
     cached_response = cache.get(cache_key)
     if cached_response:
         return HttpResponse(cached_response, content_type="application/xml")
 
-    domain = getattr(settings, "SITE_DOMAIN", request.get_host())
+    # The frontend proxies this view, so the request host is the internal
+    # service name (web:8000). Use the public site domain, like the child sitemaps.
+    domain = getattr(settings, "SITE_DOMAIN", None) or get_current_site(request).domain
     protocol = "https" if request.is_secure() else "http"
     sitemapindex = Element(
         "sitemapindex", xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"

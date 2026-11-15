@@ -1,4 +1,5 @@
 from django.contrib.auth.models import User
+from django.core.cache import cache
 from django.test import TestCase
 from django.urls import reverse
 from rest_framework import status
@@ -29,6 +30,7 @@ class PodcastViewSetAPITest(TestCase):
         )
 
     def setUp(self):
+        cache.clear()
         self.client = APIClient()
         self.user = User.objects.create_user(username="testuser", password="testpass")
         self.podcast1 = Podcast.objects.create(

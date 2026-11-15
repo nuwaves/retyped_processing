@@ -3,6 +3,7 @@
 from unittest.mock import Mock, patch
 from xml.etree import ElementTree
 
+from django.contrib.sites.models import Site
 from django.core.cache import cache
 from django.test import TestCase
 from django.urls import reverse
@@ -149,6 +150,17 @@ class SitemapTest(CatalogEpisodesTestBase):
             )
         )
         self.assertFalse(any(self.notes_only.slug in loc for loc in locs))
+
+    def test_sitemap_index_uses_site_domain_not_request_host(self):
+        cache.clear()
+        response = self.client.get("/sitemap.xml", HTTP_HOST="web:8000")
+        self.assertEqual(response.status_code, 200)
+        root = ElementTree.fromstring(response.content)
+        locs = [el.text for el in root.iter(f"{self.NS}loc")]
+        domain = Site.objects.get_current().domain
+        self.assertTrue(locs)
+        for loc in locs:
+            self.assertTrue(loc.startswith(f"http://{domain}/sitemap-"), loc)
 
     def test_podcast_sitemap_uses_shows_route(self):
         locs = self._locs("/sitemap-podcasts-1.xml")
