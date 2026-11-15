@@ -90,10 +90,10 @@ Original transcript:
 Please rewrite this transcript as a script format with identified speakers. Follow these guidelines:
 
 1. Identify different speakers as best as you can from context clues, speaking patterns, and content
-2. Label speakers as "Host" or"Guest" if you cannot identify specific names, however you should use clues to try and identify them by name.
+2. Label speakers as "Host" or "Guest" if you cannot identify specific names, however you should use clues to try and identify them by name.
 3. Format each line as "Speaker Name: [dialogue]"
 4. Preserve the original content and meaning
-5. Add stage directions in [brackets] where helpful for context
+5. Do not add stage directions, scene descriptions or commentary of your own; every line is something a speaker said
 6. Remove filler words like "um", "uh", "you know" for readability
 7. Break long speeches into natural paragraphs
 8. Maintain the original order of dialogue
@@ -105,7 +105,6 @@ Example format:
 Ezra Klein: Welcome to today's show. I'm Ezra Klein here with my guest John Doe.
 John Doe: Thanks for having me on the show.
 Ezra Klein: Here's my first question for you...
-[Discussion continues...]
 
 Please use this additional information to intuit which speakers are talking at any point:
 
@@ -157,7 +156,13 @@ Respond with only this JSON object, filled in:
 {answer}"""
 
 
-def get_episode_summary_prompt(transcript, podcast_description, episode_description):
+def get_episode_summary_prompt(
+    transcript,
+    podcast_description,
+    episode_description,
+    podcast_name="",
+    episode_title="",
+):
     """
     Generate a prompt for creating an episode summary from a transcript.
 
@@ -165,23 +170,42 @@ def get_episode_summary_prompt(transcript, podcast_description, episode_descript
         transcript: The full podcast transcript to summarize
         podcast_description: Description of the podcast
         episode_description: Description of the episode
+        podcast_name: Name of the show
+        episode_title: Title of the episode
 
     Returns:
         str: Formatted prompt for episode summary generation
     """
-    return f"""Summarize this podcast episode in 200-400 words. Include the main topic, key points, participants, and takeaways.
+    return f"""Write a summary of this podcast episode for someone deciding whether to listen, or who wants the substance without listening. It will be published on the episode's page.
 
-If a clip is played of someone else speaking, do not list them as a participant- only list people who seem to be live on the podcast as participants.
+Show: {podcast_name}
+Episode title: {episode_title}
+Show description: {podcast_description}
+Episode description: {episode_description}
 
-You can use the episode description to understand which speakers were actually present. Additionally, use common sense when identifying active participants- dead people or historical figures mentioned should not be listed as participants.
+Use this markdown structure exactly, with nothing before or after it:
 
+One opening paragraph of 2-3 sentences, with no heading or label: who is talking (names and roles) and what the episode is about. Do not start with "In this episode" or "This episode".
+
+## Key takeaways
+
+5 to 8 bullet points. Each one states a specific claim, argument, number, story or piece of advice from the conversation, and who made it when that matters. Write each so it makes sense on its own.
+
+## Notable quotes
+
+2 or 3 short quotes copied word for word from the transcript, each as a markdown blockquote ending with the speaker's name. Leave this section out if nothing is worth quoting or you cannot tell who said it.
+
+Rules:
+- 250 to 450 words in total.
+- Be concrete. Prefer "Fraser argues warehouses will absorb data lakes within five years" to "the guests discuss the future of data".
+- Every point must come from the transcript. Do not add background, opinions or predictions of your own, and do not write a conclusion, "future directions" or outlook section.
+- Do not repeat a point in different words.
+- Only people who take part in the conversation count as participants. Someone heard in a played clip, or only mentioned, is not one; neither are historical figures or people who have died.
+- The transcript is automatic speech-to-text and misspells names. Use the spelling from the show and episode descriptions when a name appears there.
+- Leave out sponsor reads, ads and requests to subscribe or rate the show.
+
+Transcript:
 {transcript}
-
-You should also take into account the following description of the podcast:
-{podcast_description}
-
-and description of the episode:
-{episode_description}
 """
 
 
