@@ -162,6 +162,23 @@ class SitemapTest(CatalogEpisodesTestBase):
         for loc in locs:
             self.assertTrue(loc.startswith(f"http://{domain}/sitemap-"), loc)
 
+    def test_static_sitemap_lists_homepage_and_list_pages(self):
+        paths = {
+            loc.split("://", 1)[1].split("/", 1)[1]
+            for loc in self._locs("/sitemap-static.xml")
+        }
+        self.assertEqual(
+            paths,
+            {
+                "",
+                "shows",
+                "categories",
+                "new-episodes",
+                "trending-episodes",
+                "trending-shows",
+            },
+        )
+
     def test_podcast_sitemap_uses_shows_route(self):
         locs = self._locs("/sitemap-podcasts-1.xml")
         self.assertTrue(

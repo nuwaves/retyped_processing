@@ -15,6 +15,11 @@ MAX_SITEMAP_PAGES = 500  # Limit total pages to prevent timeout
 
 # Static pages to include in sitemap
 STATIC_PAGES = [
+    "",  # homepage
+    "shows",
+    "categories",
+    "new-episodes",
+    "trending-episodes",
     "trending-shows",
 ]
 
