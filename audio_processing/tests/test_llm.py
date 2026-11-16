@@ -9,6 +9,7 @@ from django.test import SimpleTestCase, TestCase, override_settings
 from audio_processing.models.mixins import groq_mixin, summarizable_mixin
 from audio_processing.models.mixins.groq_mixin import GroqMixin, clean_speaker_labels
 from audio_processing.models.mixins.summarizable_mixin import SummarizableMixin
+from audio_processing.prompts import get_episode_summary_prompt
 from audio_processing.utils import llm
 
 clear_retired_chat_models = import_module(
@@ -184,3 +185,27 @@ class ServiceTierTest(SimpleTestCase):
         kwargs = self._post("standard")
         self.assertEqual(kwargs["json"], {"model": "m"})
         self.assertEqual(kwargs["timeout"], 600)
+
+
+class SummaryPromptTest(SimpleTestCase):
+    def test_prompt_carries_show_title_and_transcript(self):
+        prompt = get_episode_summary_prompt(
+            "the transcript text",
+            "A show about data.",
+            "Guests debate lakes and warehouses.",
+            podcast_name="The Data Show",
+            episode_title="The Great Data Debate",
+        )
+        for expected in (
+            "the transcript text",
+            "A show about data.",
+            "Guests debate lakes and warehouses.",
+            "Show: The Data Show",
+            "Episode title: The Great Data Debate",
+            "## Key takeaways",
+        ):
+            self.assertIn(expected, prompt)
+
+    def test_show_and_title_are_optional(self):
+        prompt = get_episode_summary_prompt("text", "", "")
+        self.assertIn("text", prompt)

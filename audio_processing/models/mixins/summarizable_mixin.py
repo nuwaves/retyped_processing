@@ -60,6 +60,10 @@ class SummarizableMixin:
                 if hasattr(self, "podcast") and self.podcast
                 else "",
                 self.description if hasattr(self, "description") else "",
+                podcast_name=self.podcast.name
+                if hasattr(self, "podcast") and self.podcast
+                else "",
+                episode_title=getattr(self, "title", "") or "",
             )
 
             data = {
