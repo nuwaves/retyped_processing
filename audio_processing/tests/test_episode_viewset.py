@@ -2,6 +2,7 @@ from django.contrib.auth.models import User
 from django.core.cache import cache
 from django.test import TestCase
 from django.urls import reverse
+from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APIClient
 
@@ -40,8 +41,6 @@ class EpisodeViewSetAPITest(TestCase):
         UserAnalytics.objects.create(user=None, episode=self.episode1, views=10)
         UserAnalytics.objects.create(user=None, episode=self.episode2, views=5)
         UserAnalytics.objects.create(user=self.user, episode=self.episode1, views=7)
-        from django.utils import timezone
-
         UserAnalytics.objects.create(
             user=None, episode=self.episode2, views=20, updated_at=timezone.now()
         )
@@ -79,11 +78,15 @@ class EpisodeViewSetAPITest(TestCase):
             title="Episode 1",
             podcast=self.podcast,
             raw_audio_url="https://example.com/audio1.mp3",
+            summary="Summary one",
+            release_date=timezone.now(),
         )
         self.episode2 = Episode.objects.create(
             title="Episode 2",
             podcast=self.podcast,
             raw_audio_url="https://example.com/audio2.mp3",
+            summary="Summary two",
+            release_date=timezone.now(),
         )
 
         # Create tags
@@ -100,8 +103,6 @@ class EpisodeViewSetAPITest(TestCase):
         UserAnalytics.objects.create(user=None, episode=self.episode2, views=5)
         UserAnalytics.objects.create(user=self.user, episode=self.episode1, views=7)
         # Add recent analytics for timeframe test
-        from django.utils import timezone
-
         UserAnalytics.objects.create(
             user=None, episode=self.episode2, views=20, updated_at=timezone.now()
         )
@@ -124,6 +125,62 @@ class EpisodeViewSetAPITest(TestCase):
         # Only the recent analytics for episode2 should be counted
         self.assertEqual(data["results"][0]["title"], "Episode 2")
         self.assertEqual(data["results"][0]["total_views"], 25)
+
+    def test_trending_skips_episodes_without_content(self):
+        bare = Episode.objects.create(
+            title="Show notes only",
+            podcast=self.podcast,
+            raw_audio_url="https://example.com/bare.mp3",
+            release_date=timezone.now(),
+        )
+        UserAnalytics.objects.create(user=None, episode=bare, views=500)
+        url = reverse("v1:api-v1-episodes-top-by-views")
+        data = self.client.get(url, {"timeframe": "7d"}).json()
+        self.assertNotIn("Show notes only", [e["title"] for e in data["results"]])
+
+    def test_trending_skips_old_releases(self):
+        old = Episode.objects.create(
+            title="Old favourite",
+            podcast=self.podcast,
+            raw_audio_url="https://example.com/old.mp3",
+            summary="Still read a lot",
+            release_date=timezone.now() - timezone.timedelta(days=200),
+        )
+        UserAnalytics.objects.create(user=None, episode=old, views=500)
+        url = reverse("v1:api-v1-episodes-top-by-views")
+        data = self.client.get(url, {"timeframe": "7d"}).json()
+        self.assertNotIn("Old favourite", [e["title"] for e in data["results"]])
+        # All-time ranking is unchanged and still includes it.
+        data = self.client.get(url).json()
+        self.assertEqual(data["results"][0]["title"], "Old favourite")
+
+    def test_trending_caps_episodes_per_show(self):
+        third = Episode.objects.create(
+            title="Episode 3",
+            podcast=self.podcast,
+            raw_audio_url="https://example.com/audio3.mp3",
+            summary="Summary three",
+            release_date=timezone.now(),
+        )
+        UserAnalytics.objects.create(user=None, episode=third, views=1)
+        other_show = Podcast.objects.create(
+            name="Podcast 2", url="https://example.com/2"
+        )
+        other = Episode.objects.create(
+            title="Other show episode",
+            podcast=other_show,
+            raw_audio_url="https://example.com/other.mp3",
+            summary="Summary",
+            release_date=timezone.now(),
+        )
+        UserAnalytics.objects.create(user=None, episode=other, views=2)
+        url = reverse("v1:api-v1-episodes-top-by-views")
+        data = self.client.get(url, {"timeframe": "7d"}).json()
+        self.assertEqual(
+            [e["title"] for e in data["results"]],
+            ["Episode 2", "Episode 1", "Other show episode"],
+        )
+        self.assertEqual(data["count"], 3)
 
     def test_top_by_views_empty(self):
         Episode.objects.all().delete()
