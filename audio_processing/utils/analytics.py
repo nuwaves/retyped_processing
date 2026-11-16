@@ -78,16 +78,20 @@ def _trending_episodes(days):
 
 def _trending_podcasts(days):
     """
-    Shows ranked by views in the last `days` days on their episodes that have
-    a summary or transcript. Show-page hits are not counted: they scale with
-    how much of a show's back catalogue crawlers walk, not with readers.
+    Shows ranked by views in the last `days` days on their recently released
+    episodes that have a summary or transcript (the same episodes trending
+    episodes considers). Show-page hits and views on back-catalogue episodes
+    are not counted: both scale with how much of a show crawlers walk, not
+    with readers.
     """
     from audio_processing.models import Episode, Podcast
 
-    since = timezone.now() - timezone.timedelta(days=days)
+    now = timezone.now()
     rows = (
         Episode.objects.filter(
-            Episode.has_content_q(), user_analytics__updated_at__gte=since
+            Episode.has_content_q(),
+            release_date__gte=now - timezone.timedelta(days=_release_window_days(days)),
+            user_analytics__updated_at__gte=now - timezone.timedelta(days=days),
         )
         .values("podcast_id")
         .annotate(total_views=Sum("user_analytics__views"))

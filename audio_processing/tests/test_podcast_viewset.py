@@ -2,6 +2,7 @@ from django.contrib.auth.models import User
 from django.core.cache import cache
 from django.test import TestCase
 from django.urls import reverse
+from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APIClient
 
@@ -91,14 +92,25 @@ class PodcastViewSetAPITest(TestCase):
         # Trending shows are ranked by recent views on their episodes that
         # have a summary or transcript, not by show-page hits.
         self.episode1.summary = "Summary"
-        self.episode1.save(update_fields=["summary"])
+        self.episode1.release_date = timezone.now()
+        self.episode1.save(update_fields=["summary", "release_date"])
         self.episode3.transcript = "Transcript"
-        self.episode3.save(update_fields=["transcript"])
+        self.episode3.release_date = timezone.now()
+        self.episode3.save(update_fields=["transcript", "release_date"])
         UserAnalytics.objects.create(user=None, episode=self.episode1, views=4)
         UserAnalytics.objects.create(user=None, episode=self.episode1, views=5)
         UserAnalytics.objects.create(user=None, episode=self.episode3, views=3)
         # No summary or transcript: not counted.
         UserAnalytics.objects.create(user=None, episode=self.episode2, views=100)
+        # Back-catalogue episode: not counted.
+        old = Episode.objects.create(
+            title="Old episode",
+            podcast=self.podcast2,
+            raw_audio_url="https://example.com/old.mp3",
+            summary="Summary",
+            release_date=timezone.now() - timezone.timedelta(days=200),
+        )
+        UserAnalytics.objects.create(user=None, episode=old, views=100)
         url = reverse("v1:api-v1-podcasts-top-by-views")
         response = self.client.get(url, {"timeframe": "1d"})
         self.assertEqual(response.status_code, status.HTTP_200_OK)
