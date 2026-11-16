@@ -88,13 +88,26 @@ class PodcastViewSetAPITest(TestCase):
         self.assertEqual(data["results"][1]["total_views"], 17)
 
     def test_top_by_views_timeframe(self):
+        # Trending shows are ranked by recent views on their episodes that
+        # have a summary or transcript, not by show-page hits.
+        self.episode1.summary = "Summary"
+        self.episode1.save(update_fields=["summary"])
+        self.episode3.transcript = "Transcript"
+        self.episode3.save(update_fields=["transcript"])
+        UserAnalytics.objects.create(user=None, episode=self.episode1, views=4)
+        UserAnalytics.objects.create(user=None, episode=self.episode1, views=5)
+        UserAnalytics.objects.create(user=None, episode=self.episode3, views=3)
+        # No summary or transcript: not counted.
+        UserAnalytics.objects.create(user=None, episode=self.episode2, views=100)
         url = reverse("v1:api-v1-podcasts-top-by-views")
         response = self.client.get(url, {"timeframe": "1d"})
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         data = response.json()
-        # Only the recent analytics for podcast2 should be counted
-        self.assertEqual(data["results"][0]["name"], "Podcast 2")
-        self.assertEqual(data["results"][0]["total_views"], 25)
+        self.assertEqual(data["count"], 2)
+        self.assertEqual(data["results"][0]["name"], "Podcast 1")
+        self.assertEqual(data["results"][0]["total_views"], 9)
+        self.assertEqual(data["results"][1]["name"], "Podcast 2")
+        self.assertEqual(data["results"][1]["total_views"], 3)
 
     def test_top_by_views_empty(self):
         Podcast.objects.all().delete()
