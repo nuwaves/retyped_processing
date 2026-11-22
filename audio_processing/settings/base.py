@@ -155,6 +155,45 @@ if REDIS_URL:
         }
     }
 
+
+# Paid transcript API (x402), decision D18. OFF by default. Both flags must be
+# True to serve anything: PAID_API_RIGHTS_CLEARED records that the owner has
+# settled the transcript-rights question. Testnet unless PAID_API_ALLOW_MAINNET.
+# Details: docs/paid-api.md. No keys here: payments go to PAID_API_PAY_TO.
+def _env_bool(name, default="False"):
+    return os.environ.get(name, default).strip().lower() in ("1", "true", "yes")
+
+
+PAID_API_ENABLED = _env_bool("PAID_API_ENABLED")
+PAID_API_RIGHTS_CLEARED = _env_bool("PAID_API_RIGHTS_CLEARED")
+PAID_API_ALLOW_MAINNET = _env_bool("PAID_API_ALLOW_MAINNET")
+PAID_API_ADAPTER = os.environ.get("PAID_API_ADAPTER", "x402")
+PAID_API_NETWORK = os.environ.get("PAID_API_NETWORK", "eip155:84532")  # Base Sepolia
+# USDC on Base Sepolia (Circle testnet token).
+PAID_API_ASSET = os.environ.get(
+    "PAID_API_ASSET", "0x036CbD53842c5426634e7929541eC2318f3dCF7e"
+)
+PAID_API_ASSET_NAME = os.environ.get("PAID_API_ASSET_NAME", "USDC")
+PAID_API_ASSET_VERSION = os.environ.get("PAID_API_ASSET_VERSION", "2")
+PAID_API_ASSET_DECIMALS = int(os.environ.get("PAID_API_ASSET_DECIMALS", "6"))
+PAID_API_PAY_TO = os.environ.get("PAID_API_PAY_TO", "")
+PAID_API_FACILITATOR_URL = os.environ.get(
+    "PAID_API_FACILITATOR_URL", "https://x402.org/facilitator"
+)
+PAID_API_FACILITATOR_TIMEOUT = float(
+    os.environ.get("PAID_API_FACILITATOR_TIMEOUT", "15")
+)
+PAID_API_MAX_TIMEOUT_SECONDS = int(os.environ.get("PAID_API_MAX_TIMEOUT_SECONDS", "60"))
+PAID_API_PRICE_FETCH_USD = os.environ.get("PAID_API_PRICE_FETCH_USD", "0.01")
+PAID_API_PRICE_SEARCH_USD = os.environ.get("PAID_API_PRICE_SEARCH_USD", "0.001")
+PAID_API_RATE_LIMIT = int(os.environ.get("PAID_API_RATE_LIMIT", "60"))
+PAID_API_PAYER_RATE_LIMIT = int(os.environ.get("PAID_API_PAYER_RATE_LIMIT", "120"))
+PAID_API_SEARCH_MAX_LIMIT = int(os.environ.get("PAID_API_SEARCH_MAX_LIMIT", "20"))
+# META key of a trusted client-IP header, e.g. HTTP_CF_CONNECTING_IP. Only set
+# it if the origin is reachable through Cloudflare alone; otherwise it can be
+# spoofed. Empty means REMOTE_ADDR.
+PAID_API_CLIENT_IP_HEADER = os.environ.get("PAID_API_CLIENT_IP_HEADER", "")
+
 # Celery settings
 CELERY_BROKER_URL = os.environ.get(
     "CELERY_BROKER_URL", f"sqs://{AWS_ACCESS_KEY_ID}:{AWS_SECRET_ACCESS_KEY}@"

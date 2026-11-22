@@ -4,8 +4,9 @@ API URL configuration for audio_processing project.
 All API endpoints are versioned and nested under /api/v1/
 """
 
-from django.urls import path
+from django.urls import include, path
 
+from .paid_api.urls import paid_api_patterns
 from .views import EpisodeViewSet, PodcastViewSet, TagsViewSet
 from .views.bookmarks_viewsets import BookmarkViewSet
 from .views.claim_verification_viewsets import ClaimVerificationView
@@ -178,6 +179,9 @@ api_v1_patterns = [
         PodcastClaimViewSet.as_view({"get": "list", "post": "create"}),
         name="api-v1-podcast-claims",
     ),
+    # Paid transcript API (x402). 404 unless PAID_API_ENABLED and
+    # PAID_API_RIGHTS_CLEARED; see docs/paid-api.md.
+    path("paid/", include(paid_api_patterns)),
     # Claim verification endpoint
     path(
         "claims/verify/<uuid:verification_key>/",
