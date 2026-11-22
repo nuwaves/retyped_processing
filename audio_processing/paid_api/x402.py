@@ -9,7 +9,9 @@ PAYMENT-REQUIRED (server -> client, with 402), PAYMENT-SIGNATURE
 
 import base64
 import binascii
+import hashlib
 import json
+import re
 
 X402_VERSION = 2
 
@@ -23,8 +25,11 @@ META_SIGNATURE = "HTTP_PAYMENT_SIGNATURE"
 # A real exact-scheme payload is well under 2 KB; refuse anything huge.
 MAX_SIGNATURE_HEADER_BYTES = 8192
 
-# PaymentRequirements fields the client must echo back unchanged in `accepted`.
-MATCH_FIELDS = ("scheme", "network", "amount", "asset", "payTo")
+# Requirement fields holding addresses (compared case-insensitively).
+ADDRESS_FIELDS = ("asset", "payTo")
+
+EVM_ADDRESS_RE = re.compile(r"^0x[0-9a-fA-F]{40}$")
+NONCE_RE = re.compile(r"^0x[0-9a-fA-F]{64}$")
 
 
 class InvalidPaymentHeader(ValueError):
@@ -84,17 +89,42 @@ def build_payment_required(resource_url, description, requirements, error):
 
 def accepted_matches(accepted, requirements):
     """
-    The client's chosen requirements must be exactly ours on the fields that
-    decide who gets paid, how much, in what, and where. Addresses compare
-    case-insensitively (EIP-55 checksums vary in case).
+    The client's `accepted` must be exactly the requirements we offered
+    (spec: one of `accepts`), with no extra or missing fields. Addresses
+    compare case-insensitively (EIP-55 checksums vary in case).
     """
-    for field in MATCH_FIELDS:
-        theirs, ours = accepted.get(field), requirements.get(field)
-        if not isinstance(theirs, str):
-            return False
-        if field in ("asset", "payTo"):
-            if theirs.lower() != ours.lower():
+    if not isinstance(accepted, dict) or set(accepted) != set(requirements):
+        return False
+    for key, ours in requirements.items():
+        theirs = accepted[key]
+        if key in ADDRESS_FIELDS:
+            if not isinstance(theirs, str) or theirs.lower() != ours.lower():
                 return False
-        elif theirs != ours:
+        elif theirs != ours or type(theirs) is not type(ours):
             return False
     return True
+
+
+def authorization(payment):
+    """
+    (from, nonce) of the signed EIP-3009 authorization in an exact-scheme EVM
+    payload, lowercased, or None if it's missing or malformed.
+    """
+    auth = payment.get("payload", {}).get("authorization")
+    if not isinstance(auth, dict):
+        return None
+    payer, nonce = auth.get("from"), auth.get("nonce")
+    if not isinstance(payer, str) or not EVM_ADDRESS_RE.match(payer):
+        return None
+    if not isinstance(nonce, str) or not NONCE_RE.match(nonce):
+        return None
+    return payer.lower(), nonce.lower()
+
+
+def payment_id(network, asset, payer, nonce):
+    """
+    Stable id for one signed payment. Built from what was signed, not from the
+    header text, so re-encoding the same payment can't dodge the replay lock.
+    """
+    raw = "|".join((network, asset.lower(), payer, nonce))
+    return hashlib.sha256(raw.encode()).hexdigest()

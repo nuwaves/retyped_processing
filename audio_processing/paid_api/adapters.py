@@ -35,6 +35,10 @@ class SettleResult:
     network: str = ""
     reason: str = ""
     raw: dict = field(default_factory=dict)
+    # For failures: True only when the facilitator clearly rejected the
+    # payment (nothing was transferred). False means "unknown": the transfer
+    # may have gone through, so the payment must not be treated as unused.
+    definite: bool = True
 
     def as_header(self):
         """SettlementResponse body for the PAYMENT-RESPONSE header."""
@@ -102,7 +106,12 @@ class X402FacilitatorAdapter(PaymentAdapter):
             # The facilitator may still have broadcast the transfer. Logged so
             # it can be reconciled on chain; the client gets no content.
             logger.error("x402 settle failed to reach facilitator: %s", exc)
-            return SettleResult(False, reason="facilitator_unavailable")
+            return SettleResult(
+                False,
+                network=self.config.network,
+                reason="facilitator_unavailable",
+                definite=False,
+            )
         result = SettleResult(
             success=status == 200 and data.get("success") is True,
             payer=str(data.get("payer") or ""),
@@ -111,14 +120,21 @@ class X402FacilitatorAdapter(PaymentAdapter):
             reason=str(data.get("errorReason") or ""),
             raw=data,
         )
-        if not result.success and not result.reason:
-            result.reason = f"settle_http_{status}"
-        if result.reason == "settlement_pending":
-            logger.error(
-                "x402 settlement pending; reconcile tx %s on %s",
-                result.transaction,
-                result.network,
+        if not result.success:
+            explicit = bool(result.reason)
+            if not explicit:
+                result.reason = f"settle_http_{status}"
+            # Only an explicit rejection on a non-5xx answer is final.
+            result.definite = (
+                explicit and status < 500 and result.reason != "settlement_pending"
             )
+            if not result.definite:
+                logger.error(
+                    "x402 settlement outcome unknown (%s); reconcile tx %s on %s",
+                    result.reason,
+                    result.transaction,
+                    result.network,
+                )
         return result
 
 

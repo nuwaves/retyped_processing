@@ -23,6 +23,7 @@ PAYER = "0x857b06519E91e3A54538791bDbb0E22373e36b66"
 ENABLED = {
     "PAID_API_ENABLED": True,
     "PAID_API_RIGHTS_CLEARED": True,
+    "PAID_API_FREE_TRANSCRIPTS_CLOSED": True,
     "PAID_API_PAY_TO": PAY_TO,
     "PAID_API_NETWORK": "eip155:84532",
     "PAID_API_ASSET": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
@@ -38,22 +39,28 @@ def decode_header(value):
     return json.loads(base64.b64decode(value))
 
 
-def payment_header(requirements, nonce="0x01"):
+def payment_header(requirements, nonce=1, separators=None):
     payload = {
         "x402Version": 2,
         "resource": {"url": "http://testserver/x"},
         "accepted": dict(requirements),
         "payload": {
             "signature": "0xsig",
-            "authorization": {"from": PAYER, "to": PAY_TO, "nonce": nonce},
+            "authorization": {
+                "from": PAYER,
+                "to": PAY_TO,
+                "nonce": f"0x{nonce:064x}",
+            },
         },
     }
-    return base64.b64encode(json.dumps(payload).encode()).decode()
+    raw = json.dumps(payload, separators=separators)
+    return base64.b64encode(raw.encode()).decode()
 
 
 class FakeAdapter:
     def __init__(self, valid=True, settle_ok=True, reason=""):
         self.valid, self.settle_ok, self.reason = valid, settle_ok, reason
+        self.settle_definite = True
         self.verify_calls, self.settle_calls = [], []
 
     def verify(self, payload, requirements):
@@ -68,6 +75,7 @@ class FakeAdapter:
             transaction="0xabc" if self.settle_ok else "",
             network="eip155:84532",
             reason="" if self.settle_ok else "insufficient_funds",
+            definite=self.settle_definite,
         )
 
 
@@ -78,6 +86,31 @@ class ConfigTest(SimpleTestCase):
     @override_settings(PAID_API_ENABLED=True, PAID_API_RIGHTS_CLEARED=False)
     def test_rights_gate_keeps_it_off(self):
         self.assertFalse(is_enabled())
+
+    @override_settings(**{**ENABLED, "PAID_API_FREE_TRANSCRIPTS_CLOSED": False})
+    def test_free_transcripts_gate_keeps_it_off(self):
+        self.assertFalse(is_enabled())
+
+    def test_bad_values_fail_closed(self):
+        for name, value in [
+            ("PAID_API_RATE_LIMIT", ""),
+            ("PAID_API_PAYER_RATE_LIMIT", "lots"),
+            ("PAID_API_SEARCH_MAX_LIMIT", "0"),
+            ("PAID_API_MAX_TIMEOUT_SECONDS", "0"),
+            ("PAID_API_FACILITATOR_TIMEOUT", "nan"),
+            ("PAID_API_FACILITATOR_TIMEOUT", "-1"),
+            ("PAID_API_ASSET_DECIMALS", "x"),
+            ("PAID_API_PRICE_FETCH_USD", "1e999999"),
+            ("PAID_API_PRICE_SEARCH_USD", "abc"),
+        ]:
+            with self.subTest(name=name, value=value):
+                with override_settings(**{**ENABLED, name: value}):
+                    with self.assertRaises(PaidApiConfigError):
+                        get_config()
+
+    @override_settings(**{**ENABLED, "PAID_API_RATE_LIMIT": "30"})
+    def test_numbers_parsed_from_env_strings(self):
+        self.assertEqual(get_config().rate_limit_per_minute, 30)
 
     @override_settings(**ENABLED)
     def test_price_converts_to_atomic_units(self):
@@ -153,6 +186,31 @@ class X402FormatTest(SimpleTestCase):
                 accepted = dict(self.req, **{field: value})
                 self.assertFalse(x402.accepted_matches(accepted, self.req))
 
+    def test_accepted_must_equal_requirements(self):
+        for accepted in [
+            dict(self.req, extra={**self.req["extra"], "paymentFlow": "upfront"}),
+            dict(self.req, extra={"assetTransferMethod": "permit2"}),
+            dict(self.req, maxTimeoutSeconds=999999),
+            dict(self.req, amount=10000),
+            dict(self.req, unknown="x"),
+            {k: v for k, v in self.req.items() if k != "extra"},
+        ]:
+            with self.subTest(accepted=accepted):
+                self.assertFalse(x402.accepted_matches(accepted, self.req))
+
+    def test_authorization_parsing(self):
+        good = x402.decode_signature(payment_header(self.req, nonce=7))
+        self.assertEqual(x402.authorization(good), (PAYER.lower(), f"0x{7:064x}"))
+        for auth in [None, "x", {"from": PAYER}, {"from": "me", "nonce": "0x01"}]:
+            with self.subTest(auth=auth):
+                payment = {"payload": {"authorization": auth}}
+                self.assertIsNone(x402.authorization(payment))
+
+    def test_payment_id_ignores_header_encoding(self):
+        a = x402.decode_signature(payment_header(self.req))
+        b = x402.decode_signature(payment_header(self.req, separators=(",", ":")))
+        self.assertEqual(x402.authorization(a), x402.authorization(b))
+
     def test_bad_headers_rejected(self):
         bad = [
             "",
@@ -212,6 +270,29 @@ class FacilitatorAdapterTest(SimpleTestCase):
         self.session.post.return_value = self._resp(500, {"success": True})
         self.assertFalse(self.adapter.settle({}, {}).success)
 
+    def test_settle_definite_only_for_explicit_rejection(self):
+        cases = [
+            (200, {"success": False, "errorReason": "insufficient_funds"}, True),
+            (400, {"success": False, "errorReason": "invalid_signature"}, True),
+            (200, {"success": False, "errorReason": "settlement_pending"}, False),
+            (502, {}, False),
+            (200, {"success": False}, False),
+        ]
+        for status, data, definite in cases:
+            with self.subTest(status=status, data=data):
+                self.session.post.side_effect = None
+                self.session.post.return_value = self._resp(status, data)
+                result = self.adapter.settle({}, {})
+                self.assertFalse(result.success)
+                self.assertEqual(result.definite, definite)
+
+    def test_settle_timeout_is_not_definite(self):
+        self.session.post.side_effect = requests.Timeout()
+        result = self.adapter.settle({}, {})
+        self.assertFalse(result.success)
+        self.assertFalse(result.definite)
+        self.assertEqual(result.network, "eip155:84532")
+
 
 @override_settings(**ENABLED)
 class PaidApiViewTest(TestCase):
@@ -223,6 +304,7 @@ class PaidApiViewTest(TestCase):
         self.episode = Episode.objects.create(
             title="Rust ownership deep dive",
             podcast=self.podcast,
+            raw_audio_url="https://example.com/audio/public.mp3",
             transcript="Today we talk about rust ownership and borrowing.",
             has_public_transcript=True,
         )
@@ -230,6 +312,7 @@ class PaidApiViewTest(TestCase):
         self.private = Episode.objects.create(
             title="Rust private episode",
             podcast=self.podcast,
+            raw_audio_url="https://example.com/audio/private.mp3",
             transcript="Rust transcript we may not sell.",
             has_public_transcript=False,
         )
@@ -249,9 +332,10 @@ class PaidApiViewTest(TestCase):
         self.assertEqual(resp.status_code, 402)
         return decode_header(resp["PAYMENT-REQUIRED"])["accepts"][0]
 
-    def _pay(self, url, requirements, nonce="0x01"):
+    def _pay(self, url, requirements, nonce=1, separators=None):
         return self.client.get(
-            url, HTTP_PAYMENT_SIGNATURE=payment_header(requirements, nonce)
+            url,
+            HTTP_PAYMENT_SIGNATURE=payment_header(requirements, nonce, separators),
         )
 
     @override_settings(PAID_API_ENABLED=False)
@@ -260,6 +344,17 @@ class PaidApiViewTest(TestCase):
         self.assertEqual(
             self.client.get(reverse("v1:api-v1-paid-info")).status_code, 404
         )
+
+    @override_settings(PAID_API_ENABLED=False)
+    def test_disabled_hides_routes_for_every_method(self):
+        self.assertEqual(self.client.post(self.url).status_code, 404)
+
+    def test_enabled_rejects_non_get(self):
+        self.assertEqual(self.client.post(self.url).status_code, 405)
+
+    @override_settings(PAID_API_FREE_TRANSCRIPTS_CLOSED=False)
+    def test_free_path_open_returns_404(self):
+        self.assertEqual(self.client.get(self.url).status_code, 404)
 
     @override_settings(PAID_API_RIGHTS_CLEARED=False)
     def test_rights_not_cleared_returns_404(self):
@@ -344,6 +439,50 @@ class PaidApiViewTest(TestCase):
         self.assertEqual(resp.status_code, 402)
         self.assertEqual(len(self.adapter.verify_calls), 1)
 
+    def test_reencoded_payment_rejected(self):
+        req = self._requirements()
+        self.assertEqual(self._pay(self.url, req).status_code, 200)
+        resp = self._pay(self.url, req, separators=(",", ":"))
+        self.assertEqual(resp.status_code, 402)
+        self.assertEqual(len(self.adapter.verify_calls), 1)
+
+    def test_unknown_settlement_keeps_payment_locked(self):
+        self.adapter.settle_ok = False
+        self.adapter.settle_definite = False
+        req = self._requirements()
+        self.assertEqual(self._pay(self.url, req).status_code, 402)
+        self.adapter.settle_ok = True
+        resp = self._pay(self.url, req)
+        self.assertEqual(resp.status_code, 402)
+        self.assertEqual(len(self.adapter.settle_calls), 1)
+
+    def test_definite_settlement_failure_frees_payment(self):
+        self.adapter.settle_ok = False
+        req = self._requirements()
+        self.assertEqual(self._pay(self.url, req).status_code, 402)
+        self.adapter.settle_ok = True
+        self.assertEqual(self._pay(self.url, req).status_code, 200)
+        self.assertEqual(len(self.adapter.settle_calls), 2)
+
+    def test_search_with_no_results_is_not_charged(self):
+        url = reverse("v1:api-v1-paid-search") + "?q=zebra"
+        req = decode_header(self.client.get(url)["PAYMENT-REQUIRED"])["accepts"][0]
+        resp = self._pay(url, req)
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.json()["count"], 0)
+        self.assertEqual(self.adapter.settle_calls, [])
+        self.assertNotIn("PAYMENT-RESPONSE", resp)
+
+    def test_produce_error_releases_payment(self):
+        req = self._requirements()
+        with patch(
+            "audio_processing.paid_api.views._episode_summary",
+            side_effect=RuntimeError("db down"),
+        ):
+            with self.assertRaises(RuntimeError):
+                self._pay(self.url, req)
+        self.assertEqual(self._pay(self.url, req).status_code, 200)
+
     @override_settings(PAID_API_RATE_LIMIT=2)
     def test_ip_rate_limit(self):
         self.client.get(self.url)
@@ -355,8 +494,8 @@ class PaidApiViewTest(TestCase):
     @override_settings(PAID_API_PAYER_RATE_LIMIT=1)
     def test_payer_rate_limit(self):
         req = self._requirements()
-        self.assertEqual(self._pay(self.url, req, nonce="0x01").status_code, 200)
-        self.assertEqual(self._pay(self.url, req, nonce="0x02").status_code, 429)
+        self.assertEqual(self._pay(self.url, req, nonce=1).status_code, 200)
+        self.assertEqual(self._pay(self.url, req, nonce=2).status_code, 429)
         self.assertEqual(len(self.adapter.settle_calls), 1)
 
     def test_paid_search_returns_only_eligible_episodes(self):

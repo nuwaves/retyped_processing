@@ -6,17 +6,15 @@ GET /api/v1/paid/                              free: prices and terms
 GET /api/v1/paid/search/?q=...&limit=N         paid: transcript search
 GET /api/v1/paid/episodes/<slug>/transcript/   paid: one full transcript
 
-All of them return 404 unless PAID_API_ENABLED and PAID_API_RIGHTS_CLEARED
-are both True.
+All of them return 404 (for every HTTP method) unless PAID_API_ENABLED,
+PAID_API_RIGHTS_CLEARED and PAID_API_FREE_TRANSCRIPTS_CLOSED are all True.
 """
 
-import hashlib
 import logging
 
 from django.core.cache import cache
 from django.db.models import Q
-from django.http import Http404, JsonResponse
-from django.views.decorators.http import require_GET
+from django.http import Http404, HttpResponseNotAllowed, JsonResponse
 
 from ..models import Episode
 from ..views.search_viewsets import build_search_query
@@ -73,9 +71,11 @@ def _payment_required(request, description, requirements, error, extra=None):
 
 
 def _setup(request):
-    """Common gate: flag, config, IP rate limit. Returns (config, error_response)."""
+    """Common gate: flag, method, config, IP rate limit. Returns (config, error)."""
     if not is_enabled():
         raise Http404()
+    if request.method not in ("GET", "HEAD"):
+        return None, HttpResponseNotAllowed(["GET", "HEAD"])
     try:
         config = get_config()
     except PaidApiConfigError as exc:
@@ -95,8 +95,9 @@ def _setup(request):
 
 def _charge(request, config, price, description, produce):
     """
-    Run the x402 exchange around `produce()`, which returns the JSON body.
-    Content is only returned after settlement succeeds.
+    Run the x402 exchange around `produce()`, which returns
+    (json_body, chargeable). Chargeable content is only returned after
+    settlement succeeds; a non-chargeable body (nothing found) is free.
     """
     requirements = x402.build_requirements(config, price)
     header = request.META.get(x402.META_SIGNATURE, "")
@@ -118,15 +119,25 @@ def _charge(request, config, price, description, produce):
             request, description, requirements, "payment does not match requirements"
         )
 
+    signed = x402.authorization(payment)
+    if signed is None:
+        return _payment_required(
+            request, description, requirements, "unsupported payment payload"
+        )
+    signer, nonce = signed
+
     try:
         adapter = get_adapter(config)
     except PaidApiConfigError as exc:
         logger.error("paid API adapter unavailable: %s", exc)
         return _json({"error": "paid API unavailable"}, status=503)
 
-    # One use per signed payment, across workers (needs a shared cache).
-    lock_key = "paid_api:payment:" + hashlib.sha256(header.encode()).hexdigest()
-    if not cache.add(lock_key, "pending", timeout=config.max_timeout_seconds + 300):
+    # One use per signed payment, across workers (needs a shared cache such as
+    # Redis in production). Keyed on the signed (network, asset, from, nonce),
+    # so re-encoding the header doesn't create a new key.
+    payment_id = x402.payment_id(config.network, config.asset, signer, nonce)
+    lock_key = "paid_api:payment:" + payment_id
+    if not cache.add(lock_key, "pending", timeout=None):
         return _payment_required(
             request, description, requirements, "payment already submitted"
         )
@@ -138,25 +149,44 @@ def _charge(request, config, price, description, produce):
             request, description, requirements, f"invalid payment: {verified.reason}"
         )
 
-    if verified.payer:
-        allowed, retry = hit(
-            "payer", verified.payer.lower(), config.payer_rate_limit_per_minute
+    payer = (verified.payer or signer).lower()
+    allowed, retry = hit("payer", payer, config.payer_rate_limit_per_minute)
+    if not allowed:
+        cache.delete(lock_key)
+        return _json(
+            {"error": "rate limit exceeded"},
+            status=429,
+            headers={"Retry-After": str(retry)},
         )
-        if not allowed:
-            cache.delete(lock_key)
-            return _json(
-                {"error": "rate limit exceeded"},
-                status=429,
-                headers={"Retry-After": str(retry)},
-            )
 
-    body = produce()
+    try:
+        body, chargeable = produce()
+    except Exception:
+        cache.delete(lock_key)
+        raise
+
+    if not chargeable:
+        # Nothing to sell (e.g. a search with no results): don't settle, and
+        # leave the payment unused so the client can spend it elsewhere.
+        cache.delete(lock_key)
+        return _json(body)
 
     settled = adapter.settle(payment, requirements)
     response_header = {x402.HEADER_RESPONSE: x402.encode(settled.as_header())}
     if not settled.success:
-        if settled.reason != "settlement_pending":
+        if settled.definite:
             cache.delete(lock_key)
+        else:
+            # The transfer may have happened. Keep the payment locked forever
+            # and log it for manual reconciliation on chain.
+            cache.set(lock_key, "unknown", timeout=None)
+            logger.error(
+                "paid API settlement unknown: payment %s payer %s path %s reason %s",
+                payment_id,
+                payer,
+                request.path,
+                settled.reason,
+            )
         return _payment_required(
             request,
             description,
@@ -165,12 +195,13 @@ def _charge(request, config, price, description, produce):
             extra=response_header,
         )
 
-    cache.set(lock_key, "settled", timeout=config.max_timeout_seconds + 300)
+    cache.set(lock_key, "settled", timeout=None)
     logger.info(
-        "paid API settled %s %s from %s tx %s",
+        "paid API settled %s %s payment %s from %s tx %s",
         price.usd,
         request.path,
-        settled.payer,
+        payment_id,
+        settled.payer or payer,
         settled.transaction,
     )
     return _json(body, headers=response_header)
@@ -192,7 +223,6 @@ def _episode_summary(episode):
     }
 
 
-@require_GET
 def info(request):
     config, error = _setup(request)
     if error:
@@ -220,7 +250,6 @@ def info(request):
     )
 
 
-@require_GET
 def search(request):
     config, error = _setup(request)
     if error:
@@ -249,7 +278,8 @@ def search(request):
             .order_by("-release_date", "-id")[:limit]
         )
         results = [_episode_summary(e) for e in episodes]
-        return {"query": query, "count": len(results), "results": results}
+        body = {"query": query, "count": len(results), "results": results}
+        return body, bool(results)
 
     return _charge(
         request,
@@ -260,7 +290,6 @@ def search(request):
     )
 
 
-@require_GET
 def transcript(request, slug):
     config, error = _setup(request)
     if error:
@@ -281,7 +310,7 @@ def transcript(request, slug):
             "transcript": {"format": fmt, "text": text},
             "license": "Single-use access for the paying client. "
             "See https://retyped.xyz/terms. No bulk redistribution.",
-        }
+        }, True
 
     return _charge(
         request,

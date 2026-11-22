@@ -166,6 +166,9 @@ def _env_bool(name, default="False"):
 
 PAID_API_ENABLED = _env_bool("PAID_API_ENABLED")
 PAID_API_RIGHTS_CLEARED = _env_bool("PAID_API_RIGHTS_CLEARED")
+# Set True only after GET /api/v1/episodes/<slug>/ stops returning full
+# transcripts; until then the paid API stays off (nobody would need to pay).
+PAID_API_FREE_TRANSCRIPTS_CLOSED = _env_bool("PAID_API_FREE_TRANSCRIPTS_CLOSED")
 PAID_API_ALLOW_MAINNET = _env_bool("PAID_API_ALLOW_MAINNET")
 PAID_API_ADAPTER = os.environ.get("PAID_API_ADAPTER", "x402")
 PAID_API_NETWORK = os.environ.get("PAID_API_NETWORK", "eip155:84532")  # Base Sepolia
@@ -175,23 +178,24 @@ PAID_API_ASSET = os.environ.get(
 )
 PAID_API_ASSET_NAME = os.environ.get("PAID_API_ASSET_NAME", "USDC")
 PAID_API_ASSET_VERSION = os.environ.get("PAID_API_ASSET_VERSION", "2")
-PAID_API_ASSET_DECIMALS = int(os.environ.get("PAID_API_ASSET_DECIMALS", "6"))
+PAID_API_ASSET_DECIMALS = os.environ.get("PAID_API_ASSET_DECIMALS", "6")
 PAID_API_PAY_TO = os.environ.get("PAID_API_PAY_TO", "")
 PAID_API_FACILITATOR_URL = os.environ.get(
     "PAID_API_FACILITATOR_URL", "https://x402.org/facilitator"
 )
-PAID_API_FACILITATOR_TIMEOUT = float(
-    os.environ.get("PAID_API_FACILITATOR_TIMEOUT", "15")
-)
-PAID_API_MAX_TIMEOUT_SECONDS = int(os.environ.get("PAID_API_MAX_TIMEOUT_SECONDS", "60"))
+# Numbers stay raw strings here and are parsed in paid_api/config.py, so a bad
+# value disables the paid API (503) instead of crashing Django at startup.
+PAID_API_FACILITATOR_TIMEOUT = os.environ.get("PAID_API_FACILITATOR_TIMEOUT", "15")
+PAID_API_MAX_TIMEOUT_SECONDS = os.environ.get("PAID_API_MAX_TIMEOUT_SECONDS", "60")
 PAID_API_PRICE_FETCH_USD = os.environ.get("PAID_API_PRICE_FETCH_USD", "0.01")
 PAID_API_PRICE_SEARCH_USD = os.environ.get("PAID_API_PRICE_SEARCH_USD", "0.001")
-PAID_API_RATE_LIMIT = int(os.environ.get("PAID_API_RATE_LIMIT", "60"))
-PAID_API_PAYER_RATE_LIMIT = int(os.environ.get("PAID_API_PAYER_RATE_LIMIT", "120"))
-PAID_API_SEARCH_MAX_LIMIT = int(os.environ.get("PAID_API_SEARCH_MAX_LIMIT", "20"))
-# META key of a trusted client-IP header, e.g. HTTP_CF_CONNECTING_IP. Only set
-# it if the origin is reachable through Cloudflare alone; otherwise it can be
-# spoofed. Empty means REMOTE_ADDR.
+PAID_API_RATE_LIMIT = os.environ.get("PAID_API_RATE_LIMIT", "60")
+PAID_API_PAYER_RATE_LIMIT = os.environ.get("PAID_API_PAYER_RATE_LIMIT", "120")
+PAID_API_SEARCH_MAX_LIMIT = os.environ.get("PAID_API_SEARCH_MAX_LIMIT", "20")
+# META key of a trusted client-IP header, e.g. HTTP_CF_CONNECTING_IP. REQUIRED
+# behind Cloudflare or any proxy (otherwise every client shares the proxy's
+# REMOTE_ADDR and one rate-limit bucket). Only set it if the origin is
+# reachable through the proxy alone; otherwise it can be spoofed.
 PAID_API_CLIENT_IP_HEADER = os.environ.get("PAID_API_CLIENT_IP_HEADER", "")
 
 # Celery settings
