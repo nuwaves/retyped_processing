@@ -142,7 +142,7 @@ class EmailTaskTest(TestCase):
 
         # Verify email content
         self.assertIn(self.podcast.name, email.subject)
-        self.assertIn(self.user.get_full_name(), email.body)
+        self.assertIn(self.user.username, email.body)
         self.assertIn(str(self.verification.verification_key), email.body)
         self.assertEqual(email.to, [self.podcast.owner_email])
 
@@ -279,8 +279,9 @@ class SignalIntegrationTest(TestCase):
     @patch("audio_processing.tasks.email_tasks.send_claim_verification_email")
     def test_signal_triggers_email_task(self, mock_email_task):
         """Test that creating a claim triggers the email task."""
-        # Create claim (should trigger signal)
-        claim = PodcastClaim.objects.create(user=self.user, podcast=self.podcast)
+        # Create claim (should trigger signal); the task is queued on commit
+        with self.captureOnCommitCallbacks(execute=True):
+            claim = PodcastClaim.objects.create(user=self.user, podcast=self.podcast)
 
         # Verify that ClaimVerification was created
         verification = ClaimVerification.objects.get(claim=claim)
@@ -461,8 +462,118 @@ class PodcastClaimAdminTest(TestCase):
         self.claim.refresh_from_db()
         self.assertNotEqual(self.claim.status, PodcastClaim.ClaimStatus.APPROVED)
 
+    def test_podcast_and_user_are_read_only(self):
+        other = Podcast.objects.create(
+            name="Other Podcast", url="https://example.com/other/rss"
+        )
+        self.client.force_login(self.staff)
+        self.client.post(
+            f"{self.url}{self.claim.pk}/change/",
+            {"podcast": other.pk, "user": self.staff.pk},
+        )
+        self.claim.refresh_from_db()
+        self.assertEqual(self.claim.podcast_id, self.podcast.id)
+        self.assertEqual(self.claim.user_id, self.user.id)
+
     def test_changelist_renders(self):
         self.client.force_login(self.staff)
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Admin Podcast")
+
+
+class ClaimReviewFollowupTest(TestCase):
+    """Fixes from the second review of the D5 change."""
+
+    def setUp(self):
+        self.user = User.objects.create_user(
+            username="claimant2", email="claimant2@example.com", password="pw12345!"
+        )
+        self.podcast = Podcast.objects.create(
+            name="Followup Podcast",
+            url="https://example.com/followup/rss",
+            owner_email="owner@example.com",
+        )
+
+    def test_bad_owner_email_error_does_not_log_addresses(self):
+        Podcast.objects.filter(pk=self.podcast.pk).update(
+            owner_email="a@x.example, b@y.example"
+        )
+        self.podcast.refresh_from_db()
+        claim = PodcastClaim.objects.create(user=self.user, podcast=self.podcast)
+        verification = ClaimVerification.objects.get(claim=claim)
+        with self.assertLogs("audio_processing", level="DEBUG") as logs:
+            result = send_claim_verification_email(verification.id)
+        self.assertFalse(result["success"])
+        output = "\n".join(logs.output) + str(result)
+        self.assertNotIn("a@x.example", output)
+        self.assertNotIn("b@y.example", output)
+        self.assertEqual(len(mail.outbox), 0)
+
+    def test_email_uses_username_not_free_text_name(self):
+        self.user.first_name = "Retyped Support"
+        self.user.last_name = "re-verify at evil.example"
+        self.user.save()
+        claim = PodcastClaim.objects.create(user=self.user, podcast=self.podcast)
+        send_claim_verification_email(ClaimVerification.objects.get(claim=claim).id)
+        self.assertNotIn("evil.example", mail.outbox[0].body)
+        self.assertIn("claimant2", mail.outbox[0].body)
+
+    def test_staff_rejection_during_send_is_not_undone(self):
+        claim = PodcastClaim.objects.create(user=self.user, podcast=self.podcast)
+        verification = ClaimVerification.objects.get(claim=claim)
+        original_send = mail.EmailMultiAlternatives.send
+
+        def reject_then_send(message, *args, **kwargs):
+            PodcastClaim.objects.filter(pk=claim.pk).update(
+                status=PodcastClaim.ClaimStatus.REJECTED
+            )
+            return original_send(message, *args, **kwargs)
+
+        with patch(
+            "audio_processing.tasks.email_tasks.EmailMultiAlternatives.send",
+            reject_then_send,
+        ):
+            send_claim_verification_email(verification.id)
+        claim.refresh_from_db()
+        self.assertEqual(claim.status, PodcastClaim.ClaimStatus.REJECTED)
+
+    def test_verify_on_rejected_claim_does_not_say_under_review(self):
+        claim = PodcastClaim.objects.create(user=self.user, podcast=self.podcast)
+        verification = ClaimVerification.objects.get(claim=claim)
+        PodcastClaim.objects.filter(pk=claim.pk).update(
+            status=PodcastClaim.ClaimStatus.REJECTED
+        )
+        response = self.client.post(
+            f"/api/v1/claims/verify/{verification.verification_key}/"
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["claim_status"], "REJECTED")
+        self.assertNotIn("review", response.json()["message"])
+
+    def test_verification_str_has_no_key(self):
+        claim = PodcastClaim.objects.create(user=self.user, podcast=self.podcast)
+        verification = ClaimVerification.objects.get(claim=claim)
+        self.assertNotIn(str(verification.verification_key), str(verification))
+
+    def test_claim_creation_is_throttled(self):
+        from django.core.cache import cache
+        from rest_framework.test import APIClient
+
+        cache.clear()
+        client = APIClient()
+        client.force_authenticate(self.user)
+        statuses = []
+        for i in range(11):
+            podcast = Podcast.objects.create(
+                name=f"Throttle {i}",
+                url=f"https://example.com/throttle{i}/rss",
+                owner_email=None,
+            )
+            response = client.post("/api/v1/podcast_claims/", {"podcast": podcast.pk})
+            statuses.append(response.status_code)
+        cache.clear()
+        # Throttling runs before validation, so this holds whatever the
+        # serializer answers for the first ten requests.
+        self.assertNotIn(429, statuses[:10])
+        self.assertEqual(statuses[10], 429)

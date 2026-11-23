@@ -36,8 +36,7 @@ class PodcastClaimAdmin(admin.ModelAdmin):
     list_filter = ("status", "created_at")
     list_select_related = ("podcast", "user")
     search_fields = ("podcast__name", "user__username", "user__email")
-    raw_id_fields = ("podcast", "user")
-    readonly_fields = ("status", "created_at", "updated_at")
+    readonly_fields = ("podcast", "user", "status", "created_at", "updated_at")
     inlines = (ClaimVerificationInline,)
     actions = ("approve_claims", "reject_claims")
 

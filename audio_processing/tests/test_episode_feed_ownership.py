@@ -127,8 +127,21 @@ class FeedCannotOverwriteOtherPodcastEpisodeTest(TestCase):
         feed.transcript_links = None
         self.podcast_b.fetch_feed = Mock(return_value=feed)
 
-        self.podcast_b.process_feed()
+        result = self.podcast_b.process_feed()
+
+        self.assertEqual(result.get("failed"), 1)
 
         self.episode_a.refresh_from_db()
         self.assertEqual(self.episode_a.title, "A original title")
         self.assertEqual(self.episode_a.podcast_id, self.podcast_a.id)
+
+    def test_query_string_variant_of_other_podcast_url_is_skipped(self):
+        result = Episode.create_from_entry(
+            self.podcast_b,
+            make_entry("Hijacked title", audio_url=AUDIO_URL + "?utm=x"),
+        )
+
+        self.assertIsNone(result)
+        self.episode_a.refresh_from_db()
+        self.assertEqual(self.episode_a.title, "A original title")
+        self.assertFalse(Episode.objects.filter(podcast=self.podcast_b).exists())

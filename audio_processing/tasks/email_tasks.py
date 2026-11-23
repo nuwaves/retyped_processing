@@ -9,7 +9,9 @@ import logging
 
 from celery import shared_task
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.core.mail import EmailMultiAlternatives
+from django.core.validators import validate_email
 from django.template.loader import render_to_string
 
 logger = logging.getLogger(__name__)
@@ -41,7 +43,7 @@ def send_claim_verification_email(verification_id):
     )
 
     try:
-        from ..models import ClaimVerification, PodcastClaim
+        from ..models import ClaimVerification
 
         # Fetch the verification record
         verification = ClaimVerification.objects.select_related(
@@ -52,15 +54,18 @@ def send_claim_verification_email(verification_id):
         user = claim.user
         podcast = claim.podcast
         recipient = (podcast.owner_email or "").strip()
+        try:
+            validate_email(recipient)
+        except ValidationError:
+            # Empty or malformed (owner_email comes from an untrusted feed).
+            recipient = ""
 
         if not recipient:
             logger.info(
-                f"Podcast ID={podcast.id} has no owner_email; claim ID={claim.id} "
+                f"Podcast ID={podcast.id} has no usable owner_email; claim ID={claim.id} "
                 "goes to staff review without an email"
             )
-            if claim.status == PodcastClaim.ClaimStatus.RECEIVED:
-                claim.status = PodcastClaim.ClaimStatus.IN_REVIEW
-                claim.save(update_fields=["status", "updated_at"])
+            claim.mark_in_review()
             return {
                 "success": False,
                 "error": "Podcast has no owner_email; sent to staff review",
@@ -72,7 +77,8 @@ def send_claim_verification_email(verification_id):
 
         # Prepare email context (addressed to the podcast owner)
         context = {
-            "claimant_name": user.get_full_name() or user.username,
+            # Username only: full names are free text the claimant controls.
+            "claimant_name": user.username,
             "podcast_name": podcast.name,
             "verification_url": verification_url,
             "expiry_hours": getattr(settings, "VERIFICATION_EXPIRY_HOURS", 48),
@@ -101,9 +107,7 @@ def send_claim_verification_email(verification_id):
             f"Verification email sent to the owner_email of podcast ID={podcast.id} "
             f"(verification_id={verification_id})"
         )
-        if claim.status == PodcastClaim.ClaimStatus.RECEIVED:
-            claim.status = PodcastClaim.ClaimStatus.IN_REVIEW
-            claim.save(update_fields=["status", "updated_at"])
+        claim.mark_in_review()
         return {
             "success": True,
             "podcast_name": podcast.name,
@@ -116,6 +120,8 @@ def send_claim_verification_email(verification_id):
         return {"success": False, "error": error_msg}
 
     except Exception as e:
-        error_msg = f"Error sending verification email: {str(e)}"
-        logger.error(f"{error_msg} (verification_id={verification_id})", exc_info=True)
+        # Never log str(e) or a traceback here: SMTP and address-parsing errors
+        # include the recipient address, which comes from an untrusted feed.
+        error_msg = f"Error sending verification email: {type(e).__name__}"
+        logger.error(f"{error_msg} (verification_id={verification_id})")
         return {"success": False, "error": error_msg}

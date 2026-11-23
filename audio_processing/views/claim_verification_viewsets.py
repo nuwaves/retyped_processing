@@ -13,7 +13,7 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from audio_processing.models import ClaimVerification
+from audio_processing.models import ClaimVerification, PodcastClaim
 from audio_processing.serializers import (
     ClaimVerificationErrorSerializer,
     ClaimVerificationSuccessSerializer,
@@ -98,10 +98,17 @@ class ClaimVerificationView(APIView):
                 f"Claim ID={verification.claim.id}"
             )
 
+            if verification.claim.status == PodcastClaim.ClaimStatus.IN_REVIEW:
+                message = (
+                    "Thanks, ownership confirmed. Our team will review the "
+                    "claim before it is approved."
+                )
+            else:
+                message = "Thanks, your confirmation was recorded."
             serializer = ClaimVerificationSuccessSerializer(
                 data={
                     "success": True,
-                    "message": "Thanks, ownership confirmed. Our team will review the claim before it is approved.",
+                    "message": message,
                     "claim_status": verification.claim.status,
                     "podcast_name": verification.claim.podcast.name,
                 }

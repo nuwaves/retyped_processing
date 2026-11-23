@@ -37,3 +37,15 @@ class PodcastClaim(models.Model):
 
     def __str__(self):
         return f"{self.user} - {self.podcast}"
+
+    def mark_in_review(self):
+        """
+        Move a RECEIVED claim to IN_REVIEW with a conditional update, so a
+        staff decision (APPROVED/REJECTED) made in the meantime is never undone.
+        """
+        from django.utils import timezone
+
+        PodcastClaim.objects.filter(
+            pk=self.pk, status=PodcastClaim.ClaimStatus.RECEIVED
+        ).update(status=PodcastClaim.ClaimStatus.IN_REVIEW, updated_at=timezone.now())
+        self.refresh_from_db(fields=["status", "updated_at"])

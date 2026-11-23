@@ -1,5 +1,6 @@
 import logging
 
+from django.db import transaction
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 
@@ -72,7 +73,10 @@ def create_claim_verification(sender, instance, created, **kwargs):
         # Trigger async email task (sends to podcast.owner_email)
         from audio_processing.tasks.email_tasks import send_claim_verification_email
 
-        send_claim_verification_email.delay(verification.id)
+        verification_id = verification.id
+        transaction.on_commit(
+            lambda: send_claim_verification_email.delay(verification_id)
+        )
         logger.info(
             f"Queued verification email task for ClaimVerification ID={verification.id}"
         )
@@ -85,9 +89,5 @@ def create_claim_verification(sender, instance, created, **kwargs):
 
 
 def _send_to_staff_review(claim):
-    """Move a claim to IN_REVIEW without triggering this signal's create path."""
-    if claim.status == PodcastClaim.ClaimStatus.RECEIVED:
-        PodcastClaim.objects.filter(pk=claim.pk).update(
-            status=PodcastClaim.ClaimStatus.IN_REVIEW
-        )
-        claim.status = PodcastClaim.ClaimStatus.IN_REVIEW
+    """Move a claim to IN_REVIEW without re-triggering this signal."""
+    claim.mark_in_review()

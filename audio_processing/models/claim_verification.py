@@ -27,7 +27,7 @@ class ClaimVerification(models.Model):
         verbose_name_plural = "Podcast claim verifications"
 
     def __str__(self):
-        return f"{self.claim} - {self.verification_key}"
+        return f"{self.claim} - verification {self.pk}"
 
     def get_verification_url(self):
         """
@@ -77,12 +77,14 @@ class ClaimVerification(models.Model):
         self.save(update_fields=["is_verified", "updated_at"])
 
         # Owner confirmed: hand the claim to staff. Never set APPROVED here.
-        claim = self.claim
-        if claim.status in (
-            PodcastClaim.ClaimStatus.RECEIVED,
-            PodcastClaim.ClaimStatus.IN_REVIEW,
-        ):
-            claim.status = PodcastClaim.ClaimStatus.IN_REVIEW
-            claim.save(update_fields=["status", "updated_at"])
+        # Conditional update so a staff decision made meanwhile is never undone.
+        PodcastClaim.objects.filter(
+            pk=self.claim_id,
+            status__in=[
+                PodcastClaim.ClaimStatus.RECEIVED,
+                PodcastClaim.ClaimStatus.IN_REVIEW,
+            ],
+        ).update(status=PodcastClaim.ClaimStatus.IN_REVIEW, updated_at=timezone.now())
+        self.claim.refresh_from_db(fields=["status", "updated_at"])
 
         return True
