@@ -58,7 +58,10 @@ class ClaimVerification(models.Model):
 
     def verify(self):
         """
-        Mark this verification as verified and update the associated claim status.
+        Record that the podcast's RSS owner_email confirmed the claim.
+
+        The claim moves to IN_REVIEW ("owner confirmed, awaiting staff"). It is
+        never APPROVED here: only staff approve claims, in the Django admin.
 
         Returns:
             bool: True if verification was successful, False if already verified or expired
@@ -73,8 +76,13 @@ class ClaimVerification(models.Model):
         self.is_verified = True
         self.save(update_fields=["is_verified", "updated_at"])
 
-        # Update the claim status to IN_REVIEW
-        self.claim.status = PodcastClaim.ClaimStatus.APPROVED
-        self.claim.save(update_fields=["status", "updated_at"])
+        # Owner confirmed: hand the claim to staff. Never set APPROVED here.
+        claim = self.claim
+        if claim.status in (
+            PodcastClaim.ClaimStatus.RECEIVED,
+            PodcastClaim.ClaimStatus.IN_REVIEW,
+        ):
+            claim.status = PodcastClaim.ClaimStatus.IN_REVIEW
+            claim.save(update_fields=["status", "updated_at"])
 
         return True

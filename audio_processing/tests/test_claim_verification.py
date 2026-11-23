@@ -86,9 +86,9 @@ class ClaimVerificationModelTest(TestCase):
         self.assertTrue(result)
         self.assertTrue(self.verification.is_verified)
 
-        # Check that claim status was updated
+        # Owner confirmed: claim waits for staff, never APPROVED here
         self.claim.refresh_from_db()
-        self.assertEqual(self.claim.status, PodcastClaim.ClaimStatus.APPROVED)
+        self.assertEqual(self.claim.status, PodcastClaim.ClaimStatus.IN_REVIEW)
 
     def test_verify_already_verified(self):
         """Test that verifying again returns False."""
@@ -134,7 +134,7 @@ class EmailTaskTest(TestCase):
         result = send_claim_verification_email(self.verification.id)
 
         self.assertTrue(result["success"])
-        self.assertEqual(result["email"], self.user.email)
+        self.assertNotIn("email", result)
 
         # Check that email was sent
         self.assertEqual(len(mail.outbox), 1)
@@ -142,9 +142,9 @@ class EmailTaskTest(TestCase):
 
         # Verify email content
         self.assertIn(self.podcast.name, email.subject)
-        self.assertIn(self.user.first_name, email.body)
+        self.assertIn(self.user.get_full_name(), email.body)
         self.assertIn(str(self.verification.verification_key), email.body)
-        self.assertEqual(email.to, [self.user.email])
+        self.assertEqual(email.to, [self.podcast.owner_email])
 
     def test_send_claim_verification_email_html_content(self):
         """Test that email contains HTML alternative."""
@@ -154,7 +154,7 @@ class EmailTaskTest(TestCase):
         self.assertTrue(len(email.alternatives) > 0)
         html_content = email.alternatives[0][0]
         self.assertIn(self.podcast.name, html_content)
-        self.assertIn("Verify Podcast Ownership", html_content)
+        self.assertIn("Confirm Ownership Claim", html_content)
 
     def test_send_claim_verification_email_not_found(self):
         """Test email task with non-existent verification."""
@@ -212,7 +212,7 @@ class ClaimVerificationAPITest(TestCase):
         self.assertTrue(self.verification.is_verified)
 
         self.claim.refresh_from_db()
-        self.assertEqual(self.claim.status, PodcastClaim.ClaimStatus.APPROVED)
+        self.assertEqual(self.claim.status, PodcastClaim.ClaimStatus.IN_REVIEW)
 
     def test_post_verification_already_verified(self):
         """Test verifying an already verified claim."""
@@ -303,5 +303,166 @@ class SignalIntegrationTest(TestCase):
         # Verify email was sent
         self.assertEqual(len(mail.outbox), 1)
         email = mail.outbox[0]
-        self.assertEqual(email.to, [self.user.email])
+        self.assertEqual(email.to, ["owner@example.com"])
+        self.assertNotIn(self.user.email, email.to)
         self.assertIn(self.podcast.name, email.subject)
+
+
+class ClaimOwnerEmailVerificationTest(TestCase):
+    """D5: proof goes to the RSS owner_email; only staff approve."""
+
+    def setUp(self):
+        self.user = User.objects.create_user(
+            username="claimant", email="claimant@example.com", password="pw12345!"
+        )
+        self.podcast = Podcast.objects.create(
+            name="Owned Podcast",
+            url="https://example.com/owned/rss",
+            owner_email="owner@example.com",
+        )
+
+    def _run_task_for(self, claim):
+        verification = ClaimVerification.objects.get(claim=claim)
+        send_claim_verification_email(verification.id)
+        return verification
+
+    def test_claimant_address_never_receives_key(self):
+        claim = PodcastClaim.objects.create(user=self.user, podcast=self.podcast)
+        verification = self._run_task_for(claim)
+        key = str(verification.verification_key)
+        self.assertEqual(len(mail.outbox), 1)
+        for message in mail.outbox:
+            self.assertNotIn(self.user.email, message.to + message.cc + message.bcc)
+            self.assertIn(key, message.body)
+            self.assertEqual(message.to, ["owner@example.com"])
+
+    def test_full_flow_never_approves_without_staff(self):
+        claim = PodcastClaim.objects.create(user=self.user, podcast=self.podcast)
+        verification = self._run_task_for(claim)
+        claim.refresh_from_db()
+        self.assertEqual(claim.status, PodcastClaim.ClaimStatus.IN_REVIEW)
+
+        response = self.client.post(
+            f"/api/v1/claims/verify/{verification.verification_key}/"
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["claim_status"], "IN_REVIEW")
+        claim.refresh_from_db()
+        self.assertEqual(claim.status, PodcastClaim.ClaimStatus.IN_REVIEW)
+
+    def test_verify_does_not_reopen_rejected_claim(self):
+        claim = PodcastClaim.objects.create(user=self.user, podcast=self.podcast)
+        verification = ClaimVerification.objects.get(claim=claim)
+        PodcastClaim.objects.filter(pk=claim.pk).update(
+            status=PodcastClaim.ClaimStatus.REJECTED
+        )
+        verification.refresh_from_db()
+        self.assertTrue(verification.verify())
+        claim.refresh_from_db()
+        self.assertEqual(claim.status, PodcastClaim.ClaimStatus.REJECTED)
+
+    def test_owner_email_blank_sends_nothing_and_goes_to_staff(self):
+        podcast = Podcast.objects.create(
+            name="No Owner Email",
+            url="https://example.com/noowner/rss",
+            owner_email="",
+        )
+        claim = PodcastClaim.objects.create(user=self.user, podcast=podcast)
+        self.assertFalse(ClaimVerification.objects.filter(claim=claim).exists())
+        claim.refresh_from_db()
+        self.assertEqual(claim.status, PodcastClaim.ClaimStatus.IN_REVIEW)
+        self.assertEqual(len(mail.outbox), 0)
+
+    def test_task_with_owner_email_removed_sends_nothing(self):
+        claim = PodcastClaim.objects.create(user=self.user, podcast=self.podcast)
+        verification = ClaimVerification.objects.get(claim=claim)
+        Podcast.objects.filter(pk=self.podcast.pk).update(owner_email=None)
+        result = send_claim_verification_email(verification.id)
+        self.assertFalse(result["success"])
+        self.assertEqual(len(mail.outbox), 0)
+        claim.refresh_from_db()
+        self.assertEqual(claim.status, PodcastClaim.ClaimStatus.IN_REVIEW)
+
+    def test_invalid_key_does_not_change_claim(self):
+        claim = PodcastClaim.objects.create(user=self.user, podcast=self.podcast)
+        response = self.client.post(f"/api/v1/claims/verify/{uuid.uuid4()}/")
+        self.assertEqual(response.status_code, 404)
+        claim.refresh_from_db()
+        self.assertEqual(claim.status, PodcastClaim.ClaimStatus.RECEIVED)
+
+    @override_settings(VERIFICATION_EXPIRY_HOURS=1)
+    def test_expired_key_does_not_change_claim(self):
+        claim = PodcastClaim.objects.create(user=self.user, podcast=self.podcast)
+        verification = ClaimVerification.objects.get(claim=claim)
+        ClaimVerification.objects.filter(pk=verification.pk).update(
+            created_at=timezone.now() - timedelta(hours=2)
+        )
+        response = self.client.post(
+            f"/api/v1/claims/verify/{verification.verification_key}/"
+        )
+        self.assertEqual(response.status_code, 400)
+        claim.refresh_from_db()
+        self.assertEqual(claim.status, PodcastClaim.ClaimStatus.RECEIVED)
+        verification.refresh_from_db()
+        self.assertFalse(verification.is_verified)
+
+    def test_logs_do_not_contain_key_or_email(self):
+        with self.assertLogs("audio_processing", level="DEBUG") as logs:
+            claim = PodcastClaim.objects.create(user=self.user, podcast=self.podcast)
+            verification = self._run_task_for(claim)
+            self.client.post(f"/api/v1/claims/verify/{verification.verification_key}/")
+        output = "\n".join(logs.output)
+        self.assertNotIn(str(verification.verification_key), output)
+        self.assertNotIn(self.user.email, output)
+        self.assertNotIn("owner@example.com", output)
+
+
+class PodcastClaimAdminTest(TestCase):
+    """Only staff approve claims, through the admin actions."""
+
+    def setUp(self):
+        self.staff = User.objects.create_superuser(
+            username="staff", email="staff@example.com", password="pw12345!"
+        )
+        self.user = User.objects.create_user(
+            username="claimant", email="claimant@example.com", password="pw12345!"
+        )
+        self.podcast = Podcast.objects.create(
+            name="Admin Podcast",
+            url="https://example.com/admin/rss",
+            owner_email="owner@example.com",
+        )
+        self.claim = PodcastClaim.objects.create(user=self.user, podcast=self.podcast)
+        self.url = "/admin/audio_processing/podcastclaim/"
+
+    def _action(self, action):
+        return self.client.post(
+            self.url,
+            {"action": action, "_selected_action": [self.claim.pk]},
+            follow=True,
+        )
+
+    def test_staff_can_approve(self):
+        self.client.force_login(self.staff)
+        response = self._action("approve_claims")
+        self.assertEqual(response.status_code, 200)
+        self.claim.refresh_from_db()
+        self.assertEqual(self.claim.status, PodcastClaim.ClaimStatus.APPROVED)
+
+    def test_staff_can_reject(self):
+        self.client.force_login(self.staff)
+        self._action("reject_claims")
+        self.claim.refresh_from_db()
+        self.assertEqual(self.claim.status, PodcastClaim.ClaimStatus.REJECTED)
+
+    def test_non_staff_cannot_approve(self):
+        self.client.force_login(self.user)
+        self._action("approve_claims")
+        self.claim.refresh_from_db()
+        self.assertNotEqual(self.claim.status, PodcastClaim.ClaimStatus.APPROVED)
+
+    def test_changelist_renders(self):
+        self.client.force_login(self.staff)
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Admin Podcast")

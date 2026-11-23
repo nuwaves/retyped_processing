@@ -46,7 +46,7 @@ class ClaimVerificationView(APIView):
                 - 400: Token expired or already verified
                 - 404: Verification key not found
         """
-        logger.info(f"Received verification request for key: {verification_key}")
+        logger.info("Received claim verification request")
 
         # Fetch the verification record
         verification = get_object_or_404(
@@ -57,7 +57,7 @@ class ClaimVerificationView(APIView):
         # Check if already verified
         if verification.is_verified:
             logger.warning(
-                f"Verification already completed for key: {verification_key}"
+                f"ClaimVerification ID={verification.id} was already completed"
             )
             serializer = ClaimVerificationErrorSerializer(
                 data={
@@ -74,7 +74,7 @@ class ClaimVerificationView(APIView):
 
         # Check if expired
         if verification.is_expired():
-            logger.warning(f"Verification token expired for key: {verification_key}")
+            logger.warning(f"ClaimVerification ID={verification.id} has expired")
             serializer = ClaimVerificationErrorSerializer(
                 data={
                     "success": False,
@@ -95,15 +95,13 @@ class ClaimVerificationView(APIView):
             logger.info(
                 f"Claim verification successful: "
                 f"ClaimVerification ID={verification.id}, "
-                f"Claim ID={verification.claim.id}, "
-                f"User={verification.claim.user.email}, "
-                f"Podcast={verification.claim.podcast.name}"
+                f"Claim ID={verification.claim.id}"
             )
 
             serializer = ClaimVerificationSuccessSerializer(
                 data={
                     "success": True,
-                    "message": "Your podcast ownership claim has been verified successfully!",
+                    "message": "Thanks, ownership confirmed. Our team will review the claim before it is approved.",
                     "claim_status": verification.claim.status,
                     "podcast_name": verification.claim.podcast.name,
                 }
@@ -114,7 +112,7 @@ class ClaimVerificationView(APIView):
                 status=status.HTTP_200_OK,
             )
         else:
-            logger.error(f"Verification failed for key: {verification_key}")
+            logger.error(f"ClaimVerification ID={verification.id} failed")
             serializer = ClaimVerificationErrorSerializer(
                 data={
                     "success": False,

@@ -1,19 +1,19 @@
-VERIFY YOUR PODCAST OWNERSHIP
+CONFIRM A PODCAST OWNERSHIP CLAIM
 ========================================
 
-Hi {{ user_first_name }},
+Hello,
 
-You've submitted a claim for ownership of the podcast "{{ podcast_name }}" on Retyped.
+You are receiving this because this address is listed as the owner email in the RSS feed of the podcast "{{ podcast_name }}".
 
-To verify your ownership and proceed with the review process, please visit the following link:
+A Retyped user ({{ claimant_name }}) has asked to be recognised as the owner of this podcast on Retyped.
+
+If this is you, or someone you authorise to manage the podcast, confirm the claim here:
 
 {{ verification_url }}
 
-IMPORTANT: This verification link will expire in {{ expiry_hours }} hours. Please verify your claim as soon as possible.
+This link expires in {{ expiry_hours }} hours. After you confirm, our team reviews the claim before it is approved.
 
-Once verified, our team will review your claim. If approved, you'll gain full ownership privileges for your podcast on our platform.
-
-If you didn't submit this claim, you can safely ignore this email. No changes will be made to your account.
+If you don't recognise this claim, ignore this email. Nothing changes unless the link is used.
 
 ========================================
 This is an automated message from Retyped.
