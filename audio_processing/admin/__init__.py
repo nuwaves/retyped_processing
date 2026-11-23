@@ -8,6 +8,7 @@ from . import (
     entity_admin,  # noqa: F401
     episode_admin,  # noqa: F401
     podcast_admin,  # noqa: F401
+    podcast_claim_admin,  # noqa: F401
     podcast_owner_admin,  # noqa: F401
     processing_batch_admin,  # noqa: F401
     quote_admin,  # noqa: F401

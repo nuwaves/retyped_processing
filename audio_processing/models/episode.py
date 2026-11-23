@@ -369,7 +369,20 @@ class Episode(
         # Check if episode already exists
         existing_episode = cls.objects.filter(title=title, podcast=podcast).first()
         if not existing_episode:
-            existing_episode = cls.objects.filter(raw_audio_url=audio_url).first()
+            # Stored URLs have their query string stripped (clean_url in save),
+            # so match on both forms.
+            lookup_urls = {audio_url, cls().clean_url(audio_url)}
+            existing_episode = cls.objects.filter(raw_audio_url__in=lookup_urls).first()
+            if existing_episode and existing_episode.podcast_id != podcast.id:
+                # raw_audio_url is globally unique: a feed must never rewrite
+                # another podcast's episode (or an orphaned one) just because
+                # it lists the same enclosure URL. Skip the entry.
+                logger.warning(
+                    f"Skipping feed entry for podcast ID={podcast.id}: audio URL "
+                    f"belongs to episode ID={existing_episode.id} of podcast "
+                    f"ID={existing_episode.podcast_id}"
+                )
+                return None
         links = links_for_entry(transcript_links or {}, entry, audio_url)
         if existing_episode:
             existing_episode.set_transcript_links(links)
